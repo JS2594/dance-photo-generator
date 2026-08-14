@@ -1,33 +1,36 @@
 {
-  "app": "PopShot",
-  "asset_version": "1.1.0",
+  "version": "3.0.0",
   "output": {
     "width": 2525,
-    "height": 1894
-  },
-  "signature": "for Lisa, and only Lisa ♡",
-  "repeat_rules": {
-    "same_course_full_combo_days": 14,
-    "same_course_consecutive_same_weekday_no_repeat": true,
-    "prefer_recently_unused_assets": true
-  },
-  "holiday_rules": {
-    "ordinary_days": "general_assets_only",
-    "holiday_assets": "only_when_matching_holiday_window"
+    "height": 1894,
+    "format": "jpg",
+    "quality": 0.96
   },
   "courses": {
-    "Lelepop": {
+    "lelepop": {
+      "characters": 6,
+      "label": "Lelepop",
       "subtitle": "DANCE"
     },
-    "Buttscaler": {
-      "type": "glute_leg_strength"
+    "buttscaler": {
+      "characters": 6,
+      "label": "Buttscaler",
+      "subtitle": "GLUTE & LEG"
     },
-    "ZUMBA": {
-      "palette": "multicolor_not_pink_only"
+    "zumba": {
+      "characters": 6,
+      "label": "ZUMBA",
+      "subtitle": "DANCE"
     },
-    "ZUMBA CAMP": {
-      "type": "small_class_choreography_breakdown",
-      "not_camping": true
+    "zumba-camp": {
+      "characters": 6,
+      "label": "ZUMBA CAMP",
+      "subtitle": "BREAKDOWN CLASS"
     }
-  }
+  },
+  "repeatProtection": {
+    "days": 14,
+    "avoidSameWeekday": true
+  },
+  "holidayPolicy": "holiday-only-on-date-window"
 }
