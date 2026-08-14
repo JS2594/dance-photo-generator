@@ -1,9 +1,9 @@
 
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 const input=document.getElementById('photoInput'),placeholder=document.getElementById('placeholder');
-const W=2525,H=1894,VERSION='7.0.0';
+const W=2525,H=1894,VERSION='7.1.0';
 
-let photo=null,course=localStorage.getItem('popshotLastCourse')||'zumba',beauty=+(localStorage.getItem('popshotLastBeauty')||38),charIndex=0,titleIndex=0,frameIndex=1,stickerIndex=0,layoutIndex=0;
+let photo=null,course=localStorage.getItem('popshotLastCourse')||'zumba',beauty=+(localStorage.getItem('popshotLastBeauty')||38),photoZoom=1,photoDX=0,photoDY=0,photoAdjustMode=false,charIndex=0,titleIndex=0,frameIndex=1,stickerIndex=0,layoutIndex=0;
 let selectedLayer=null, dragging=false, dragOffset={x:0,y:0};
 
 const charFiles={
@@ -111,21 +111,28 @@ function autoPlaceLayers(){
 }
 
 function getSmartCrop(img){
-  const iw=img.width,ih=img.height,tr=W/H,ir=iw/ih;
-  let sw,sh;if(ir>tr){sh=ih;sw=ih*tr}else{sw=iw;sh=iw/tr}
-
-  const group=unionFaces(detectedFaces);
-  let cx=iw/2,cy=ih/2;
-  if(group){
-    // Center around all detected faces with generous padding so edge people survive.
-    cx=group.x+group.w/2;
-    cy=group.y+group.h/2 + group.h*.22;
+  const iw=img.width,ih=img.height,tr=W/H;
+  const faces=detectedFaces||[];
+  if(faces.length){
+    const avgW=faces.reduce((s,f)=>s+f.width,0)/faces.length;
+    const avgH=faces.reduce((s,f)=>s+f.height,0)/faces.length;
+    let x1=Math.min(...faces.map(f=>f.x)), y1=Math.min(...faces.map(f=>f.y));
+    let x2=Math.max(...faces.map(f=>f.x+f.width)), y2=Math.max(...faces.map(f=>f.y+f.height));
+    x1=Math.max(0,x1-avgW*1.4); x2=Math.min(iw,x2+avgW*1.4);
+    y1=Math.max(0,y1-avgH*1.2); y2=Math.min(ih,y2+avgH*6.6);
+    let bw=x2-x1,bh=y2-y1;
+    if(bw/bh<tr)bw=bh*tr; else bh=bw/tr;
+    bw=Math.min(iw,bw);bh=Math.min(ih,bh);
+    const cx=(x1+x2)/2,cy=(y1+y2)/2;
+    let sw=bw/Math.max(1,photoZoom),sh=bh/Math.max(1,photoZoom);
+    let sx=Math.max(0,Math.min(iw-sw,cx-sw/2-photoDX*iw/W));
+    let sy=Math.max(0,Math.min(ih-sh,cy-sh*.5-photoDY*ih/H));
+    return {sx,sy,sw,sh};
   }
-  let sx=Math.max(0,Math.min(iw-sw,cx-sw/2));
-  let sy=Math.max(0,Math.min(ih-sh,cy-sh*.48));
-
-  // Never crop more aggressively than required by target aspect ratio.
-  // This preserves the largest possible group area and mainly removes surplus blank space.
+  let sw,sh;if(iw/ih>tr){sh=ih;sw=ih*tr}else{sw=iw;sh=iw/tr}
+  sw/=Math.max(1,photoZoom);sh/=Math.max(1,photoZoom);
+  let sx=(iw-sw)/2-photoDX*iw/W,sy=(ih-sh)/2-photoDY*ih/H;
+  sx=Math.max(0,Math.min(iw-sw,sx));sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
 }
 function drawCover(img){const c=getSmartCrop(img);ctx.drawImage(img,c.sx,c.sy,c.sw,c.sh,0,0,W,H)}
@@ -229,13 +236,27 @@ function hitTest(pt){
   }return null;
 }
 function pointerDown(e){
-  if(!photo)return;const p=canvasPoint(e),name=hitTest(p);selectedLayer=name;
+  if(!photo)return;
+  const p=canvasPoint(e);
+  if(photoAdjustMode){
+    dragging=true;selectedLayer='__photo__';dragOffset={x:p.x-photoDX,y:p.y-photoDY};e.preventDefault();return;
+  }
+  const name=hitTest(p);selectedLayer=name;
   if(name){dragging=true;const l=layers[name];dragOffset={x:p.x-l.x,y:p.y-l.y};e.preventDefault()}
   render();
 }
 function pointerMove(e){
-  if(!dragging||!selectedLayer)return;const p=canvasPoint(e),l=layers[selectedLayer];
-  l.x=Math.max(-200,Math.min(W-50,p.x-dragOffset.x));l.y=Math.max(-100,Math.min(H-50,p.y-dragOffset.y));e.preventDefault();render();
+  if(!dragging||!selectedLayer)return;
+  const p=canvasPoint(e);
+  if(selectedLayer==='__photo__'){
+    photoDX=Math.max(-W*.35,Math.min(W*.35,p.x-dragOffset.x));
+    photoDY=Math.max(-H*.35,Math.min(H*.35,p.y-dragOffset.y));
+    e.preventDefault();render();return;
+  }
+  const l=layers[selectedLayer];
+  l.x=Math.max(-200,Math.min(W-50,p.x-dragOffset.x));
+  l.y=Math.max(-100,Math.min(H-50,p.y-dragOffset.y));
+  e.preventDefault();render();
 }
 function pointerUp(){dragging=false}
 canvas.addEventListener('mousedown',pointerDown);canvas.addEventListener('mousemove',pointerMove);window.addEventListener('mouseup',pointerUp);
@@ -331,6 +352,20 @@ window.addEventListener('load',()=>{
   let nearest=[0,38,65].reduce((a,b)=>Math.abs(b-beauty)<Math.abs(a-beauty)?b:a,38);
   document.querySelectorAll('[data-beauty]').forEach(x=>x.classList.toggle('on',+x.dataset.beauty===nearest));
 });
+
+
+document.getElementById('adjustPhotoBtn').onclick=()=>{
+  photoAdjustMode=!photoAdjustMode;
+  selectedLayer=null;
+  document.querySelector('.canvas-stage')?.classList.toggle('adjusting',photoAdjustMode);
+  document.getElementById('drawerTitle').textContent='调整照片';
+  body.innerHTML=`<div class="range-row"><span>照片缩放</span><input id="photoZoomRange" type="range" min="100" max="180" value="${Math.round(photoZoom*100)}"><b>${Math.round(photoZoom*100)}%</b></div>
+  <div class="adjust-tip">开启后可直接拖动画面里的照片位置。系统默认优先放大全员主体并裁掉顶部、侧边无效留白；如果自动结果不满意，可在这里微调。</div>
+  <div style="margin-top:10px"><button id="resetPhotoCrop" style="border:1px solid #e9e5f3;background:white;border-radius:10px;padding:8px 12px">重置照片构图</button></div>`;
+  drawer.classList.add('show');
+  document.getElementById('photoZoomRange').oninput=e=>{photoZoom=+e.target.value/100;e.target.nextElementSibling.textContent=e.target.value+'%';render();saveDraft()};
+  document.getElementById('resetPhotoCrop').onclick=()=>{photoZoom=1;photoDX=0;photoDY=0;render();saveDraft()};
+};
 
 const old=localStorage.getItem('popshotAssetVersion');if(old&&old!==VERSION)document.getElementById('updateTip').classList.remove('hidden');localStorage.setItem('popshotAssetVersion',VERSION);
 document.getElementById('closeUpdateTip').onclick=()=>document.getElementById('updateTip').classList.add('hidden');

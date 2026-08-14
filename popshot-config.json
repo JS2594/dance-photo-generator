@@ -1,5 +1,5 @@
 {
-  "version": "7.0.0",
+  "version": "7.1.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -75,5 +75,10 @@
     "IndexedDB draft photo persistence",
     "resume unfinished work dialog",
     "remember last course and beauty preference"
+  ],
+  "features_v7_1": [
+    "subject-priority crop based on detected group faces with estimated full-body bounds",
+    "manual photo pan and zoom",
+    "course cards with character thumbnails"
   ]
 }
