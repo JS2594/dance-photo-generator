@@ -1,0 +1,28 @@
+
+:root{
+  --pink:#f55aa0;--purple:#6f4cff;--ink:#20202a;--bg:#f7f7fb;--card:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+.app{max-width:720px;margin:0 auto;padding:16px 14px 40px}
+header{text-align:center;padding:6px 0 12px}
+h1{font-size:24px;margin:4px 0} header p{margin:0;color:#777;font-size:14px}
+.panel{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 22px rgba(30,30,60,.06);margin:12px 0}
+.upload{display:block;border:2px dashed #e5b5cd;border-radius:14px;padding:18px;text-align:center;font-weight:700;cursor:pointer}
+.upload input{display:none}
+.course-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.course-grid button,.actions button,.replace-row button,.full{border:0;border-radius:12px;padding:12px 10px;font-weight:700;background:#f0f0f5}
+.course-grid button.active{background:#ffe0ef;outline:2px solid var(--pink);color:#b32767}
+.beauty{display:flex;gap:12px;align-items:center;margin:14px 2px 4px}.beauty input{flex:1}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.primary{background:linear-gradient(135deg,var(--pink),var(--purple))!important;color:#fff!important}
+.preview-wrap{background:#111;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+canvas{display:block;width:100%;height:auto;background:#ddd}
+.replace-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.full{width:100%;margin-top:10px}
+.update-tip{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#20202a;color:white;padding:12px 14px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:9}
+.update-tip button{margin-left:10px;border:0;border-radius:8px;padding:6px 9px}
+.hidden{display:none}
+
+.signature{font-family:cursive;font-size:12px;opacity:.48;letter-spacing:.3px;margin-bottom:2px}
+.preview-wrap{aspect-ratio:2525/1894}
+canvas{aspect-ratio:2525/1894;object-fit:contain}

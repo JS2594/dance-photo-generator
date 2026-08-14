@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#f55aa0" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>PopShot</title>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="signature">for Lisa, and only Lisa ♡</div><h1>PopShot</h1>
+      <p>上传合照 · 选择课程 · 一键生成</p>
+    </header>
+
+    <section class="panel">
+      <label class="upload">
+        <input id="photoInput" type="file" accept="image/*" />
+        <span>① 上传合照</span>
+      </label>
+
+      <div class="course-grid" id="courseGrid">
+        <button data-course="lelepop">Lelepop</button>
+        <button data-course="buttscaler">Buttscaler</button>
+        <button data-course="zumba">ZUMBA</button>
+        <button data-course="zumba-camp">ZUMBA CAMP</button>
+      </div>
+
+      <div class="beauty">
+        <span>基础美化</span>
+        <input id="beautyRange" type="range" min="0" max="100" value="35" />
+      </div>
+
+      <div class="actions">
+        <button id="generateBtn" class="primary">② 随机生成</button>
+        <button id="shuffleBtn">换一版</button>
+      </div>
+    </section>
+
+    <section class="preview-wrap">
+      <canvas id="canvas" width="2525" height="1894"></canvas>
+    </section>
+
+    <section class="panel controls">
+      <div class="replace-row">
+        <button id="changeCharacterBtn">换人物</button>
+        <button id="changeTagBtn">换标题</button>
+        <button id="toggleDecorationBtn">装饰 开/关</button>
+      </div>
+      <button id="exportBtn" class="primary full">③ 保存高清图片</button>
+    </section>
+
+    <div id="updateTip" class="update-tip hidden">
+      素材库有更新 ✨
+      <button id="closeUpdateTip">知道了</button>
+    </div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
