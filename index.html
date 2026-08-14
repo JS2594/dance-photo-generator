@@ -97,6 +97,21 @@
           <button id="resetAllBtn">重置全部</button>
         </div>
       </div>
+<section class="smart-tools">
+  <div class="smart-row">
+    <label>画面丰富度</label>
+    <div class="segmented" id="densityControl">
+      <button data-density="simple">简洁</button><button data-density="normal" class="on">默认</button><button data-density="rich">丰富</button>
+    </div>
+  </div>
+  <div class="edit-shortcuts">
+    <button id="undoBtn">↶ 撤销</button><button id="redoBtn">↷ 重做</button>
+    <button id="lockBtn">🔓 锁定当前</button><button id="favBtn">♡ 收藏素材</button>
+  </div>
+  <div id="candidateStrip" class="candidate-strip">
+    <button data-candidate="0">A · 清爽</button><button data-candidate="1">B · 平衡</button><button data-candidate="2">C · 海报感</button>
+  </div>
+</section>
 <button class="save-btn" id="exportBtn">↓ 保存高清图片</button>
     </section>
 
@@ -116,5 +131,28 @@
   <div class="toast hidden" id="updateTip">✨ 素材库有更新 <button id="closeUpdateTip">知道了</button></div>
 </div>
 <script src="./app.js"></script>
+<section class="tips-card" id="usageTips">
+  <details>
+    <summary>使用 Tips · 点击查看</summary>
+    <div class="tips-content">
+      <p><b>最快用法：</b>上传照片 → 选择课程 → 一键生成。系统会优先保留人物主体并自动搭配。</p>
+      <p><b>想自己调：</b>点选人物、标题、Logo 或贴纸后可拖动、缩放；可撤销/重做，也可锁定已满意的元素。</p>
+      <p><b>添加到桌面：</b>手机浏览器打开 PopShot 后，使用浏览器菜单里的“添加到主屏幕/添加到桌面”；电脑可通过浏览器的安装应用入口创建快捷方式。</p>
+      <p><b>自动保存：</b>编辑状态会保存在当前浏览器，下次打开可继续。</p>
+      <p><b>资源更新 ✨：</b>工具管理者会不定期更新人物、课程标题、贴纸及节日装饰等素材。如有想要新增的资源，可微信联系工具管理者。</p>
+    </div>
+  </details>
+</section>
+<div class="resume-modal hidden" id="resumeModal">
+  <div class="resume-card">
+    <div class="resume-icon">✦</div>
+    <h3>发现上次未完成的作品</h3>
+    <p>是否继续上次的编辑？照片和排版会自动恢复。</p>
+    <div class="resume-actions">
+      <button id="discardResume">重新开始</button>
+      <button id="continueResume" class="primary-mini">继续编辑</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

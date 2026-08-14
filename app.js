@@ -1,9 +1,9 @@
 
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 const input=document.getElementById('photoInput'),placeholder=document.getElementById('placeholder');
-const W=2525,H=1894,VERSION='5.0.0';
+const W=2525,H=1894,VERSION='7.0.0';
 
-let photo=null,course='zumba',beauty=38,charIndex=0,titleIndex=0,frameIndex=1,stickerIndex=0,layoutIndex=0;
+let photo=null,course=localStorage.getItem('popshotLastCourse')||'zumba',beauty=+(localStorage.getItem('popshotLastBeauty')||38),charIndex=0,titleIndex=0,frameIndex=1,stickerIndex=0,layoutIndex=0;
 let selectedLayer=null, dragging=false, dragOffset={x:0,y:0};
 
 const charFiles={
@@ -28,7 +28,7 @@ function resetLayers(){
   layers={
     title:{x:side==='left'?90:W-90,y:72,scale:1,anchor:side==='left'?'left':'right',visible:true},
     character:{x:layoutIndex===1?65:W-500,y:H-620,scale:1,visible:true},
-    logo:{x:layoutIndex===1?70:W-470,y:H-170,scale:1,visible:true},
+    logo:{x:layoutIndex===1?70:W-540,y:H-190,scale:1.18,visible:true},
     sticker:{x:W-120,y:95,scale:1,visible:true}
   };
 }
@@ -51,11 +51,82 @@ function holiday(){
 }
 function stickers(){return holiday()||genericStickers}
 
+
+let detectedFaces=[];
+async function detectFaces(img){
+  detectedFaces=[];
+  if(!('FaceDetector' in window)) return detectedFaces;
+  try{
+    const fd=new FaceDetector({fastMode:true,maxDetectedFaces:40});
+    const faces=await fd.detect(img);
+    detectedFaces=faces.map(f=>f.boundingBox).filter(Boolean);
+  }catch(e){detectedFaces=[]}
+  return detectedFaces;
+}
+function unionFaces(faces){
+  if(!faces.length)return null;
+  let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;
+  for(const f of faces){x1=Math.min(x1,f.x);y1=Math.min(y1,f.y);x2=Math.max(x2,f.x+f.width);y2=Math.max(y2,f.y+f.height)}
+  return {x:x1,y:y1,w:x2-x1,h:y2-y1};
+}
+function faceSafeZones(){
+  if(!photo||!detectedFaces.length)return [];
+  const c=getSmartCrop(photo), sx=W/c.sw, sy=H/c.sh;
+  return detectedFaces.map(f=>({
+    x:(f.x-c.sx)*sx, y:(f.y-c.sy)*sy, w:f.width*sx, h:f.height*sy
+  })).filter(b=>b.x+b.w>0&&b.y+b.h>0&&b.x<W&&b.y<H);
+}
+function overlapArea(a,b){
+  const x=Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x));
+  const y=Math.max(0,Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));
+  return x*y;
+}
+function faceOverlapScore(box){
+  return faceSafeZones().reduce((s,f)=>s+overlapArea(box,{x:f.x-45,y:f.y-55,w:f.w+90,h:f.h+110}),0);
+}
+function autoPlaceLayers(){
+  // Choose among safe corner compositions and keep title/character/logo away from detected faces.
+  const candidates=[
+    {title:{x:90,y:72,anchor:'left'},char:{x:W-530,y:H-650},logo:{x:W-540,y:H-195}},
+    {title:{x:W-90,y:72,anchor:'right'},char:{x:65,y:H-650},logo:{x:70,y:H-195}},
+    {title:{x:85,y:H-420,anchor:'left'},char:{x:W-520,y:80},logo:{x:W-535,y:500}},
+    {title:{x:W-85,y:H-420,anchor:'right'},char:{x:65,y:80},logo:{x:70,y:500}}
+  ];
+  let best=candidates[0],bestScore=Infinity;
+  for(const c of candidates){
+    const tbox={x:c.title.anchor==='left'?c.title.x:c.title.x-1050,y:c.title.y,w:1050,h:260};
+    const cbox={x:c.char.x,y:c.char.y,w:500,h:620};
+    const lbox={x:c.logo.x,y:c.logo.y,w:500,h:130};
+    const score=faceOverlapScore(tbox)*1.0+faceOverlapScore(cbox)*1.35+faceOverlapScore(lbox)*1.2;
+    if(score<bestScore){bestScore=score;best=c}
+  }
+  layers.title.x=best.title.x;layers.title.y=best.title.y;layers.title.anchor=best.title.anchor;
+  layers.character.x=best.char.x;layers.character.y=best.char.y;
+  layers.logo.x=best.logo.x;layers.logo.y=best.logo.y;
+  // If face density is high, reduce visual density automatically.
+  const faceCount=detectedFaces.length;
+  if(faceCount>=12){layers.character.scale=.76;layers.logo.scale=1.06;layers.sticker.scale=.01}
+  else if(faceCount>=7){layers.character.scale=.88;layers.logo.scale=1.12;layers.sticker.scale=.68}
+  else{layers.character.scale=1;layers.logo.scale=1.18}
+}
+
 function getSmartCrop(img){
   const iw=img.width,ih=img.height,tr=W/H,ir=iw/ih;
   let sw,sh;if(ir>tr){sh=ih;sw=ih*tr}else{sw=iw;sh=iw/tr}
-  // Conservative center-biased crop: preserve group, cut mostly dead side/top space.
-  return {sx:(iw-sw)/2,sy:(ih-sh)/2,sw,sh};
+
+  const group=unionFaces(detectedFaces);
+  let cx=iw/2,cy=ih/2;
+  if(group){
+    // Center around all detected faces with generous padding so edge people survive.
+    cx=group.x+group.w/2;
+    cy=group.y+group.h/2 + group.h*.22;
+  }
+  let sx=Math.max(0,Math.min(iw-sw,cx-sw/2));
+  let sy=Math.max(0,Math.min(ih-sh,cy-sh*.48));
+
+  // Never crop more aggressively than required by target aspect ratio.
+  // This preserves the largest possible group area and mainly removes surplus blank space.
+  return {sx,sy,sw,sh};
 }
 function drawCover(img){const c=getSmartCrop(img);ctx.drawImage(img,c.sx,c.sy,c.sw,c.sh,0,0,W,H)}
 function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
@@ -179,11 +250,11 @@ document.getElementById('largerBtn').onclick=()=>scaleSelected(.1);
 document.getElementById('resetLayerBtn').onclick=()=>{if(!selectedLayer)return;const name=selectedLayer;const old=layoutIndex;resetLayers();selectedLayer=name;render()};
 document.getElementById('resetAllBtn').onclick=()=>{resetLayers();selectedLayer=null;render()};
 
-input.addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{photo=im;URL.revokeObjectURL(u);pickCombo();render()};im.src=u});
-document.getElementById('courseGrid').addEventListener('click',e=>{const b=e.target.closest('button[data-course]');if(!b)return;course=b.dataset.course;document.querySelectorAll('[data-course]').forEach(x=>x.classList.toggle('active',x===b));pickCombo();render()});
-document.querySelectorAll('[data-beauty]').forEach(b=>b.onclick=()=>{beauty=+b.dataset.beauty;document.querySelectorAll('[data-beauty]').forEach(x=>x.classList.toggle('on',x===b));document.getElementById('beautyText').textContent=b.textContent;render()});
-document.getElementById('generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');pickCombo();selectedLayer=null;render()};
-document.getElementById('shuffleBtn').onclick=()=>{if(!photo)return;pickCombo();selectedLayer=null;render()};
+input.addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const u=URL.createObjectURL(f),im=new Image();im.onload=async()=>{photo=im;URL.revokeObjectURL(u);await detectFaces(im);pickCombo();autoPlaceLayers();saveImageToDB(f);render();saveDraft()};im.src=u});
+document.getElementById('courseGrid').addEventListener('click',e=>{const b=e.target.closest('button[data-course]');if(!b)return;course=b.dataset.course;localStorage.setItem('popshotLastCourse',course);document.querySelectorAll('[data-course]').forEach(x=>x.classList.toggle('active',x===b));pickCombo();autoPlaceLayers();render();saveDraft()});
+document.querySelectorAll('[data-beauty]').forEach(b=>b.onclick=()=>{beauty=+b.dataset.beauty;document.querySelectorAll('[data-beauty]').forEach(x=>x.classList.toggle('on',x===b));document.getElementById('beautyText').textContent=b.textContent;localStorage.setItem('popshotLastBeauty',beauty);render();saveDraft()});
+document.getElementById('generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');pickCombo();autoPlaceLayers();selectedLayer=null;render();saveDraft()};
+document.getElementById('shuffleBtn').onclick=()=>{if(!photo)return;pickCombo();autoPlaceLayers();selectedLayer=null;render();saveDraft()};
 document.getElementById('changeCharacterBtn').onclick=()=>{charIndex=(charIndex+1)%6;render()};
 document.getElementById('changeTagBtn').onclick=()=>{titleIndex=(titleIndex+1)%5;render()};
 document.getElementById('changeStickerBtn').onclick=()=>{stickerIndex=(stickerIndex+1)%stickers().length;render()};
@@ -194,6 +265,72 @@ const drawer=document.getElementById('drawer'),body=document.getElementById('dra
 document.getElementById('beautyBtn').onclick=()=>{document.getElementById('drawerTitle').textContent='美化调整';body.innerHTML=`<div class="range-row"><span>美化强度</span><input id="r1" type="range" min="0" max="100" value="${beauty}"><b>${beauty}</b></div><div style="color:#999;font-size:12px">只做基础提亮、对比度和色彩优化，不改变脸型与五官。</div>`;drawer.classList.add('show');document.getElementById('r1').oninput=e=>{beauty=+e.target.value;e.target.nextElementSibling.textContent=beauty;render()}};
 document.getElementById('drawerClose').onclick=()=>drawer.classList.remove('show');
 document.getElementById('exportBtn').onclick=()=>{if(!photo)return alert('请先上传照片');selectedLayer=null;render().then(()=>{const a=document.createElement('a');a.download=`PopShot-${course}-${Date.now()}.jpg`;a.href=canvas.toDataURL('image/jpeg',.96);a.click()})};
+
+
+// v6 usability layer
+let density='normal', undoStack=[], redoStack=[], lockedLayer=null;
+function snapshot(){return JSON.stringify({layers,course,beauty,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,density})}
+function pushUndo(){undoStack.push(snapshot());if(undoStack.length>30)undoStack.shift();redoStack=[]}
+function restoreState(raw){if(!raw)return;const s=JSON.parse(raw);Object.assign(window,s);layers=s.layers;course=s.course;beauty=s.beauty;charIndex=s.charIndex;titleIndex=s.titleIndex;frameIndex=s.frameIndex;stickerIndex=s.stickerIndex;layoutIndex=s.layoutIndex;density=s.density||'normal';render();saveDraft()}
+function saveDraft(){if(!photo)return;localStorage.setItem('popshotDraftState',snapshot())}
+function saveFavorite(){const k=keyFor(),f=JSON.parse(localStorage.getItem('popshotFavorites')||'[]');if(!f.includes(k))f.push(k);localStorage.setItem('popshotFavorites',JSON.stringify(f.slice(-50)));}
+
+document.querySelectorAll('[data-density]').forEach(b=>b.onclick=()=>{pushUndo();density=b.dataset.density;document.querySelectorAll('[data-density]').forEach(x=>x.classList.toggle('on',x===b));if(density==='simple'){layers.sticker.scale=.01;layers.logo.scale=1.08}else if(density==='rich'){layers.sticker.scale=1.25;layers.logo.scale=1.22}else{layers.sticker.scale=1;layers.logo.scale=1.18}render();saveDraft()});
+document.getElementById('undoBtn').onclick=()=>{if(!undoStack.length)return;redoStack.push(snapshot());restoreState(undoStack.pop())};
+document.getElementById('redoBtn').onclick=()=>{if(!redoStack.length)return;undoStack.push(snapshot());restoreState(redoStack.pop())};
+document.getElementById('lockBtn').onclick=()=>{if(!selectedLayer)return alert('请先点选一个元素');lockedLayer=lockedLayer===selectedLayer?null:selectedLayer;document.getElementById('lockBtn').textContent=lockedLayer?'🔒 已锁定 '+selectedLayer:'🔓 锁定当前'};
+document.getElementById('favBtn').onclick=()=>{saveFavorite();document.getElementById('favBtn').textContent='♥ 已收藏'};
+document.querySelectorAll('[data-candidate]').forEach(b=>b.onclick=()=>{pushUndo();const n=+b.dataset.candidate;layoutIndex=n;charIndex=(charIndex+n+1)%6;titleIndex=(titleIndex+n)%5;frameIndex=n===0?1:n===1?3:2;stickerIndex=(stickerIndex+n+1)%stickers().length;resetLayers();if(n===0){layers.logo.scale=1.08;layers.sticker.scale=.7}else if(n===2){layers.logo.scale=1.22;layers.sticker.scale=1.15}else{layers.logo.scale=1.18}document.querySelectorAll('[data-candidate]').forEach(x=>x.classList.toggle('active',x===b));render();saveDraft()});
+
+// prevent dragging a locked layer and autosave after edits
+const _pointerDown=pointerDown;
+pointerDown=function(e){const p=canvasPoint(e),name=hitTest(p);if(name&&name===lockedLayer){selectedLayer=name;render();return}pushUndo();_pointerDown(e)}
+const _pointerUp=pointerUp;
+pointerUp=function(){_pointerUp();saveDraft()}
+
+
+// Persist the current uploaded photo locally so accidental refresh/close can be resumed.
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open('PopShotDB',1);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('draft'))db.createObjectStore('draft')};
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+  });
+}
+async function saveImageToDB(file){
+  try{const db=await openDB();const tx=db.transaction('draft','readwrite');tx.objectStore('draft').put(file,'photo')}catch(e){}
+}
+async function loadImageFromDB(){
+  try{
+    const db=await openDB();
+    return await new Promise((resolve)=>{const tx=db.transaction('draft','readonly');const req=tx.objectStore('draft').get('photo');req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>resolve(null)})
+  }catch(e){return null}
+}
+async function clearDraftDB(){
+  try{const db=await openDB();const tx=db.transaction('draft','readwrite');tx.objectStore('draft').delete('photo')}catch(e){}
+  localStorage.removeItem('popshotDraftState');
+}
+async function maybeOfferResume(){
+  const raw=localStorage.getItem('popshotDraftState');
+  const blob=await loadImageFromDB();
+  if(!raw||!blob)return;
+  const modal=document.getElementById('resumeModal');modal.classList.remove('hidden');
+  document.getElementById('continueResume').onclick=async()=>{
+    modal.classList.add('hidden');
+    const url=URL.createObjectURL(blob),im=new Image();
+    im.onload=async()=>{photo=im;URL.revokeObjectURL(url);await detectFaces(im);restoreState(raw);autoPlaceLayers();render()};
+    im.src=url;
+  };
+  document.getElementById('discardResume').onclick=async()=>{modal.classList.add('hidden');await clearDraftDB()};
+}
+window.addEventListener('load',()=>{maybeOfferResume()});
+
+// Restore remembered course button + beauty UI
+window.addEventListener('load',()=>{
+  document.querySelectorAll('[data-course]').forEach(x=>x.classList.toggle('active',x.dataset.course===course));
+  let nearest=[0,38,65].reduce((a,b)=>Math.abs(b-beauty)<Math.abs(a-beauty)?b:a,38);
+  document.querySelectorAll('[data-beauty]').forEach(x=>x.classList.toggle('on',+x.dataset.beauty===nearest));
+});
 
 const old=localStorage.getItem('popshotAssetVersion');if(old&&old!==VERSION)document.getElementById('updateTip').classList.remove('hidden');localStorage.setItem('popshotAssetVersion',VERSION);
 document.getElementById('closeUpdateTip').onclick=()=>document.getElementById('updateTip').classList.add('hidden');

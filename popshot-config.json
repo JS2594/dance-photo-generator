@@ -1,5 +1,5 @@
 {
-  "version": "5.0.0",
+  "version": "7.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -56,5 +56,24 @@
     ],
     "defaultAutoLayout": true
   },
-  "signaturePolicy": "UI only; never rendered onto exported photo"
+  "signaturePolicy": "UI only; never rendered onto exported photo",
+  "logoDefaultSize": "medium",
+  "features_v6": [
+    "3 candidate layouts",
+    "undo/redo",
+    "layer lock",
+    "favorites",
+    "local draft autosave",
+    "density control",
+    "bottom usage tips",
+    "medium logo default"
+  ],
+  "features_v7": [
+    "face-aware smart crop when FaceDetector is available",
+    "face-safe automatic layout",
+    "high-density group photo auto simplification",
+    "IndexedDB draft photo persistence",
+    "resume unfinished work dialog",
+    "remember last course and beauty preference"
+  ]
 }
