@@ -28,3 +28,10 @@ button{font:inherit;cursor:pointer}
 footer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}footer div{background:#fff;border:1px solid #efedf4;border-radius:16px;padding:12px;text-align:center}footer b{display:block;font-size:12px;color:#5c4bc4}footer span{font-size:10px;color:#999}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#252532;color:#fff;padding:11px 14px;border-radius:14px;z-index:30}.toast button{border:0;border-radius:8px;padding:5px 8px;margin-left:8px}.hidden{display:none!important}
 @media(max-width:640px){.shell{padding:14px 10px 34px}.brand{font-size:27px}.topbar{padding-bottom:14px}.hero-card,.result-card{border-radius:20px;padding:13px}.dropzone{height:132px}.tools{grid-template-columns:repeat(3,1fr)}footer{grid-template-columns:1fr 1fr}.line{width:22px}.step span{font-size:11px}}
+
+.manual-edit{margin-top:10px;padding:10px;background:#f8f7fb;border:1px solid #efedf4;border-radius:14px}
+.manual-hint{font-size:11px;color:#8f8f9d;text-align:center;margin-bottom:8px}
+.manual-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.manual-actions button{border:1px solid #e9e6f2;background:white;border-radius:10px;padding:8px 5px;font-size:11px;color:#666}
+.manual-actions button:active{background:#eee9ff;color:#6c50d8}
+@media(max-width:640px){.manual-actions{grid-template-columns:1fr 1fr}}

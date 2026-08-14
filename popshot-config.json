@@ -1,5 +1,5 @@
 {
-  "version": "3.0.0",
+  "version": "5.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -32,5 +32,29 @@
     "days": 14,
     "avoidSameWeekday": true
   },
-  "holidayPolicy": "holiday-only-on-date-window"
+  "holidayPolicy": "holiday-only-on-date-window",
+  "layoutPolicy": {
+    "photoFirst": true,
+    "crop": "conservative subject-aware cover",
+    "preserveGroup": true,
+    "characterAndLogo": "single compact module",
+    "decorationDensity": "low",
+    "adaptiveLayouts": 3
+  },
+  "manualEditing": {
+    "drag": [
+      "character",
+      "title",
+      "logo",
+      "sticker"
+    ],
+    "scale": [
+      "character",
+      "title",
+      "logo",
+      "sticker"
+    ],
+    "defaultAutoLayout": true
+  },
+  "signaturePolicy": "UI only; never rendered onto exported photo"
 }
