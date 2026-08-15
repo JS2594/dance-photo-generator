@@ -50,3 +50,43 @@
 .asset-option img{max-width:75px;max-height:88px;object-fit:contain}
 .title-option{min-height:76px;font-family:"Arial Black",Impact,sans-serif;font-size:18px;color:#6557ff;text-align:center}
 .sticker-option{font-size:34px;min-height:70px}
+
+/* ===== V9.3 UI polish ===== */
+.version-badge{
+  display:inline-flex;align-items:center;margin-right:8px;padding:3px 8px;border-radius:999px;
+  background:#f0ebff;color:#7657ff;font-size:11px;font-weight:800
+}
+.single-character-tip{
+  margin:10px 0 8px;padding:9px 12px;border-radius:12px;
+  background:linear-gradient(90deg,#fff4fb,#f7f3ff);
+  color:#77717f;font-size:11px;border:1px solid #eee8f7
+}
+.composition-mode{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0;
+  padding:10px 12px;background:#faf9fd;border:1px solid #eeeaf5;border-radius:14px
+}
+.composition-mode span{font-size:11px;color:#77717f;margin-right:auto}
+.composition-mode button{
+  border:1px solid #e8e2f1;background:white;border-radius:10px;padding:7px 10px;font-size:11px
+}
+.composition-mode button.on{
+  background:linear-gradient(135deg,#7657ff,#ef5ea8);color:#fff;border-color:transparent
+}
+
+/* Wider desktop workbench feel */
+@media(min-width:1180px){
+  .app-shell,.main-wrap,.container{max-width:1240px}
+}
+
+/* Canvas stays true 2525:1894 preview ratio */
+.canvas-stage{
+  aspect-ratio:2525/1894!important;
+}
+canvas#canvas{
+  width:100%!important;height:auto!important;aspect-ratio:2525/1894!important;
+}
+
+/* Course cards slightly more visual */
+.course-card img{
+  transform:scale(1.04);
+}

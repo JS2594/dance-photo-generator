@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '9.2.2';
+const W = 2525, H = 1894, VERSION = '9.3.0';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -36,6 +36,7 @@ let photoZoom = 1, photoDX = 0, photoDY = 0, photoAdjust = false;
 let boxesDetected = [];
 let charIndex = 0, titleIndex = 0, frameIndex = 1, stickerIndex = 0, layoutIndex = 1;
 
+let composeMode = localStorage.getItem('popshotComposeMode') || 'linked';
 let selected = null, dragging = false, dragOffset = {x:0,y:0}, locked = null;
 let undo = [], redo = [], loaded = {};
 let zOrder = ['title','character','sticker'];
@@ -162,85 +163,87 @@ function crowd(){
 }
 
 function autoPlace(){
-  const candidates=[
-    {tx:78,ty:62,ta:'left', cx:W-505,cy:H-575, sx:W-115,sy:90},
-    {tx:W-78,ty:62,ta:'right',cx:65,cy:H-575,sx:75,sy:90},
-    {tx:78,ty:H-330,ta:'left',cx:W-505,cy:72,sx:W-115,sy:90},
-    {tx:W-78,ty:H-330,ta:'right',cx:65,cy:72,sx:75,sy:90},
-    {tx:78,ty:62,ta:'left',cx:W-505,cy:72,sx:W-115,sy:H-110},
-    {tx:W-78,ty:62,ta:'right',cx:65,cy:72,sx:75,sy:H-110},
-    {tx:78,ty:H-330,ta:'left',cx:W-505,cy:H-575,sx:W-115,sy:90},
-    {tx:W-78,ty:H-330,ta:'right',cx:65,cy:H-575,sx:75,sy:90}
-  ];
   const zones=faceZones();
-  let best=candidates[0], bestScore=Infinity;
   const level=crowd();
 
-  layers.title.scale = level==='high' ? .82 : level==='mid' ? .90 : 1;
-  const charScale=level==='high'?.58:level==='mid'?.72:(density==='rich'?.98:.86);
+  // Single Q character only. Title + character preferably behave as one visual module.
+  layers.title.visible=true;
+  layers.character.visible=true;
+
+  if(level==='high'){
+    layers.title.scale=.78;
+    layers.character.scale=.52;
+    layers.sticker.visible=false;
+  }else if(level==='mid'){
+    layers.title.scale=.86;
+    layers.character.scale=.66;
+    layers.sticker.visible=density==='rich';
+  }else{
+    layers.title.scale=1;
+    layers.character.scale=density==='rich'?.88:.78;
+    layers.sticker.visible=density!=='simple';
+  }
+
+  const linked = [
+    {tx:78,ty:62,ta:'left', cx:610,cy:260},                     // title top-left + char tucked below/right
+    {tx:W-78,ty:62,ta:'right',cx:W-1030,cy:260},               // title top-right + char tucked below/left
+    {tx:78,ty:H-335,ta:'left',cx:690,cy:H-650},                // title bottom-left + char above/right
+    {tx:W-78,ty:H-335,ta:'right',cx:W-1080,cy:H-650},          // title bottom-right + char above/left
+    {tx:W*.50,ty:62,ta:'center',cx:W*.50-220,cy:300},          // title top-center + char below-center
+    {tx:W*.50,ty:H-335,ta:'center',cx:W*.50-220,cy:H-700},     // title bottom-center + char above-center
+  ];
+
+  const corner = [
+    {tx:78,ty:62,ta:'left',cx:W-500,cy:H-585},
+    {tx:W-78,ty:62,ta:'right',cx:65,cy:H-585},
+    {tx:78,ty:H-335,ta:'left',cx:W-500,cy:72},
+    {tx:W-78,ty:H-335,ta:'right',cx:65,cy:72}
+  ];
+
+  const candidates = composeMode==='corner' ? corner : linked;
+  let best=candidates[0], bestScore=Infinity;
 
   for(const c of candidates){
-    const tw=1120*layers.title.scale, th=285*layers.title.scale;
-    const titleBox={x:c.ta==='left'?c.tx:c.tx-tw,y:c.ty,w:tw,h:th};
-    const charBox={x:c.cx,y:c.cy,w:455*charScale,h:545*charScale};
-    let score=zones.reduce((n,z)=>n+1.15*overlap(titleBox,z)+1.55*overlap(charBox,z),0);
+    const tw=1050*layers.title.scale, th=270*layers.title.scale;
+    const tb={
+      x:c.ta==='left'?c.tx:c.ta==='right'?c.tx-tw:c.tx-tw/2,
+      y:c.ty,w:tw,h:th
+    };
+    const cb={x:c.cx,y:c.cy,w:430*layers.character.scale,h:540*layers.character.scale};
 
-    const margin=36;
-    if(titleBox.x<margin||titleBox.x+titleBox.w>W-margin||titleBox.y<margin||titleBox.y+titleBox.h>H-margin) score+=2e7;
-    if(charBox.x<margin||charBox.x+charBox.w>W-margin||charBox.y<margin||charBox.y+charBox.h>H-margin) score+=1e7;
+    let score=zones.reduce((n,z)=>n+1.2*overlap(tb,z)+1.5*overlap(cb,z),0);
+
+    // Prefer title-character closeness in linked mode.
+    if(composeMode==='linked'){
+      const tx=tb.x+tb.w/2, ty=tb.y+tb.h/2;
+      const cx=cb.x+cb.w/2, cy=cb.y+cb.h/2;
+      const dist=Math.hypot(tx-cx,ty-cy);
+      score += dist*.02;
+    }
+
+    const margin=34;
+    if(tb.x<margin||tb.x+tb.w>W-margin||tb.y<margin||tb.y+tb.h>H-margin) score+=2e7;
+    if(cb.x<margin||cb.x+cb.w>W-margin||cb.y<margin||cb.y+cb.h>H-margin) score+=1e7;
+
     if(score<bestScore){bestScore=score;best=c}
   }
 
   layers.title.x=best.tx;layers.title.y=best.ty;layers.title.anchor=best.ta;
   layers.character.x=best.cx;layers.character.y=best.cy;
 
-  if(level==='high') layers.character.scale=.58;
-  else if(level==='mid') layers.character.scale=.72;
-  else layers.character.scale=density==='rich'?.98:.86;
-
-  layers.character.visible=true;
-  layers.sticker.x=best.sx;layers.sticker.y=best.sy;
-  layers.sticker.visible = level==='high' ? density==='rich' : density!=='simple';
-
-  // Mirror-heavy / edge-to-edge group photos:
-  // NEVER make the course title or Q character disappear.
-  // Instead, reduce size and solve their positions independently.
-  if(bestScore>15000){
-    layers.sticker.visible=false;
-    layers.title.visible=true;
-    layers.character.visible=true;
-    layers.title.scale=Math.max(.74,layers.title.scale*.86);
-    layers.character.scale=Math.min(layers.character.scale,.54);
-
-    const titleOnly=[
-      {x:78,y:62,a:'left'},{x:W-78,y:62,a:'right'},
-      {x:78,y:H-315,a:'left'},{x:W-78,y:H-315,a:'right'}
-    ];
-    let tb=titleOnly[0],ts=Infinity;
-    for(const c of titleOnly){
-      const w=940*layers.title.scale,h=245*layers.title.scale;
-      const box={x:c.a==='left'?c.x:c.x-w,y:c.y,w,h};
-      const s=zones.reduce((n,z)=>n+1.25*overlap(box,z),0);
-      if(s<ts){ts=s;tb=c}
-    }
-    layers.title.x=tb.x;layers.title.y=tb.y;layers.title.anchor=tb.a;
-
-    const charOnly=[
-      {x:55,y:H-535},{x:W-440,y:H-535},
-      {x:55,y:70},{x:W-440,y:70}
-    ];
-    let cb=charOnly[0],cs=Infinity;
-    for(const c of charOnly){
-      const box={x:c.x,y:c.y,w:390,h:500};
-      const s=zones.reduce((n,z)=>n+1.5*overlap(box,z),0);
-      if(s<cs){cs=s;cb=c}
-    }
-    layers.character.x=cb.x;layers.character.y=cb.y;
-  }
-
+  // Sticker is optional and never allowed to become the second "character-like" focal object.
   if(layers.sticker.visible){
-    const sb={x:layers.sticker.x-20,y:layers.sticker.y-20,w:115,h:115};
-    if(zones.some(z=>overlap(sb,z)>0)) layers.sticker.visible=false;
+    const safeStickerCandidates=[
+      {x:90,y:110},{x:W-150,y:110},{x:90,y:H-150},{x:W-150,y:H-150}
+    ];
+    let sb=safeStickerCandidates[0], ss=Infinity;
+    for(const s of safeStickerCandidates){
+      const box={x:s.x-20,y:s.y-20,w:105,h:105};
+      const sc=zones.reduce((n,z)=>n+overlap(box,z),0);
+      if(sc<ss){ss=sc;sb=s}
+    }
+    layers.sticker.x=sb.x;layers.sticker.y=sb.y;
+    if(ss>0) layers.sticker.visible=false;
   }
 }
 
@@ -322,7 +325,7 @@ function drawTitle(){
   }
 
   ctx.restore();
-  return {x:l.anchor==='left'?x:x-w,y,w:w+(secondary?200*s:0),h:255*s};
+  return {x:l.anchor==='left'?x:l.anchor==='right'?x-w:x-w/2,y,w:w+(secondary?200*s:0),h:255*s};
 }
 
 async function drawCharacter(){
@@ -387,7 +390,7 @@ async function render(){
 }
 
 function state(){
-  return JSON.stringify({version:VERSION,layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder});
+  return JSON.stringify({version:VERSION,layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder,composeMode});
 }
 function push(){undo.push(state());if(undo.length>30)undo.shift();redo=[];}
 function restore(raw){
@@ -443,7 +446,7 @@ function point(e){
 function currentBoxes(){
   const t=layers.title,c=layers.character,s=layers.sticker;
   return {
-    title:{x:t.anchor==='left'?t.x:t.x-1200,y:t.y,w:1200,h:280},
+    title:{x:t.anchor==='left'?t.x:t.anchor==='right'?t.x-1200:t.x-600,y:t.y,w:1200,h:280},
     character:{x:c.x,y:c.y,w:c.w||480,h:c.h||570},
     sticker:{x:s.x,y:s.y,w:s.w||90,h:s.h||90}
   };
@@ -676,6 +679,19 @@ async function resume(){
 $('#updateBtn').onclick=()=>$('#updateTip').classList.remove('hidden');
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert('PopShot v9 · 照片仅在本机浏览器处理');
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=922').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=9.322').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+
+$$('[data-compose]').forEach(b=>b.onclick=()=>{
+  push();
+  composeMode=b.dataset.compose;
+  localStorage.setItem('popshotComposeMode',composeMode);
+  $$('[data-compose]').forEach(x=>x.classList.toggle('on',x===b));
+  resetLayers();autoPlace();render();saveDraft();
+});
+window.addEventListener('load',()=>{
+  $$('[data-compose]').forEach(x=>x.classList.toggle('on',x.dataset.compose===composeMode));
+  const vb=$('#versionBadge'); if(vb) vb.textContent='v9.3';
+});
+
 syncUI();
 resume();
