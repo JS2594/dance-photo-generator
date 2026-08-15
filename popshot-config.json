@@ -1,5 +1,5 @@
 {
-  "version": "9.2.0",
+  "version": "9.2.1",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -119,5 +119,10 @@
       "emergency people-first minimal safe mode"
     ],
     "principle": "When no decorative layout is safe, hide Q character/stickers before covering real people."
+  },
+  "hotfix": {
+    "titleCharacterNeverDisappear": true,
+    "oldDraftLayerStateMigration": "incompatible drafts are cleared",
+    "extremeMode": "hide sticker first; keep and reposition title + Q character"
   }
 }

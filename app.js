@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '9.2.0';
+const W = 2525, H = 1894, VERSION = '9.2.1';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -202,25 +202,40 @@ function autoPlace(){
   layers.sticker.x=best.sx;layers.sticker.y=best.sy;
   layers.sticker.visible = level==='high' ? density==='rich' : density!=='simple';
 
-  // Emergency safe mode for mirror-heavy / edge-to-edge group photos:
-  // decoration gives way before real people do.
+  // Mirror-heavy / edge-to-edge group photos:
+  // NEVER make the course title or Q character disappear.
+  // Instead, reduce size and solve their positions independently.
   if(bestScore>15000){
-    layers.character.visible=false;
     layers.sticker.visible=false;
-    layers.title.scale=Math.max(.68,layers.title.scale*.82);
+    layers.title.visible=true;
+    layers.character.visible=true;
+    layers.title.scale=Math.max(.74,layers.title.scale*.86);
+    layers.character.scale=Math.min(layers.character.scale,.54);
 
     const titleOnly=[
       {x:78,y:62,a:'left'},{x:W-78,y:62,a:'right'},
-      {x:78,y:H-300,a:'left'},{x:W-78,y:H-300,a:'right'}
+      {x:78,y:H-315,a:'left'},{x:W-78,y:H-315,a:'right'}
     ];
     let tb=titleOnly[0],ts=Infinity;
     for(const c of titleOnly){
       const w=940*layers.title.scale,h=245*layers.title.scale;
       const box={x:c.a==='left'?c.x:c.x-w,y:c.y,w,h};
-      const s=zones.reduce((n,z)=>n+overlap(box,z),0);
+      const s=zones.reduce((n,z)=>n+1.25*overlap(box,z),0);
       if(s<ts){ts=s;tb=c}
     }
     layers.title.x=tb.x;layers.title.y=tb.y;layers.title.anchor=tb.a;
+
+    const charOnly=[
+      {x:55,y:H-535},{x:W-440,y:H-535},
+      {x:55,y:70},{x:W-440,y:70}
+    ];
+    let cb=charOnly[0],cs=Infinity;
+    for(const c of charOnly){
+      const box={x:c.x,y:c.y,w:390,h:500};
+      const s=zones.reduce((n,z)=>n+1.5*overlap(box,z),0);
+      if(s<cs){cs=s;cb=c}
+    }
+    layers.character.x=cb.x;layers.character.y=cb.y;
   }
 
   if(layers.sticker.visible){
@@ -371,15 +386,23 @@ async function render(){
 }
 
 function state(){
-  return JSON.stringify({layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder});
+  return JSON.stringify({version:VERSION,layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder});
 }
 function push(){undo.push(state());if(undo.length>30)undo.shift();redo=[];}
 function restore(raw){
   const s=JSON.parse(raw);
-  layers=s.layers;course=s.course;beauty=s.beauty;visualStyle=s.visualStyle||'energetic';density=s.density||'normal';
+  if(s.version!==VERSION){
+    resetLayers();selected=null;locked=null;
+    localStorage.removeItem('popshotDraftState');
+    syncUI();render();return;
+  }
+  layers=s.layers||{};course=s.course||course;beauty=s.beauty??beauty;visualStyle=s.visualStyle||'energetic';density=s.density||'normal';
   photoZoom=s.photoZoom||1;photoDX=s.photoDX||0;photoDY=s.photoDY||0;
-  charIndex=s.charIndex;titleIndex=s.titleIndex;frameIndex=s.frameIndex;stickerIndex=s.stickerIndex;layoutIndex=s.layoutIndex;
-  zOrder=s.zOrder||['title','character','sticker'];
+  charIndex=s.charIndex||0;titleIndex=s.titleIndex||0;frameIndex=s.frameIndex??1;stickerIndex=s.stickerIndex||0;layoutIndex=s.layoutIndex||1;
+  zOrder=(s.zOrder||['title','character','sticker']).filter(x=>['title','character','sticker'].includes(x));
+  if(!layers.title||!layers.character||!layers.sticker) resetLayers();
+  layers.title.visible=true;
+  layers.character.visible=true;
   syncUI();render();
 }
 
@@ -632,6 +655,10 @@ async function clearDraft(){
 async function resume(){
   const raw=localStorage.popshotDraftState,blob=await loadImage();
   if(!raw||!blob)return;
+  try{
+    const s=JSON.parse(raw);
+    if(s.version!==VERSION){await clearDraft();return;}
+  }catch(e){await clearDraft();return;}
   $('#resumeModal').classList.remove('hidden');
   $('#continueResume').onclick=()=>{
     const u=URL.createObjectURL(blob),im=new Image();
