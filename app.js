@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.2.3';
+const W = 2525, H = 1894, VERSION = '10.3.0';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -96,58 +96,92 @@ function holidayStickers(){
 }
 function stickerPool(){ return holidayStickers() || styles[visualStyle].st; }
 
+// ── 本地人脸检测（pico.js）：完全离线，无需访问任何外网，专治 MediaPipe 加载失败 ──
+let picoReady=null;
+function loadPico(){
+  if(picoReady) return picoReady;
+  picoReady=(async()=>{
+    if(!window.pico){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='./public/vendor/pico.js';s.onload=res;s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+    const buf=await (await fetch('./public/vendor/facefinder')).arrayBuffer();
+    return pico.unpack_cascade(new Int8Array(buf));
+  })();
+  return picoReady;
+}
+async function detectWithPico(img){
+  try{
+    const classify=await loadPico();
+    const maxSide=1600, sc=Math.min(1,maxSide/Math.max(img.width,img.height));
+    const w=Math.round(img.width*sc), h=Math.round(img.height*sc);
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const g=c.getContext('2d');
+    g.drawImage(img,0,0,w,h);
+    const data=g.getImageData(0,0,w,h).data;
+    const gray=new Uint8Array(w*h);
+    for(let i=0;i<w*h;i++) gray[i]=(2*data[i*4]+7*data[i*4+1]+data[i*4+2])/10;
+    let dets=pico.run_cascade(
+      {pixels:gray,nrows:h,ncols:w,ldim:w},classify,
+      {shiftfactor:.1,
+       minsize:Math.max(18,Math.round(Math.min(w,h)*.035)),
+       maxsize:Math.round(Math.min(w,h)*.7),
+       scalefactor:1.1});
+    dets=pico.cluster_detections(dets,.2);
+    return dets.filter(d=>d[3]>12)
+      .map(d=>({x:(d[1]-d[2]/2)/sc, y:(d[0]-d[2]/2)/sc, w:d[2]/sc, h:d[2]/sc}));
+  }catch(e){return[]}
+}
+
 async function detectPeople(img){
   boxesDetected = [];
   $('#detectStatus').textContent = '正在识别合照主体…';
 
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of bs){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
+  const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
 
+  // 第一路：MediaPipe（国内网络可能加载不了，限时 4 秒，失败不阻塞）。
   try{
-    const mod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm');
-    const vision = await mod.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
-    const fd = await mod.FaceDetector.createFromOptions(vision,{
-      baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite'},
-      runningMode:'IMAGE', minDetectionConfidence:.25
-    });
-    const det=(src,ox,oy)=>(fd.detect(src).detections||[])
-      .map(d=>d.boundingBox)
-      .map(b=>({x:ox+b.originX,y:oy+b.originY,w:b.width,h:b.height}));
-
-    // 第一遍：整图。远景合照里人脸相对画面太小时，短距模型经常一张都认不出。
-    add(det(img,0,0));
-
-    // 第二遍：2×2 重叠分块。脸在每块里的相对占比放大 ~1.8 倍，专治远景小脸。
-    if(boxesDetected.length<8){
-      const tw=Math.round(img.width*.55), th=Math.round(img.height*.55);
-      const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
-      const tg=tc.getContext('2d');
-      for(const [ox,oy] of [[0,0],[img.width-tw,0],[0,img.height-th],[img.width-tw,img.height-th]]){
-        tg.clearRect(0,0,tw,th);
-        tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
-        add(det(tc,ox,oy));
+    await withTimeout((async()=>{
+      const mod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm');
+      const vision = await mod.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+      const fd = await mod.FaceDetector.createFromOptions(vision,{
+        baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite'},
+        runningMode:'IMAGE', minDetectionConfidence:.25
+      });
+      const det=(src,ox,oy)=>(fd.detect(src).detections||[])
+        .map(d=>d.boundingBox)
+        .map(b=>({x:ox+b.originX,y:oy+b.originY,w:b.width,h:b.height}));
+      add(det(img,0,0));
+      if(boxesDetected.length<8){
+        const tw=Math.round(img.width*.55), th=Math.round(img.height*.55);
+        const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
+        const tg=tc.getContext('2d');
+        for(const [ox,oy] of [[0,0],[img.width-tw,0],[0,img.height-th],[img.width-tw,img.height-th]]){
+          tg.clearRect(0,0,tw,th);
+          tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
+          add(det(tc,ox,oy));
+        }
       }
-    }
-    // 第三遍：3×3 更小分块，兜底极远景（例如整面镜子里的一小群人）。
-    if(boxesDetected.length<4){
-      const tw=Math.round(img.width*.42), th=Math.round(img.height*.42);
-      const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
-      const tg=tc.getContext('2d');
-      const xs=[0,(img.width-tw)/2,img.width-tw], ys=[0,(img.height-th)/2,img.height-th];
-      for(const oy of ys)for(const ox of xs){
-        tg.clearRect(0,0,tw,th);
-        tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
-        add(det(tc,ox,oy));
-      }
-    }
-    fd.close();
-  }catch(e){
-    if('FaceDetector' in window){
-      try{
-        const f = await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
-        add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})));
-      }catch(_){}
-    }
+      fd.close();
+    })(),4000);
+  }catch(e){/* 加载失败或超时，交给本地 pico */}
+
+  // 第二路：本地 pico.js（永远可用，随包部署，无外网依赖）。
+  if(boxesDetected.length<3){
+    add(await detectWithPico(img));
+  }
+
+  // 浏览器原生 FaceDetector 兜底（部分 Chrome 支持）。
+  if(!boxesDetected.length && 'FaceDetector' in window){
+    try{
+      const f = await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
+      add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})));
+    }catch(_){}
   }
 
   // 过滤离群误检：明显比中位脸大/小太多的框大概率是海报、倒影或误检。
@@ -176,10 +210,10 @@ function smartCrop(){
     const faceCX=(fx1+fx2)/2;
 
     // 必须保留的区域：收紧边距，让真人尽量占满画面（参考海报式构图）。
-    const keepL=Math.max(0,fx1-avgH*1.15);
-    const keepR=Math.min(iw,fx2+avgH*1.15);
-    const keepT=Math.max(0,fy1-avgH*1.0);
-    const keepB=Math.min(ih,fy2+avgH*4.8);
+    const keepL=Math.max(0,fx1-avgH*0.95);
+    const keepR=Math.min(iw,fx2+avgH*0.95);
+    const keepT=Math.max(0,fy1-avgH*0.9);
+    const keepB=Math.min(ih,fy2+avgH*4.4);
 
     // 先按必留区域算尺寸，再统一按 4:3 修正 —— 宽高始终成比例，不会拉伸。
     sh=keepB-keepT; sw=sh*tr;
@@ -192,7 +226,7 @@ function smartCrop(){
 
     // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~27% 处开始，上方留出标题带。
     baseSx=faceCX-sw/2;
-    baseSy=fy1-sh*.27;
+    baseSy=fy1-sh*.26;
     // 若这样会切到脚，则下移裁剪窗，但头顶至少保留画面 13% 的标题空间。
     if(baseSy+sh<keepB) baseSy=Math.min(keepB-sh, fy1-Math.max(avgH*.55, sh*.13));
   }else{
@@ -200,7 +234,7 @@ function smartCrop(){
     // 默认放大 1.22 倍并把裁剪窗对准画面 58% 高度的中心。
     if(iw/ih>tr){ sh=ih; sw=ih*tr; }
     else{ sw=iw; sh=iw/tr; }
-    const z=Math.max(1,photoZoom)*1.22;
+    const z=Math.max(1,photoZoom)*1.35;
     sw/=z; sh/=z;
     baseSx=(iw-sw)/2;
     baseSy=ih*.58-sh*.5;
@@ -294,7 +328,7 @@ function autoPlace(){
   // ── 紧密组合模式（默认）：参考小红书团课封面 ──
   // 大标题横贯顶部，Q版人物"骑"在标题一端的字母上，两者构成一个视觉模块。
   const baseW=titleTextWidth(174);
-  const frac = level==='high'?0.76 : level==='mid'?0.82 : 0.88;
+  const frac = level==='high'?0.72 : level==='mid'?0.78 : 0.84;
   const ts=(W*frac)/baseW;
   layers.title.scale=ts;
   layers.title.anchor='center';
@@ -337,16 +371,24 @@ function drawPhoto(){
   const c=smartCrop(), b=beauty/100;
   ctx.save();
   // 提亮打光：亮度/对比/饱和整体上调，人物气色更好。
-  ctx.filter=`brightness(${1+b*.16}) contrast(${1+b*.05}) saturate(${1+b*.17})`;
+  ctx.filter=`brightness(${1+b*.21}) contrast(${1+b*.03}) saturate(${1+b*.11})`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
   ctx.restore();
   // 柔光滤镜：模糊图层以 screen 模式叠回，产生柔和高光（拖动时跳过以保证流畅）。
   if(b>0 && !dragging){
     ctx.save();
-    ctx.globalAlpha=.16*b+.06;
+    ctx.globalAlpha=.19*b+.07;
     ctx.globalCompositeOperation='screen';
-    ctx.filter='blur(28px) brightness(1.12)';
+    ctx.filter='blur(28px) brightness(1.15)';
     ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
+    ctx.restore();
+  }
+  // 柔白提亮：soft-light 白色薄纱，肤色更白净透亮
+  if(b>0){
+    ctx.save();
+    ctx.globalCompositeOperation='soft-light';
+    ctx.fillStyle=`rgba(255,250,246,${(.30*b).toFixed(3)})`;
+    ctx.fillRect(0,0,W,H);
     ctx.restore();
   }
 }
@@ -365,26 +407,22 @@ function drawFrame(){
   ctx.restore();
 }
 
-// 粗糙笔刷横扫（涂鸦感底纹/下划线）
+// 干净的月牙形收锋笔触（两端细中间粗），替代旧版糊成一团的粗黑条。
 function brushStroke(x1,y1,x2,y2,width,color,alpha=1){
   ctx.save();
-  ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineCap='round';
-  const passes=[[0,0,1],[ .18,-.28,.62],[-.16,.30,.55],[.05,.15,.4]];
-  for(const [ox,oy,wf] of passes){
-    ctx.lineWidth=width*wf;
-    ctx.beginPath();
-    ctx.moveTo(x1+ox*width, y1+oy*width);
-    ctx.quadraticCurveTo((x1+x2)/2, (y1+y2)/2+oy*width*1.6, x2+ox*width, y2+oy*width);
-    ctx.stroke();
-  }
-  // 收笔飞白
-  ctx.lineWidth=width*.16;
+  ctx.globalAlpha=alpha;ctx.fillStyle=color;
   const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
-  for(let i=0;i<3;i++){
+  const nx=-dy/len,ny=dx/len;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.quadraticCurveTo(x1+dx*.5+nx*width*.55, y1+dy*.5+ny*width*.55, x2,y2);
+  ctx.quadraticCurveTo(x1+dx*.5-nx*width*.42, y1+dy*.5-ny*width*.42, x1,y1);
+  ctx.closePath();ctx.fill();
+  // 收笔处两三个渐小飞点
+  for(let i=1;i<=3;i++){
     ctx.beginPath();
-    ctx.moveTo(x2-dx/len*width*(.4+i*.3), y2+(i-1)*width*.28);
-    ctx.lineTo(x2+dx/len*width*(.7+i*.4), y2+(i-1)*width*.34);
-    ctx.stroke();
+    ctx.arc(x2+dx/len*width*(.35*i), y2+ny*width*(i-2)*.18, width*.075*(4-i)/3, 0, 7);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -412,11 +450,11 @@ function drawTitle(){
   ctx.save();
   ctx.lineJoin='round';
 
-  // 底层笔刷横扫（涂鸦多彩 / 斜切刷线 两种样式带）
+  // 底层笔刷（涂鸦多彩=淡色横扫底纹；斜切刷线=点缀色短划线，不再是黑粗条）
   if(variant===0){
-    brushStroke(bx-size*.20, y+size*.72, bx+m.total+size*.25, y+size*.52, size*.62, p[0], .32);
+    brushStroke(bx-size*.18, y+size*.70, bx+m.total+size*.22, y+size*.50, size*.58, p[0], .26);
   }else if(variant===1){
-    brushStroke(bx-size*.10, y+size*1.12, bx+m.total*.80, y+size*1.06, size*.17, p[1], .95);
+    brushStroke(bx+m.total*.05, y+size*1.06, bx+m.total*.60, y+size*1.00, size*.085, p[2], .95);
   }
 
   // 逐字母绘制：旋转 + 起伏 + 逐字配色（空格只占位不绘制）
@@ -461,10 +499,23 @@ function drawTitle(){
       ctx.fill();ctx.stroke();
       ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
     }
+    // 糖果高光：涂鸦/泡泡/贴纸样式的每个字母左上加一点白色光斑
+    if(variant===0||variant===3||variant===4){
+      ctx.fillStyle='rgba(255,255,255,.72)';
+      ctx.beginPath();
+      ctx.ellipse(-size*.14,-size*.22,size*.085,size*.04,-.6,0,7);
+      ctx.fill();
+    }
     ctx.restore();
     cx0+=m.ws[i]+m.track;
     ci++;
   });
+
+  // 标题两端各一枚小闪光点缀，丰富花字氛围
+  if(variant!==2){
+    drawDoodle('sparkle', bx-size*.02, y+size*.10, size*.16, p[2]);
+    drawDoodle('sparkle', bx+m.total+size*.04, y+size*.85, size*.12, '#fff');
+  }
 
   ctx.restore();
   const box={x:bx-size*.1,y:y-size*.12,w:m.total+size*.2,h:size*1.25};
@@ -1001,7 +1052,7 @@ $('#updateBtn').onclick=()=>checkUpdate(false);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate(true)});
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert(`PopShot v${VERSION} · 照片仅在本机浏览器处理\n点击顶部 🔔 可检查线上是否有新版本`);
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.2.3').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.3.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
