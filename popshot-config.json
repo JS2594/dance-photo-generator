@@ -1,5 +1,5 @@
 {
-  "version": "7.2.0",
+  "version": "9.2.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -81,5 +81,43 @@
     "manual photo pan and zoom",
     "course cards with character thumbnails"
   ],
-  "asset_audit": "24/24 character PNGs visually and alpha-component audited; extraction labels/fragments removed."
+  "asset_audit": "24/24 character PNGs visually and alpha-component audited; extraction labels/fragments removed.",
+  "titlePolicy": "Only exact course names: Lelepop / Buttscaler / ZUMBA / ZUMBA CAMP. titleIndex selects visual style only.",
+  "logoPolicy": "No separate bottom capsule logo. Course title itself is the visual logo.",
+  "assetPolicy": "24 cleaned transparent character PNGs; no filename strips or neighboring-character fragments.",
+  "v9Changes": [
+    "course cards use only four real course names",
+    "course cards have designed typography and cleaned character thumbnails",
+    "five visual title styles using exact course names only",
+    "ZUMBA CAMP renders ZUMBA prominent and CAMP smaller while preserving exact name",
+    "separate capsule logo removed",
+    "one Q character per generated image",
+    "character/title/sticker picker drawers",
+    "tighter subject-first crop while retaining manual pan/zoom"
+  ],
+  "testConvergence": {
+    "layoutStressPatterns": [
+      "7_center",
+      "12_dense",
+      "9_wide",
+      "left_cluster",
+      "right_cluster",
+      "top_row",
+      "low_crouch"
+    ],
+    "rulesAdded": [
+      "top/bottom headline candidate positions",
+      "crowd-sensitive headline scale",
+      "automatic long-title fit",
+      "optional sticker suppressed on face collision",
+      "stronger safe-margin penalties"
+    ]
+  },
+  "stressTestV92": {
+    "added": [
+      "bottom-title + bottom-character layouts",
+      "emergency people-first minimal safe mode"
+    ],
+    "principle": "When no decorative layout is safe, hide Q character/stickers before covering real people."
+  }
 }

@@ -1,314 +1,380 @@
 [
   {
     "file": "public/assets/characters/buttscaler/buttscaler_01.png",
-    "original_size": [
-      151,
-      228
+    "size": [
+      165,
+      242
     ],
-    "clean_size": [
-      149,
-      226
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/buttscaler/buttscaler_02.png",
-    "original_size": [
-      152,
-      214
+    "size": [
+      166,
+      228
     ],
-    "clean_size": [
-      150,
-      212
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/buttscaler/buttscaler_03.png",
-    "original_size": [
-      174,
-      229
+    "size": [
+      193,
+      243
     ],
-    "clean_size": [
-      173,
-      227
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/buttscaler/buttscaler_04.png",
-    "original_size": [
-      162,
-      225
+    "size": [
+      181,
+      239
     ],
-    "clean_size": [
-      161,
-      223
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/buttscaler/buttscaler_05.png",
-    "original_size": [
-      200,
-      111
+    "size": [
+      219,
+      107
     ],
-    "clean_size": [
-      199,
-      87
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/buttscaler/buttscaler_06.png",
-    "original_size": [
-      142,
-      231
+    "size": [
+      156,
+      245
     ],
-    "clean_size": [
-      140,
-      229
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/lelepop/lelepop_01.png",
-    "original_size": [
-      172,
-      250
+    "size": [
+      191,
+      264
     ],
-    "clean_size": [
-      171,
-      248
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/lelepop/lelepop_02.png",
-    "original_size": [
-      161,
-      241
+    "size": [
+      180,
+      255
     ],
-    "clean_size": [
-      160,
-      239
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/lelepop/lelepop_03.png",
-    "original_size": [
-      157,
-      251
+    "size": [
+      171,
+      267
     ],
-    "clean_size": [
-      155,
-      250
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/lelepop/lelepop_04.png",
-    "original_size": [
-      170,
-      208
+    "size": [
+      184,
+      222
     ],
-    "clean_size": [
-      168,
-      206
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/lelepop/lelepop_05.png",
-    "original_size": [
-      153,
-      251
+    "size": [
+      165,
+      265
     ],
-    "clean_size": [
-      149,
-      249
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/lelepop/lelepop_06.png",
-    "original_size": [
-      189,
-      245
+    "size": [
+      208,
+      259
     ],
-    "clean_size": [
-      188,
-      243
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba/zumba_01.png",
-    "original_size": [
-      162,
-      255
+    "size": [
+      175,
+      240
     ],
-    "clean_size": [
-      159,
-      218
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba/zumba_02.png",
-    "original_size": [
-      178,
-      221
+    "size": [
+      192,
+      237
     ],
-    "clean_size": [
-      176,
-      220
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba/zumba_03.png",
-    "original_size": [
-      183,
-      255
+    "size": [
+      197,
+      238
     ],
-    "clean_size": [
-      181,
-      220
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba/zumba_04.png",
-    "original_size": [
-      153,
-      221
+    "size": [
+      167,
+      239
     ],
-    "clean_size": [
-      151,
-      220
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba/zumba_05.png",
-    "original_size": [
-      175,
-      221
+    "size": [
+      189,
+      235
     ],
-    "clean_size": [
-      173,
-      219
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba/zumba_06.png",
-    "original_size": [
-      184,
-      221
+    "size": [
+      203,
+      240
     ],
-    "clean_size": [
-      183,
-      220
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba-camp/zumba_camp_01.png",
-    "original_size": [
-      172,
-      244
+    "size": [
+      186,
+      242
     ],
-    "clean_size": [
-      170,
-      218
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba-camp/zumba_camp_02.png",
-    "original_size": [
-      168,
-      224
+    "size": [
+      182,
+      243
     ],
-    "clean_size": [
-      166,
-      223
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba-camp/zumba_camp_03.png",
-    "original_size": [
-      164,
-      244
+    "size": [
+      178,
+      242
     ],
-    "clean_size": [
-      162,
-      218
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba-camp/zumba_camp_04.png",
-    "original_size": [
-      164,
-      224
+    "size": [
+      178,
+      243
     ],
-    "clean_size": [
-      162,
-      223
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba-camp/zumba_camp_05.png",
-    "original_size": [
-      176,
-      224
+    "size": [
+      194,
+      243
     ],
-    "clean_size": [
-      175,
-      223
+    "alpha_extrema": [
+      0,
+      253
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
     "status": "PASS"
   },
   {
     "file": "public/assets/characters/zumba-camp/zumba_camp_06.png",
-    "original_size": [
-      174,
-      224
+    "size": [
+      189,
+      243
     ],
-    "clean_size": [
-      173,
-      223
+    "alpha_extrema": [
+      0,
+      254
     ],
-    "meaningful_alpha_components": 1,
+    "transparent_background": true,
+    "safe_padding_px": 12,
+    "transparent_rgb_cleared": true,
+    "status": "PASS"
+  },
+  {
+    "file": "public/icons/icon-192.png",
+    "size": [
+      192,
+      192
+    ],
+    "type": "app_icon",
+    "status": "PASS"
+  },
+  {
+    "file": "public/icons/icon-512.png",
+    "size": [
+      512,
+      512
+    ],
+    "type": "app_icon",
     "status": "PASS"
   }
 ]
