@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.3.2';
+const W = 2525, H = 1894, VERSION = '10.4.0';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -29,7 +29,13 @@ const styles = {
   clean:{label:'清爽',p:['#5d7dff','#48cbb3','#ffb84d'],st:['✦','·','♡','✨'],
     g:{br:1.09,ct:1.0, sa:.90, hue:-4, tint:'rgba(215,238,255,.15)',glow:.95}},
   y2k:{label:'Y2K',p:['#ff3fa4','#6c5cff','#3ddcff'],st:['✦','★','♡','♫'],
-    g:{br:1.04,ct:1.15,sa:1.30,hue:-10,tint:'rgba(190,85,255,.13)', glow:1.2}}
+    g:{br:1.04,ct:1.15,sa:1.30,hue:-10,tint:'rgba(190,85,255,.13)', glow:1.2}},
+  fair:{label:'白皙',p:['#f36fa8','#8fa0ff','#ffd9a0'],st:['✨','♡','✦','·'],
+    g:{br:1.15,ct:.97, sa:.80, hue:0,  tint:'rgba(255,236,240,.24)',glow:1.5}},
+  cream:{label:'奶油',p:['#ff9f68','#f56fa1','#ffe08a'],st:['🧸','♡','✨','·'],
+    g:{br:1.11,ct:.95, sa:.96, hue:6,  tint:'rgba(255,226,200,.21)',glow:1.35}},
+  film:{label:'胶片',p:['#3f7f6e','#e8563f','#f2c94c'],st:['✦','·','★','♪'],
+    g:{br:1.02,ct:1.11,sa:.85, hue:-3, tint:'rgba(125,150,142,.15)',glow:.6}}
 };
 
 let photo = null;
@@ -336,7 +342,7 @@ function autoPlace(){
   // 尺寸受双重约束：① 宽度上限；② 不得越过"人脸安全线"（最高人头再往上留一点余量，
   // 余量同时为漏检的更高个子兜底）。人多头高时标题自动变小，确保不遮人。
   const baseW=titleTextWidth(174);
-  const frac = level==='high'?0.72 : level==='mid'?0.78 : 0.84;
+  const frac = level==='high'?0.64 : level==='mid'?0.70 : 0.74;
   layers.title.anchor='center';
   layers.title.x=W/2;
   layers.title.y= level==='high'?34:44;
@@ -828,6 +834,7 @@ function down(e){
   const n=hit(p);selected=n;
   if(n&&n!==locked){dragging=true;dragOffset={x:p.x-layers[n].x,y:p.y-layers[n].y};e.preventDefault();}
   render();
+  syncScaleUI();
 }
 function move(e){
   if(!dragging)return;
@@ -851,17 +858,30 @@ canvas.addEventListener('touchstart',down,{passive:false});
 canvas.addEventListener('touchmove',move,{passive:false});
 window.addEventListener('touchend',up);
 
-function scale(d){
-  if(!selected||selected==='__photo__') return alert('请先点选人物、标题或贴纸');
-  push();layers[selected].scale=Math.max(.4,Math.min(2.3,layers[selected].scale+d));render();saveDraft();
+// 选中元素后的大小滑杆：数值为相对基准尺寸的百分比，实时生效。
+const scaleRow=$('#scaleRow'), scaleRange=$('#scaleRange'), scaleVal=$('#scaleVal'), scaleName=$('#scaleName');
+const layerLabels={title:'标题大小',character:'人物大小',sticker:'贴纸大小'};
+function syncScaleUI(){
+  if(!selected||selected==='__photo__'||!layers[selected]){scaleRow.style.display='none';return;}
+  scaleRow.style.display='grid';
+  scaleName.textContent=layerLabels[selected]||'大小';
+  const v=Math.round((layers[selected].scale||1)*100);
+  scaleRange.value=Math.max(30,Math.min(320,v));
+  scaleVal.textContent=v+'%';
 }
-$('#smallerBtn').onclick=()=>scale(-.1);
-$('#largerBtn').onclick=()=>scale(.1);
-$('#deleteBtn').onclick=()=>{if(!selected||selected==='__photo__')return;if(selected==='title'||selected==='character')return alert('课程标题和Q版人物为默认主视觉，不能隐藏；可以拖动或缩小。');push();layers[selected].visible=!layers[selected].visible;render();saveDraft()};
+scaleRange.addEventListener('pointerdown',()=>{if(selected&&selected!=='__photo__')push()});
+scaleRange.oninput=e=>{
+  if(!selected||selected==='__photo__')return;
+  layers[selected].scale=+e.target.value/100;
+  scaleVal.textContent=e.target.value+'%';
+  render();
+};
+scaleRange.onchange=()=>saveDraft();
+$('#deleteBtn').onclick=()=>{if(!selected||selected==='__photo__')return;if(selected==='title'||selected==='character')return alert('课程标题和Q版人物为默认主视觉，不能隐藏；可以拖动或缩小。');push();layers[selected].visible=!layers[selected].visible;render();saveDraft();syncScaleUI()};
 $('#frontBtn').onclick=()=>{if(!selected)return;push();zOrder=zOrder.filter(x=>x!==selected).concat(selected);render()};
 $('#backBtn').onclick=()=>{if(!selected)return;push();zOrder=[selected,...zOrder.filter(x=>x!==selected)];render()};
-$('#resetLayerBtn').onclick=()=>{if(!selected)return;push();const n=selected;const old={...layers};resetLayers();old[n]=layers[n];layers=old;render()};
-$('#resetAllBtn').onclick=()=>{push();resetLayers();autoPlace();selected=null;render()};
+$('#resetLayerBtn').onclick=()=>{if(!selected)return;push();const n=selected;const old={...layers};resetLayers();old[n]=layers[n];layers=old;render();syncScaleUI()};
+$('#resetAllBtn').onclick=()=>{push();resetLayers();autoPlace();selected=null;render();syncScaleUI()};
 
 input.onchange=e=>{
   const f=e.target.files?.[0];if(!f)return;
@@ -1083,7 +1103,7 @@ $('#updateBtn').onclick=()=>checkUpdate(false);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate(true)});
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert(`PopShot v${VERSION} · 照片仅在本机浏览器处理\n点击顶部 🔔 可检查线上是否有新版本`);
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.3.2').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.4.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
