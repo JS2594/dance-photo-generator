@@ -1,196 +1,314 @@
 [
-  [
-    "public/assets/characters/zumba/zumba_05.png",
-    175,
-    221,
-    [
-      21941
-    ]
-  ],
-  [
-    "public/assets/characters/zumba/zumba_01.png",
-    162,
-    255,
-    [
-      18631,
-      1770
-    ]
-  ],
-  [
-    "public/assets/characters/zumba/zumba_06.png",
-    184,
-    221,
-    [
-      19721
-    ]
-  ],
-  [
-    "public/assets/characters/zumba/zumba_02.png",
-    178,
-    221,
-    [
-      19814
-    ]
-  ],
-  [
-    "public/assets/characters/zumba/zumba_03.png",
-    183,
-    255,
-    [
-      20384,
-      237
-    ]
-  ],
-  [
-    "public/assets/characters/zumba/zumba_04.png",
-    153,
-    221,
-    [
-      21341
-    ]
-  ],
-  [
-    "public/assets/characters/buttscaler/buttscaler_06.png",
-    142,
-    231,
-    [
-      15857
-    ]
-  ],
-  [
-    "public/assets/characters/buttscaler/buttscaler_02.png",
-    152,
-    214,
-    [
-      17877
-    ]
-  ],
-  [
-    "public/assets/characters/buttscaler/buttscaler_01.png",
-    151,
-    228,
-    [
-      17429
-    ]
-  ],
-  [
-    "public/assets/characters/buttscaler/buttscaler_05.png",
-    200,
-    111,
-    [
-      14328
-    ]
-  ],
-  [
-    "public/assets/characters/buttscaler/buttscaler_03.png",
-    174,
-    229,
-    [
-      18426
-    ]
-  ],
-  [
-    "public/assets/characters/buttscaler/buttscaler_04.png",
-    162,
-    225,
-    [
-      16852
-    ]
-  ],
-  [
-    "public/assets/characters/zumba-camp/zumba_camp_01.png",
-    172,
-    244,
-    [
-      24126
-    ]
-  ],
-  [
-    "public/assets/characters/zumba-camp/zumba_camp_05.png",
-    176,
-    224,
-    [
-      22640
-    ]
-  ],
-  [
-    "public/assets/characters/zumba-camp/zumba_camp_06.png",
-    174,
-    224,
-    [
-      22266
-    ]
-  ],
-  [
-    "public/assets/characters/zumba-camp/zumba_camp_02.png",
-    168,
-    224,
-    [
-      22947
-    ]
-  ],
-  [
-    "public/assets/characters/zumba-camp/zumba_camp_03.png",
-    164,
-    244,
-    [
-      22648
-    ]
-  ],
-  [
-    "public/assets/characters/zumba-camp/zumba_camp_04.png",
-    164,
-    224,
-    [
-      22337
-    ]
-  ],
-  [
-    "public/assets/characters/lelepop/lelepop_05.png",
-    153,
-    251,
-    [
-      22046
-    ]
-  ],
-  [
-    "public/assets/characters/lelepop/lelepop_06.png",
-    189,
-    245,
-    [
-      25264
-    ]
-  ],
-  [
-    "public/assets/characters/lelepop/lelepop_02.png",
-    161,
-    241,
-    [
-      23456
-    ]
-  ],
-  [
-    "public/assets/characters/lelepop/lelepop_03.png",
-    157,
-    251,
-    [
-      22849
-    ]
-  ],
-  [
-    "public/assets/characters/lelepop/lelepop_04.png",
-    170,
-    208,
-    [
-      19457
-    ]
-  ],
-  [
-    "public/assets/characters/lelepop/lelepop_01.png",
-    172,
-    250,
-    [
-      20775
-    ]
-  ]
+  {
+    "file": "public/assets/characters/buttscaler/buttscaler_01.png",
+    "original_size": [
+      151,
+      228
+    ],
+    "clean_size": [
+      149,
+      226
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/buttscaler/buttscaler_02.png",
+    "original_size": [
+      152,
+      214
+    ],
+    "clean_size": [
+      150,
+      212
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/buttscaler/buttscaler_03.png",
+    "original_size": [
+      174,
+      229
+    ],
+    "clean_size": [
+      173,
+      227
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/buttscaler/buttscaler_04.png",
+    "original_size": [
+      162,
+      225
+    ],
+    "clean_size": [
+      161,
+      223
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/buttscaler/buttscaler_05.png",
+    "original_size": [
+      200,
+      111
+    ],
+    "clean_size": [
+      199,
+      87
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/buttscaler/buttscaler_06.png",
+    "original_size": [
+      142,
+      231
+    ],
+    "clean_size": [
+      140,
+      229
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/lelepop/lelepop_01.png",
+    "original_size": [
+      172,
+      250
+    ],
+    "clean_size": [
+      171,
+      248
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/lelepop/lelepop_02.png",
+    "original_size": [
+      161,
+      241
+    ],
+    "clean_size": [
+      160,
+      239
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/lelepop/lelepop_03.png",
+    "original_size": [
+      157,
+      251
+    ],
+    "clean_size": [
+      155,
+      250
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/lelepop/lelepop_04.png",
+    "original_size": [
+      170,
+      208
+    ],
+    "clean_size": [
+      168,
+      206
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/lelepop/lelepop_05.png",
+    "original_size": [
+      153,
+      251
+    ],
+    "clean_size": [
+      149,
+      249
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/lelepop/lelepop_06.png",
+    "original_size": [
+      189,
+      245
+    ],
+    "clean_size": [
+      188,
+      243
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba/zumba_01.png",
+    "original_size": [
+      162,
+      255
+    ],
+    "clean_size": [
+      159,
+      218
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba/zumba_02.png",
+    "original_size": [
+      178,
+      221
+    ],
+    "clean_size": [
+      176,
+      220
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba/zumba_03.png",
+    "original_size": [
+      183,
+      255
+    ],
+    "clean_size": [
+      181,
+      220
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba/zumba_04.png",
+    "original_size": [
+      153,
+      221
+    ],
+    "clean_size": [
+      151,
+      220
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba/zumba_05.png",
+    "original_size": [
+      175,
+      221
+    ],
+    "clean_size": [
+      173,
+      219
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba/zumba_06.png",
+    "original_size": [
+      184,
+      221
+    ],
+    "clean_size": [
+      183,
+      220
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba-camp/zumba_camp_01.png",
+    "original_size": [
+      172,
+      244
+    ],
+    "clean_size": [
+      170,
+      218
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba-camp/zumba_camp_02.png",
+    "original_size": [
+      168,
+      224
+    ],
+    "clean_size": [
+      166,
+      223
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba-camp/zumba_camp_03.png",
+    "original_size": [
+      164,
+      244
+    ],
+    "clean_size": [
+      162,
+      218
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba-camp/zumba_camp_04.png",
+    "original_size": [
+      164,
+      224
+    ],
+    "clean_size": [
+      162,
+      223
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba-camp/zumba_camp_05.png",
+    "original_size": [
+      176,
+      224
+    ],
+    "clean_size": [
+      175,
+      223
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  },
+  {
+    "file": "public/assets/characters/zumba-camp/zumba_camp_06.png",
+    "original_size": [
+      174,
+      224
+    ],
+    "clean_size": [
+      173,
+      223
+    ],
+    "meaningful_alpha_components": 1,
+    "status": "PASS"
+  }
 ]

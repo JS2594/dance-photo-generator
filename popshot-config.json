@@ -1,5 +1,5 @@
 {
-  "version": "7.1.0",
+  "version": "7.2.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -80,5 +80,6 @@
     "subject-priority crop based on detected group faces with estimated full-body bounds",
     "manual photo pan and zoom",
     "course cards with character thumbnails"
-  ]
+  ],
+  "asset_audit": "24/24 character PNGs visually and alpha-component audited; extraction labels/fragments removed."
 }
