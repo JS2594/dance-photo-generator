@@ -1,0 +1,4 @@
+{
+  "version": "10.2.3",
+  "note": "版本探针：每次发布新版本时，此文件的 version 必须与 app.js 中的 VERSION 一致。"
+}

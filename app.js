@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.2.1';
+const W = 2525, H = 1894, VERSION = '10.2.3';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -224,10 +224,9 @@ function measureWord(text,size){
   const track=size*.045;
   return {ws,track,total:ws.reduce((a,b)=>a+b,0)+track*(text.length-1)};
 }
-// 以 174px 基准字号测量当前课程主标题宽度（含字距），用于自动排版。
+// 以 174px 基准字号测量当前课程主标题宽度（含字距与空格），用于自动排版。
 function titleTextWidth(px=174){
-  const main = course==='zumba-camp' ? 'ZUMBA' : courseNames[course];
-  return measureWord(main,px).total||600;
+  return measureWord(courseNames[course],px).total||600;
 }
 
 function faceZones(){
@@ -307,11 +306,9 @@ function autoPlace(){
   const halfW=W*frac/2;
 
   // 人物放在上半区人脸更少的一侧，半骑在标题端部字母上（重叠约 45%）。
-  // ZUMBA CAMP 的 CAMP 角标在右下，默认让人物去左端，避免互相打架。
   const leftFaces=zones.filter(z=>z.y<H*.45 && z.x+z.w/2< W/2).length;
   const rightFaces=zones.filter(z=>z.y<H*.45 && z.x+z.w/2>=W/2).length;
-  const side = forcedSide
-    || (course==='zumba-camp' ? 'left' : (leftFaces<=rightFaces ? 'left':'right'));
+  const side = forcedSide || (leftFaces<=rightFaces ? 'left':'right');
 
   const place=(scale)=>{
     const cw=505*scale, ch=600*scale;
@@ -397,8 +394,7 @@ function drawTitle(){
   if(!l.visible) return null;
   const p=styles[visualStyle].p;
   const variant=titleIndex%5;
-  let main=courseNames[course], secondary='';
-  if(course==='zumba-camp'){ main='ZUMBA'; secondary='CAMP'; }
+  const main=courseNames[course]; // ZUMBA CAMP 与 ZUMBA 同字号，仅隔一个空格
   const dark='rgba(28,20,44,.92)';
 
   // 局部自适应：超出可用宽度只在本次绘制时缩小，不永久改写 l.scale。
@@ -423,12 +419,13 @@ function drawTitle(){
     brushStroke(bx-size*.10, y+size*1.12, bx+m.total*.80, y+size*1.06, size*.17, p[1], .95);
   }
 
-  // 逐字母绘制：旋转 + 起伏 + 逐字配色
-  let cx0=bx;
+  // 逐字母绘制：旋转 + 起伏 + 逐字配色（空格只占位不绘制）
+  let cx0=bx, ci=0;
   letters.forEach((ch,i)=>{
     const lcx=cx0+m.ws[i]/2;
-    const lcy=y+size*.55+LETTER_DY[i%8]*size;
-    const rot=LETTER_ROT[i%8]*Math.PI/180;
+    if(ch===' '){ cx0+=m.ws[i]+m.track; return; }
+    const lcy=y+size*.55+LETTER_DY[ci%8]*size;
+    const rot=LETTER_ROT[ci%8]*Math.PI/180;
     const isLast=i===letters.length-1;
     ctx.save();
     ctx.translate(lcx,lcy);
@@ -440,7 +437,7 @@ function drawTitle(){
     if(variant===0){ // 涂鸦多彩：深描边+白描边+逐字彩色，尾字亮色点睛
       ctx.strokeStyle=dark;ctx.lineWidth=size*.20;ctx.strokeText(ch,0,0);
       ctx.strokeStyle='#fff';ctx.lineWidth=size*.115;ctx.strokeText(ch,0,0);
-      ctx.fillStyle=isLast?p[2]:(i%2?p[1]:p[0]);
+      ctx.fillStyle=isLast?p[2]:(ci%2?p[1]:p[0]);
       ctx.fillText(ch,0,0);
     }else if(variant===1){ // 斜切刷线：单色+白边+刷线
       ctx.strokeStyle='#fff';ctx.lineWidth=size*.15;ctx.strokeText(ch,0,0);
@@ -457,7 +454,7 @@ function drawTitle(){
       ctx.fillStyle=p[1];ctx.fillText(ch,0,0);
     }else{ // 贴纸拼贴：每个字母坐在一张彩色小贴纸上
       const pw=m.ws[i]*1.12, ph=size*.98, r=size*.14;
-      ctx.fillStyle=isLast?p[2]:(i%2?p[1]:p[0]);
+      ctx.fillStyle=isLast?p[2]:(ci%2?p[1]:p[0]);
       ctx.strokeStyle='#fff';ctx.lineWidth=size*.05;
       ctx.beginPath();
       ctx.roundRect(-pw/2,-ph/2,pw,ph,r);
@@ -466,27 +463,11 @@ function drawTitle(){
     }
     ctx.restore();
     cx0+=m.ws[i]+m.track;
+    ci++;
   });
 
-  // 副标题 CAMP：斜贴在主标题右下的小贴纸胶囊
-  if(secondary){
-    const cs2=size*.26;
-    ctx.save();
-    ctx.translate(bx+m.total*.86, y+size*1.02);
-    ctx.rotate(-5*Math.PI/180);
-    ctx.font=`900 ${cs2}px Arial Black,Impact,sans-serif`;
-    const tw2=ctx.measureText(secondary).width;
-    ctx.fillStyle=p[2];ctx.strokeStyle='#fff';ctx.lineWidth=cs2*.14;
-    ctx.beginPath();
-    ctx.roundRect(-tw2*.62,-cs2*.72,tw2*1.24,cs2*1.44,cs2*.4);
-    ctx.fill();ctx.stroke();
-    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(secondary,0,0);
-    ctx.restore();
-  }
-
   ctx.restore();
-  const box={x:bx-size*.1,y:y-size*.12,w:m.total+size*.2,h:size*(secondary?1.45:1.25)};
+  const box={x:bx-size*.1,y:y-size*.12,w:m.total+size*.2,h:size*1.25};
   l.w=box.w;l.h=box.h;
   return box;
 }
@@ -972,10 +953,55 @@ async function resume(){
   $('#discardResume').onclick=async()=>{$('#resumeModal').classList.add('hidden');await clearDraft()};
 }
 
-$('#updateBtn').onclick=()=>$('#updateTip').classList.remove('hidden');
+// ── 更新提醒：拉取 version.json（带时间戳，穿透浏览器缓存 + SW + GitHub CDN）对比运行版本 ──
+async function fetchLiveVersion(){
+  try{
+    const r=await fetch(`./version.json?t=${Date.now()}`,{cache:'no-store'});
+    if(!r.ok) return null;
+    return (await r.json()).version||null;
+  }catch{return null}
+}
+function showUpdateToast(msg,showBtn){
+  $('#updateTipMsg').textContent=msg;
+  $('#forceRefreshBtn').classList.toggle('hidden',!showBtn);
+  $('#updateTip').classList.remove('hidden');
+}
+async function forceRefresh(){
+  try{
+    if('serviceWorker'in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if(window.caches){
+      const ks=await caches.keys();
+      await Promise.all(ks.map(k=>caches.delete(k)));
+    }
+  }catch{}
+  const u=new URL(location.href);
+  u.searchParams.set('fresh',Date.now());
+  location.replace(u.toString());
+}
+async function checkUpdate(silent){
+  const live=await fetchLiveVersion();
+  const badge=$('#versionBadge');
+  if(!live){
+    if(!silent) showUpdateToast(`当前运行 v${VERSION} · 读不到线上 version.json（可能还没部署新文件）`,false);
+    return;
+  }
+  if(live===VERSION){
+    if(badge){badge.textContent=`v${VERSION} ✓ 最新`;badge.style.color='#4a9c72';}
+    if(!silent) showUpdateToast(`当前 v${VERSION} 已是线上最新版本 ✓`,false);
+  }else{
+    if(badge){badge.textContent=`v${VERSION} → 线上已有 v${live}`;badge.style.color='#e8663d';}
+    showUpdateToast(`线上已部署 v${live}，当前页面还在运行 v${VERSION}，点击立即更新`,true);
+  }
+}
+$('#forceRefreshBtn').onclick=forceRefresh;
+$('#updateBtn').onclick=()=>checkUpdate(false);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate(true)});
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
-$('#settingsBtn').onclick=()=>alert('PopShot v9 · 照片仅在本机浏览器处理');
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.2.1').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+$('#settingsBtn').onclick=()=>alert(`PopShot v${VERSION} · 照片仅在本机浏览器处理\n点击顶部 🔔 可检查线上是否有新版本`);
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.2.3').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
@@ -986,7 +1012,8 @@ $$('[data-compose]').forEach(b=>b.onclick=()=>{
 });
 window.addEventListener('load',()=>{
   $$('[data-compose]').forEach(x=>x.classList.toggle('on',x.dataset.compose===composeMode));
-  const vb=$('#versionBadge'); if(vb) vb.textContent='v10.2';
+  const vb=$('#versionBadge'); if(vb) vb.textContent='v'+VERSION;
+  checkUpdate(true);
 });
 
 syncUI();
