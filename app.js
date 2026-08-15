@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.1.0';
+const W = 2525, H = 1894, VERSION = '10.2.0';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -19,18 +19,25 @@ const courseNames = {
   'zumba-camp': 'ZUMBA CAMP'
 };
 const styles = {
-  energetic:{label:'活力',p:['#ff2f91','#7658ff'],st:['✦','⚡','♪','✨']},
-  cool:{label:'酷飒',p:['#2f63ff','#171723'],st:['⚡','★','✦','♫']},
-  cute:{label:'可爱',p:['#ff62ad','#9a73ff'],st:['♡','🐻','🐰','✨']},
-  clean:{label:'清爽',p:['#5d7dff','#48cbb3'],st:['✦','·','♡','✨']},
-  y2k:{label:'Y2K',p:['#ff3fa4','#6c5cff'],st:['✦','★','♡','♫']}
+  energetic:{label:'活力',p:['#ff2f91','#7658ff','#ffc63d'],st:['✦','⚡','♪','✨']},
+  cool:{label:'酷飒',p:['#2f63ff','#171723','#3de0c8'],st:['⚡','★','✦','♫']},
+  cute:{label:'可爱',p:['#ff62ad','#9a73ff','#ffd166'],st:['♡','🐻','🐰','✨']},
+  clean:{label:'清爽',p:['#5d7dff','#48cbb3','#ffb84d'],st:['✦','·','♡','✨']},
+  y2k:{label:'Y2K',p:['#ff3fa4','#6c5cff','#3ddcff'],st:['✦','★','♡','♫']}
 };
 
 let photo = null;
 let course = localStorage.popshotLastCourse || 'zumba';
-let beauty = +(localStorage.popshotLastBeauty || 38);
+let beauty = +(localStorage.popshotLastBeauty || 55);
+// 一次性迁移：老用户的默认 38 提升到 55，上来就有美颜打光。
+if(!localStorage.popshotBeautyV2){
+  if(beauty<55) beauty=55;
+  localStorage.popshotLastBeauty=beauty;
+  localStorage.popshotBeautyV2='1';
+}
 let visualStyle = localStorage.popshotStyle || 'energetic';
 let density = 'normal';
+let graffitiSeed = +(localStorage.popshotGraffitiSeed || 7);
 
 let photoZoom = 1, photoDX = 0, photoDY = 0, photoAdjust = false;
 let boxesDetected = [];
@@ -43,6 +50,13 @@ let undo = [], redo = [], loaded = {};
 let zOrder = ['title','character','sticker'];
 let layers = {};
 const drawer = $('#drawer'), drawerBody = $('#drawerBody');
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;
+  };
+}
 
 function resetLayers(){
   layers = {
@@ -79,27 +93,67 @@ function stickerPool(){ return holidayStickers() || styles[visualStyle].st; }
 async function detectPeople(img){
   boxesDetected = [];
   $('#detectStatus').textContent = '正在识别合照主体…';
+
+  const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
+  const add=bs=>{for(const b of bs){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
+
   try{
     const mod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm');
     const vision = await mod.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
     const fd = await mod.FaceDetector.createFromOptions(vision,{
       baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite'},
-      runningMode:'IMAGE', minDetectionConfidence:.32
+      runningMode:'IMAGE', minDetectionConfidence:.25
     });
-    const r = fd.detect(img);
-    boxesDetected = (r.detections||[]).map(d=>d.boundingBox).map(b=>({x:b.originX,y:b.originY,w:b.width,h:b.height}));
+    const det=(src,ox,oy)=>(fd.detect(src).detections||[])
+      .map(d=>d.boundingBox)
+      .map(b=>({x:ox+b.originX,y:oy+b.originY,w:b.width,h:b.height}));
+
+    // 第一遍：整图。远景合照里人脸相对画面太小时，短距模型经常一张都认不出。
+    add(det(img,0,0));
+
+    // 第二遍：2×2 重叠分块。脸在每块里的相对占比放大 ~1.8 倍，专治远景小脸。
+    if(boxesDetected.length<8){
+      const tw=Math.round(img.width*.55), th=Math.round(img.height*.55);
+      const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
+      const tg=tc.getContext('2d');
+      for(const [ox,oy] of [[0,0],[img.width-tw,0],[0,img.height-th],[img.width-tw,img.height-th]]){
+        tg.clearRect(0,0,tw,th);
+        tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
+        add(det(tc,ox,oy));
+      }
+    }
+    // 第三遍：3×3 更小分块，兜底极远景（例如整面镜子里的一小群人）。
+    if(boxesDetected.length<4){
+      const tw=Math.round(img.width*.42), th=Math.round(img.height*.42);
+      const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
+      const tg=tc.getContext('2d');
+      const xs=[0,(img.width-tw)/2,img.width-tw], ys=[0,(img.height-th)/2,img.height-th];
+      for(const oy of ys)for(const ox of xs){
+        tg.clearRect(0,0,tw,th);
+        tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
+        add(det(tc,ox,oy));
+      }
+    }
     fd.close();
   }catch(e){
     if('FaceDetector' in window){
       try{
         const f = await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
-        boxesDetected = f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height}));
+        add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})));
       }catch(_){}
     }
   }
+
+  // 过滤离群误检：明显比中位脸大/小太多的框大概率是海报、倒影或误检。
+  if(boxesDetected.length>2){
+    const hs=boxesDetected.map(b=>b.h).sort((a,b)=>a-b);
+    const med=hs[Math.floor(hs.length/2)];
+    boxesDetected=boxesDetected.filter(b=>b.h>med*.35&&b.h<med*3.2);
+  }
+
   $('#detectStatus').textContent = boxesDetected.length
     ? `已识别 ${boxesDetected.length} 位主体 · 可手动调整裁剪`
-    : '已启用保守智能裁剪 · 可手动调整照片';
+    : '未识别到人脸，已按下方主体估算裁剪 · 建议手动微调';
   return boxesDetected;
 }
 
@@ -115,11 +169,11 @@ function smartCrop(){
     const fy2=Math.max(...boxesDetected.map(b=>b.y+b.h));
     const faceCX=(fx1+fx2)/2;
 
-    // 必须保留的区域：所有人头 + 估算的身体（前排下蹲约 5 个脸高以内）。
-    const keepL=Math.max(0,fx1-avgH*1.7);
-    const keepR=Math.min(iw,fx2+avgH*1.7);
-    const keepT=Math.max(0,fy1-avgH*1.15);
-    const keepB=Math.min(ih,fy2+avgH*5.4);
+    // 必须保留的区域：收紧边距，让真人尽量占满画面（参考海报式构图）。
+    const keepL=Math.max(0,fx1-avgH*1.15);
+    const keepR=Math.min(iw,fx2+avgH*1.15);
+    const keepT=Math.max(0,fy1-avgH*1.0);
+    const keepB=Math.min(ih,fy2+avgH*4.8);
 
     // 先按必留区域算尺寸，再统一按 4:3 修正 —— 宽高始终成比例，不会拉伸。
     sh=keepB-keepT; sw=sh*tr;
@@ -130,18 +184,20 @@ function smartCrop(){
     const z=Math.max(1,photoZoom);
     sw/=z; sh/=z;
 
-    // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~30% 处开始，上方留出标题带。
+    // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~27% 处开始，上方留出标题带。
     baseSx=faceCX-sw/2;
-    baseSy=fy1-sh*.30;
-    // 若这样会切到脚，则下移裁剪窗，但头顶至少保留画面 14% 的标题空间。
-    if(baseSy+sh<keepB) baseSy=Math.min(keepB-sh, fy1-Math.max(avgH*.55, sh*.14));
+    baseSy=fy1-sh*.27;
+    // 若这样会切到脚，则下移裁剪窗，但头顶至少保留画面 13% 的标题空间。
+    if(baseSy+sh<keepB) baseSy=Math.min(keepB-sh, fy1-Math.max(avgH*.55, sh*.13));
   }else{
+    // 未识别到人脸：合照里人几乎总在中下部（上方是天花板/镜子），
+    // 默认放大 1.22 倍并把裁剪窗对准画面 58% 高度的中心。
     if(iw/ih>tr){ sh=ih; sw=ih*tr; }
     else{ sw=iw; sh=iw/tr; }
-    const z=Math.max(1,photoZoom);
+    const z=Math.max(1,photoZoom)*1.22;
     sw/=z; sh/=z;
     baseSx=(iw-sw)/2;
-    baseSy=(ih-sh)/2;
+    baseSy=ih*.58-sh*.5;
   }
 
   let sx=baseSx-photoDX*iw/W;
@@ -151,14 +207,21 @@ function smartCrop(){
   return {sx,sy,sw,sh};
 }
 
-// 以 174px 基准字号测量当前课程主标题宽度，用于自动排版。
+// ── 花体标题引擎：每个字母独立旋转/起伏/配色，参考手绘海报风 ──
+const LETTER_ROT=[-5,4,-3,5,-4,3,-6,4];       // 每个字母的固定旋转角（度）
+const LETTER_DY=[0,-.06,.045,-.045,.055,-.05,.035,-.03]; // 每个字母的基线起伏（字号比例）
+function measureWord(text,size){
+  ctx.save();
+  ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
+  const ws=[...text].map(ch=>ctx.measureText(ch).width);
+  ctx.restore();
+  const track=size*.045;
+  return {ws,track,total:ws.reduce((a,b)=>a+b,0)+track*(text.length-1)};
+}
+// 以 174px 基准字号测量当前课程主标题宽度（含字距），用于自动排版。
 function titleTextWidth(px=174){
   const main = course==='zumba-camp' ? 'ZUMBA' : courseNames[course];
-  ctx.save();
-  ctx.font=`900 ${px}px Arial Black,Impact,sans-serif`;
-  const w=ctx.measureText(main).width;
-  ctx.restore();
-  return w||600;
+  return measureWord(main,px).total||600;
 }
 
 function faceZones(){
@@ -237,14 +300,16 @@ function autoPlace(){
   const bandH=174*ts;                 // 标题字高近似
   const halfW=W*frac/2;
 
-  // 人物放在上半区人脸更少的一侧，压在标题端部字母上。
+  // 人物放在上半区人脸更少的一侧，半骑在标题端部字母上（重叠约 45%）。
+  // ZUMBA CAMP 的 CAMP 角标在右下，默认让人物去左端，避免互相打架。
   const leftFaces=zones.filter(z=>z.y<H*.45 && z.x+z.w/2< W/2).length;
   const rightFaces=zones.filter(z=>z.y<H*.45 && z.x+z.w/2>=W/2).length;
-  const side = forcedSide || (leftFaces<=rightFaces ? 'left':'right');
+  const side = forcedSide
+    || (course==='zumba-camp' ? 'left' : (leftFaces<=rightFaces ? 'left':'right'));
 
   const place=(scale)=>{
     const cw=505*scale, ch=600*scale;
-    let cx = side==='left' ? W/2-halfW-cw*.42 : W/2+halfW-cw*.58;
+    let cx = side==='left' ? W/2-halfW-cw*.55 : W/2+halfW-cw*.45;
     cx=Math.max(16,Math.min(W-cw-16,cx));
     // 人物竖直中心略高于标题字中心 → 脚落在字母中下部，像"站在标题上"。
     let cy=layers.title.y + bandH*.60 - ch*.52;
@@ -268,9 +333,19 @@ function autoPlace(){
 function drawPhoto(){
   const c=smartCrop(), b=beauty/100;
   ctx.save();
-  ctx.filter=`brightness(${1+b*.10}) contrast(${1+b*.08}) saturate(${1+b*.14})`;
+  // 提亮打光：亮度/对比/饱和整体上调，人物气色更好。
+  ctx.filter=`brightness(${1+b*.16}) contrast(${1+b*.05}) saturate(${1+b*.17})`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
   ctx.restore();
+  // 柔光滤镜：模糊图层以 screen 模式叠回，产生柔和高光（拖动时跳过以保证流畅）。
+  if(b>0 && !dragging){
+    ctx.save();
+    ctx.globalAlpha=.16*b+.06;
+    ctx.globalCompositeOperation='screen';
+    ctx.filter='blur(28px) brightness(1.12)';
+    ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
+    ctx.restore();
+  }
 }
 function drawFrame(){
   if(!frameIndex) return;
@@ -287,6 +362,30 @@ function drawFrame(){
   ctx.restore();
 }
 
+// 粗糙笔刷横扫（涂鸦感底纹/下划线）
+function brushStroke(x1,y1,x2,y2,width,color,alpha=1){
+  ctx.save();
+  ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineCap='round';
+  const passes=[[0,0,1],[ .18,-.28,.62],[-.16,.30,.55],[.05,.15,.4]];
+  for(const [ox,oy,wf] of passes){
+    ctx.lineWidth=width*wf;
+    ctx.beginPath();
+    ctx.moveTo(x1+ox*width, y1+oy*width);
+    ctx.quadraticCurveTo((x1+x2)/2, (y1+y2)/2+oy*width*1.6, x2+ox*width, y2+oy*width);
+    ctx.stroke();
+  }
+  // 收笔飞白
+  ctx.lineWidth=width*.16;
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.moveTo(x2-dx/len*width*(.4+i*.3), y2+(i-1)*width*.28);
+    ctx.lineTo(x2+dx/len*width*(.7+i*.4), y2+(i-1)*width*.34);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawTitle(){
   const l=layers.title;
   if(!l.visible) return null;
@@ -294,78 +393,241 @@ function drawTitle(){
   const variant=titleIndex%5;
   let main=courseNames[course], secondary='';
   if(course==='zumba-camp'){ main='ZUMBA'; secondary='CAMP'; }
+  const dark='rgba(28,20,44,.92)';
 
   // 局部自适应：超出可用宽度只在本次绘制时缩小，不永久改写 l.scale。
-  const available = l.anchor==='center' ? W-100
-                  : Math.min(W*.60, l.anchor==='left' ? W-l.x-70 : l.x-70);
+  const available = l.anchor==='center' ? W-90
+                  : Math.min(W*.62, l.anchor==='left' ? W-l.x-60 : l.x-60);
   let s=l.scale;
-  ctx.save();ctx.font=`900 ${(variant===2?186:174)*s}px Arial Black,Impact,sans-serif`;
-  const probeWidth=ctx.measureText(main).width+90;ctx.restore();
-  if(probeWidth>available) s=Math.max(.3,s*(available/probeWidth));
+  if(measureWord(main,174*s).total>available) s=Math.max(.3,s*(available/measureWord(main,174*s).total));
 
-  const x=l.x,y=l.y;
+  const size=174*s;
+  const m=measureWord(main,size);
+  const bx = l.anchor==='left'?l.x : l.anchor==='right'?l.x-m.total : l.x-m.total/2;
+  const y=l.y;
+  const letters=[...main];
+
   ctx.save();
-  ctx.textAlign=l.anchor;ctx.textBaseline='top';ctx.lineJoin='round';
+  ctx.lineJoin='round';
 
-  const size=(variant===2?186:174)*s;
-  ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
-  const w=ctx.measureText(main).width+90;
-  // 标题左边缘（三种对齐统一换算），后面的装饰线/星标/副标题都基于它。
-  const bx = l.anchor==='left'?x : l.anchor==='right'?x-w : x-w/2;
-
+  // 底层笔刷横扫（涂鸦多彩 / 斜切刷线 两种样式带）
   if(variant===0){
-    ctx.strokeStyle='rgba(255,255,255,.97)';ctx.lineWidth=28*s;ctx.strokeText(main,x,y);
-    const g=ctx.createLinearGradient(bx,y,bx+w,y);
-    g.addColorStop(0,p[0]);g.addColorStop(1,p[1]);ctx.fillStyle=g;ctx.fillText(main,x,y);
+    brushStroke(bx-size*.20, y+size*.72, bx+m.total+size*.25, y+size*.52, size*.62, p[0], .32);
   }else if(variant===1){
-    ctx.save();ctx.transform(1,-.03,-.08,1,0,0);
-    ctx.strokeStyle='rgba(255,255,255,.98)';ctx.lineWidth=25*s;ctx.strokeText(main,x,y);
-    ctx.fillStyle=p[0];ctx.fillText(main,x,y);ctx.restore();
-    ctx.strokeStyle=p[1];ctx.lineWidth=11*s;ctx.beginPath();
-    ctx.moveTo(bx,y+190*s);ctx.lineTo(bx+w*.72,y+190*s);ctx.stroke();
-  }else if(variant===2){
-    ctx.shadowColor='rgba(0,0,0,.34)';ctx.shadowBlur=25;ctx.fillStyle='white';ctx.fillText(main,x,y);
-    ctx.shadowBlur=0;ctx.globalAlpha=.62;ctx.strokeStyle=p[0];ctx.lineWidth=6*s;ctx.strokeText(main,x+7*s,y+7*s);
-  }else if(variant===3){
-    ctx.strokeStyle=p[0];ctx.lineWidth=38*s;ctx.strokeText(main,x,y);
-    ctx.strokeStyle='white';ctx.lineWidth=18*s;ctx.strokeText(main,x,y);
-    ctx.fillStyle=p[1];ctx.fillText(main,x,y);
-  }else{
-    ctx.strokeStyle='white';ctx.lineWidth=30*s;ctx.strokeText(main,x,y);
-    ctx.fillStyle=p[0];ctx.fillText(main,x,y);
-    ctx.font=`900 ${50*s}px Arial Black,sans-serif`;ctx.fillStyle=p[1];
-    ctx.textAlign='left';
-    ctx.fillText('✦',bx+w+8,y+35*s);
-    ctx.textAlign=l.anchor;
+    brushStroke(bx-size*.10, y+size*1.12, bx+m.total*.80, y+size*1.06, size*.17, p[1], .95);
   }
 
+  // 逐字母绘制：旋转 + 起伏 + 逐字配色
+  let cx0=bx;
+  letters.forEach((ch,i)=>{
+    const lcx=cx0+m.ws[i]/2;
+    const lcy=y+size*.55+LETTER_DY[i%8]*size;
+    const rot=LETTER_ROT[i%8]*Math.PI/180;
+    const isLast=i===letters.length-1;
+    ctx.save();
+    ctx.translate(lcx,lcy);
+    ctx.rotate(rot);
+    if(variant===1) ctx.transform(1,0,-.16,1,0,0); // 斜切
+    ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+
+    if(variant===0){ // 涂鸦多彩：深描边+白描边+逐字彩色，尾字亮色点睛
+      ctx.strokeStyle=dark;ctx.lineWidth=size*.20;ctx.strokeText(ch,0,0);
+      ctx.strokeStyle='#fff';ctx.lineWidth=size*.115;ctx.strokeText(ch,0,0);
+      ctx.fillStyle=isLast?p[2]:(i%2?p[1]:p[0]);
+      ctx.fillText(ch,0,0);
+    }else if(variant===1){ // 斜切刷线：单色+白边+刷线
+      ctx.strokeStyle='#fff';ctx.lineWidth=size*.15;ctx.strokeText(ch,0,0);
+      ctx.fillStyle=isLast?p[2]:p[0];
+      ctx.fillText(ch,0,0);
+    }else if(variant===2){ // 白字海报：白字+彩色错位残影
+      ctx.fillStyle=p[0];ctx.globalAlpha=.85;ctx.fillText(ch,size*.05,size*.05);
+      ctx.globalAlpha=1;
+      ctx.shadowColor='rgba(0,0,0,.32)';ctx.shadowBlur=size*.10;
+      ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
+    }else if(variant===3){ // 泡泡双描边
+      ctx.strokeStyle=isLast?p[2]:p[0];ctx.lineWidth=size*.24;ctx.strokeText(ch,0,0);
+      ctx.strokeStyle='#fff';ctx.lineWidth=size*.12;ctx.strokeText(ch,0,0);
+      ctx.fillStyle=p[1];ctx.fillText(ch,0,0);
+    }else{ // 贴纸拼贴：每个字母坐在一张彩色小贴纸上
+      const pw=m.ws[i]*1.12, ph=size*.98, r=size*.14;
+      ctx.fillStyle=isLast?p[2]:(i%2?p[1]:p[0]);
+      ctx.strokeStyle='#fff';ctx.lineWidth=size*.05;
+      ctx.beginPath();
+      ctx.roundRect(-pw/2,-ph/2,pw,ph,r);
+      ctx.fill();ctx.stroke();
+      ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
+    }
+    ctx.restore();
+    cx0+=m.ws[i]+m.track;
+  });
+
+  // 副标题 CAMP：斜贴在主标题右下的小贴纸胶囊
   if(secondary){
-    ctx.font=`900 ${52*s}px Arial Black,Impact,sans-serif`;
-    ctx.strokeStyle='white';ctx.lineWidth=12*s;ctx.fillStyle=p[1];
-    ctx.textAlign='left';
-    const sx2=bx+w*.78, sy2=y+150*s;
-    ctx.strokeText(secondary,sx2,sy2);ctx.fillText(secondary,sx2,sy2);
+    const cs2=size*.26;
+    ctx.save();
+    ctx.translate(bx+m.total*.86, y+size*1.02);
+    ctx.rotate(-5*Math.PI/180);
+    ctx.font=`900 ${cs2}px Arial Black,Impact,sans-serif`;
+    const tw2=ctx.measureText(secondary).width;
+    ctx.fillStyle=p[2];ctx.strokeStyle='#fff';ctx.lineWidth=cs2*.14;
+    ctx.beginPath();
+    ctx.roundRect(-tw2*.62,-cs2*.72,tw2*1.24,cs2*1.44,cs2*.4);
+    ctx.fill();ctx.stroke();
+    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(secondary,0,0);
+    ctx.restore();
   }
 
   ctx.restore();
-  const box={x:bx,y,w:w+(secondary?110*s:0),h:(secondary?230:200)*s};
-  l.w=box.w;l.h=box.h; // 记录实测尺寸供点选命中使用
+  const box={x:bx-size*.1,y:y-size*.12,w:m.total+size*.2,h:size*(secondary?1.45:1.25)};
+  l.w=box.w;l.h=box.h;
   return box;
+}
+
+// 给 Q 版人物加白色"刀版贴纸"描边，和标题贴纸感统一。
+const outlineCache={};
+function outlinedSprite(im,key){
+  if(outlineCache[key]) return outlineCache[key];
+  const t=Math.max(6,Math.round(Math.max(im.width,im.height)*.022));
+  const sil=document.createElement('canvas');
+  sil.width=im.width;sil.height=im.height;
+  const gs=sil.getContext('2d');
+  gs.drawImage(im,0,0);
+  gs.globalCompositeOperation='source-in';
+  gs.fillStyle='#fff';gs.fillRect(0,0,sil.width,sil.height);
+  const out=document.createElement('canvas');
+  out.width=im.width+t*2+6;out.height=im.height+t*2+6;
+  const go=out.getContext('2d');
+  for(let a=0;a<16;a++){
+    const ang=a/16*Math.PI*2;
+    go.drawImage(sil,t+3+Math.cos(ang)*t,t+3+Math.sin(ang)*t);
+  }
+  go.drawImage(im,t+3,t+3);
+  outlineCache[key]=out;
+  return out;
 }
 
 async function drawCharacter(){
   const l=layers.character;
   if(!l.visible) return null;
   const im=await load(asset(course,charIndex));
+  const sprite=outlinedSprite(im,`${course}-${charIndex}`);
   const maxW=505*l.scale,maxH=600*l.scale;
-  const sc=Math.min(maxW/im.width,maxH/im.height);
-  const w=im.width*sc,h=im.height*sc;
+  const sc=Math.min(maxW/sprite.width,maxH/sprite.height);
+  const w=sprite.width*sc,h=sprite.height*sc;
   l.w=w;l.h=h;
   ctx.save();
-  ctx.shadowColor='rgba(25,15,40,.20)';ctx.shadowBlur=18;ctx.shadowOffsetY=7;
-  ctx.drawImage(im,l.x,l.y,w,h);
+  ctx.shadowColor='rgba(25,15,40,.25)';ctx.shadowBlur=22;ctx.shadowOffsetY=9;
+  ctx.drawImage(sprite,l.x,l.y,w,h);
   ctx.restore();
   return {x:l.x,y:l.y,w,h};
+}
+
+// ── 涂鸦层：四角笔刷泼溅 + 手绘小涂鸦（皇冠/爱心/星星/音符/闪光） ──
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function drawSplash(x,y,baseAng,color,size,rnd){
+  ctx.save();ctx.translate(x,y);ctx.fillStyle=color;
+  for(let i=0;i<7;i++){
+    const ang=baseAng+(i/6-.5)*1.55+(rnd()-.5)*.22;
+    const len=size*(.55+rnd()*.65), w2=size*(.055+rnd()*.09);
+    ctx.save();ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(0,-w2);
+    ctx.quadraticCurveTo(len*.5,-w2*.55,len,0);
+    ctx.quadraticCurveTo(len*.5,w2*.55,0,w2);
+    ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  for(let i=0;i<5;i++){
+    const a2=baseAng+(rnd()-.5)*1.5, d=size*(.55+rnd()*.85), r=size*(.025+rnd()*.05);
+    ctx.beginPath();ctx.arc(Math.cos(a2)*d,Math.sin(a2)*d,r,0,7);ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawDoodle(type,x,y,s,color){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.strokeStyle=color;ctx.fillStyle=color;
+  ctx.lineWidth=s*.13;ctx.lineCap='round';ctx.lineJoin='round';
+  if(type==='crown'){
+    ctx.beginPath();
+    ctx.moveTo(-s*.5,s*.25);ctx.lineTo(-s*.55,-s*.25);ctx.lineTo(-s*.2,0);
+    ctx.lineTo(0,-s*.45);ctx.lineTo(s*.2,0);ctx.lineTo(s*.55,-s*.25);ctx.lineTo(s*.5,s*.25);
+    ctx.closePath();ctx.stroke();
+  }else if(type==='heart'){
+    ctx.beginPath();
+    ctx.moveTo(0,s*.42);
+    ctx.bezierCurveTo(-s*.75,-s*.12,-s*.32,-s*.62,0,-s*.2);
+    ctx.bezierCurveTo(s*.32,-s*.62,s*.75,-s*.12,0,s*.42);
+    ctx.stroke();
+  }else if(type==='star'){
+    ctx.beginPath();
+    for(let i=0;i<5;i++){
+      const a1=-Math.PI/2+i*2*Math.PI/5, a2=a1+Math.PI/5;
+      ctx.lineTo(Math.cos(a1)*s*.5,Math.sin(a1)*s*.5);
+      ctx.lineTo(Math.cos(a2)*s*.22,Math.sin(a2)*s*.22);
+    }
+    ctx.closePath();ctx.fill();
+  }else if(type==='note'){
+    ctx.beginPath();ctx.ellipse(-s*.18,s*.3,s*.16,s*.115,-.4,0,7);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-s*.04,s*.26);ctx.lineTo(-s*.04,-s*.4);
+    ctx.quadraticCurveTo(s*.24,-s*.36,s*.3,-s*.12);ctx.stroke();
+  }else{ // sparkle
+    ctx.beginPath();
+    ctx.moveTo(0,-s*.5);ctx.quadraticCurveTo(s*.06,-s*.06,s*.5,0);
+    ctx.quadraticCurveTo(s*.06,s*.06,0,s*.5);
+    ctx.quadraticCurveTo(-s*.06,s*.06,-s*.5,0);
+    ctx.quadraticCurveTo(-s*.06,-s*.06,0,-s*.5);
+    ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawGraffiti(){
+  if(density==='simple') return;
+  const rnd=mulberry32(graffitiSeed);
+  const p=styles[visualStyle].p;
+  const dark='rgba(24,17,36,.9)';
+  const zones=faceZones();
+
+  // 四角泼溅：默认对角两处，"丰富"档四角全开（贴角，几乎不会压到真人）。
+  const corners=[
+    {x:0,y:0,a:Math.PI*.25},{x:W,y:0,a:Math.PI*.75},
+    {x:0,y:H,a:-Math.PI*.25},{x:W,y:H,a:-Math.PI*.75}
+  ];
+  const idx=density==='rich'?[0,1,2,3]:(rnd()<.5?[0,3]:[1,2]);
+  idx.forEach((i,k)=>{
+    drawSplash(corners[i].x,corners[i].y,corners[i].a,
+      k%2?dark:p[0], W*(.10+rnd()*.035), rnd);
+  });
+
+  // 手绘涂鸦：沿边缘候选点摆放，跳过和人脸重叠的位置。
+  const types=['crown','heart','star','note','sparkle'];
+  const spots=[
+    {x:W*.06,y:H*.30},{x:W*.94,y:H*.30},
+    {x:W*.05,y:H*.55},{x:W*.95,y:H*.55},
+    {x:W*.10,y:H*.87},{x:W*.90,y:H*.87},
+    {x:W*.30,y:H*.06},{x:W*.72,y:H*.09},
+    {x:W*.50,y:H*.93}
+  ];
+  const want=density==='rich'?6:3;
+  let placed=0, ti=Math.floor(rnd()*types.length);
+  for(const sp of spots.sort(()=>rnd()-.5)){
+    if(placed>=want) break;
+    const sz=W*(.028+rnd()*.02);
+    const bb={x:sp.x-sz,y:sp.y-sz,w:sz*2,h:sz*2};
+    if(zones.some(z=>overlap(bb,z)>0)) continue;
+    ctx.save();
+    ctx.globalAlpha=.92;
+    ctx.translate(0,0);
+    drawDoodle(types[ti%types.length],sp.x,sp.y,sz,
+      placed%3===0?'#fff':(placed%3===1?p[2]:p[0]));
+    ctx.restore();
+    ti++;placed++;
+  }
 }
 
 function drawSticker(){
@@ -402,6 +664,7 @@ async function render(){
   wash.addColorStop(1,'rgba(255,70,145,.018)');
   ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
   drawFrame();
+  drawGraffiti();
 
   // Mandatory visual layers: title + one Q character must never disappear.
   layers.title.visible=true;
@@ -415,7 +678,7 @@ async function render(){
 }
 
 function state(){
-  return JSON.stringify({version:VERSION,layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder,composeMode});
+  return JSON.stringify({version:VERSION,layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder,composeMode,graffitiSeed});
 }
 function push(){undo.push(state());if(undo.length>30)undo.shift();redo=[];}
 function restore(raw){
@@ -427,7 +690,7 @@ function restore(raw){
   }
   layers=s.layers||{};course=s.course||course;beauty=s.beauty??beauty;visualStyle=s.visualStyle||'energetic';density=s.density||'normal';composeMode=s.composeMode||composeMode;
   photoZoom=s.photoZoom||1;photoDX=s.photoDX||0;photoDY=s.photoDY||0;
-  charIndex=s.charIndex||0;titleIndex=s.titleIndex||0;frameIndex=s.frameIndex??1;stickerIndex=s.stickerIndex||0;layoutIndex=s.layoutIndex||1;
+  charIndex=s.charIndex||0;titleIndex=s.titleIndex||0;frameIndex=s.frameIndex??1;stickerIndex=s.stickerIndex||0;layoutIndex=s.layoutIndex||1;graffitiSeed=s.graffitiSeed??graffitiSeed;
   zOrder=(s.zOrder||['title','character','sticker']).filter(x=>['title','character','sticker'].includes(x));
   if(!layers.title||!layers.character||!layers.sticker) resetLayers();
   layers.title.visible=true;
@@ -440,6 +703,8 @@ function restore(raw){
 function hist(){try{return JSON.parse(localStorage.popshotHistory||'[]')}catch{return[]}}
 function comboKey(){return[course,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,visualStyle].join('|')}
 function pickCombo(){
+  graffitiSeed=Math.floor(Math.random()*1e6);
+  localStorage.popshotGraffitiSeed=graffitiSeed;
   const now=Date.now(), h=hist().filter(x=>x.time>now-14*864e5), wd=new Date().getDay();
   for(let i=0;i<120;i++){
     charIndex=Math.floor(Math.random()*6);
@@ -574,7 +839,7 @@ function showTitlePicker(){
   $('#drawerTitle').textContent='选择标题样式';
   drawerBody.innerHTML='<div class="asset-picker" id="titlePicker"></div>';
   const wrap=$('#titlePicker');
-  ['渐变粗体','斜切刷线','白字海报','双描边','贴纸感'].forEach((name,i)=>{
+  ['涂鸦多彩','斜切刷线','白字残影','泡泡双边','贴纸拼贴'].forEach((name,i)=>{
     const b=document.createElement('button');
     b.className='asset-option title-option'+(i===titleIndex?' on':'');
     b.textContent=name;
@@ -704,7 +969,7 @@ async function resume(){
 $('#updateBtn').onclick=()=>$('#updateTip').classList.remove('hidden');
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert('PopShot v9 · 照片仅在本机浏览器处理');
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.1.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.2.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
@@ -715,7 +980,7 @@ $$('[data-compose]').forEach(b=>b.onclick=()=>{
 });
 window.addEventListener('load',()=>{
   $$('[data-compose]').forEach(x=>x.classList.toggle('on',x.dataset.compose===composeMode));
-  const vb=$('#versionBadge'); if(vb) vb.textContent='v10.1';
+  const vb=$('#versionBadge'); if(vb) vb.textContent='v10.2';
 });
 
 syncUI();
