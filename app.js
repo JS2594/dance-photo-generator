@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.4.1';
+const W = 2525, H = 1894, VERSION = '10.4.2';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -1216,7 +1216,79 @@ $('#updateBtn').onclick=()=>checkUpdate(false);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate(true)});
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert(`PopShot v${VERSION} · 照片仅在本机浏览器处理\n点击顶部 🔔 可检查线上是否有新版本`);
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.4.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+
+// ── v10.4.2：PWA 无感自动更新 ──
+async function activateWaitingWorker(reg){
+  if(!reg?.waiting) return false;
+  return new Promise(resolve=>{
+    let finished=false;
+    const done=()=>{if(finished)return;finished=true;resolve(true)};
+    navigator.serviceWorker.addEventListener('controllerchange',done,{once:true});
+    reg.waiting.postMessage({type:'SKIP_WAITING'});
+    setTimeout(done,2200);
+  });
+}
+function reloadLatestOnce(){
+  const k='popshotAutoReloadAt',now=Date.now(),last=+(sessionStorage.getItem(k)||0);
+  if(now-last<8000)return;
+  sessionStorage.setItem(k,String(now));
+  const u=new URL(location.href);
+  u.searchParams.set('v',VERSION);
+  u.searchParams.set('fresh',String(now));
+  location.replace(u.toString());
+}
+async function setupPwaAutoUpdate(){
+  if(!('serviceWorker'in navigator))return;
+  try{
+    const reg=await navigator.serviceWorker.register(`./service-worker.js?v=${VERSION}`,{updateViaCache:'none'});
+    try{await reg.update()}catch{}
+
+    if(reg.waiting){
+      await activateWaitingWorker(reg);
+      reloadLatestOnce();
+      return;
+    }
+
+    reg.addEventListener('updatefound',()=>{
+      const w=reg.installing;
+      if(!w)return;
+      w.addEventListener('statechange',async()=>{
+        if(w.state==='installed'&&navigator.serviceWorker.controller){
+          await activateWaitingWorker(reg);
+          reloadLatestOnce();
+        }
+      });
+    });
+
+    // 第二层：version.json 每次打开都 no-store 检查。
+    const live=await fetchLiveVersion();
+    if(live&&live!==VERSION){
+      try{await reg.update()}catch{}
+      if(reg.waiting)await activateWaitingWorker(reg);
+      reloadLatestOnce();
+    }
+
+    // 应用保持打开时，每 15 分钟轻量检查一次。
+    setInterval(async()=>{
+      try{
+        const live=await fetchLiveVersion();
+        if(live&&live!==VERSION){
+          await reg.update();
+          if(reg.waiting)await activateWaitingWorker(reg);
+          reloadLatestOnce();
+        }
+      }catch{}
+    },15*60*1000);
+  }catch(e){
+    console.warn('PWA auto update failed',e);
+  }
+}
+window.addEventListener('load',()=>{
+  const v=document.getElementById('versionBadge');
+  if(v)v.textContent='v'+VERSION;
+  setupPwaAutoUpdate();
+});
+
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();

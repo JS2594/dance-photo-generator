@@ -159,3 +159,10 @@
 - 桌面及支持 download 的浏览器继续直接下载。
 - iOS Safari / PWA 若阻止自动下载，会打开全分辨率成图，可长按选择“存储到照片 / 保存图片”。
 - 导出过程增加“正在生成高清图片…”状态和失败兜底。
+
+## v10.4.2 PWA 稳定版
+- iPhone / Android 添加到桌面后，每次打开自动检查新版。
+- Service Worker 使用 updateViaCache:none，代码文件采用 network-first。
+- 新 Service Worker 自动激活、接管并清除旧缓存。
+- version.json 提供第二层线上版本校验，检测到新版本后自动刷新一次。
+- 继续保留 v10.4.1 的手机保存三级兜底：系统分享 → 浏览器下载 → 长按高清图保存。

@@ -1,4 +1,5 @@
 {
-  "version": "10.4.0",
-  "note": "版本探针：每次发布新版本时，此文件的 version 必须与 app.js 中的 VERSION 一致。"
+  "version": "10.4.2",
+  "build": 1786785421,
+  "notes": "Mobile save + automatic PWA update + stale cache cleanup"
 }
