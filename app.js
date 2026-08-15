@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.0.0';
+const W = 2525, H = 1894, VERSION = '10.1.0';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -37,6 +37,7 @@ let boxesDetected = [];
 let charIndex = 0, titleIndex = 0, frameIndex = 1, stickerIndex = 0, layoutIndex = 1;
 
 let composeMode = localStorage.getItem('popshotComposeMode') || 'linked';
+let forcedSide = null; // 布局按钮可强制人物在标题左端/右端，null 表示自动选人少的一侧
 let selected = null, dragging = false, dragOffset = {x:0,y:0}, locked = null;
 let undo = [], redo = [], loaded = {};
 let zOrder = ['title','character','sticker'];
@@ -47,7 +48,7 @@ function resetLayers(){
   layers = {
     title:{x:88,y:62,scale:1,anchor:'left',visible:true},
     character:{x:W-500,y:H-585,scale:.88,visible:true},
-    sticker:{x:W-120,y:88,scale:1,visible:true}
+    sticker:{x:W-190,y:H-280,scale:1,visible:false}
   };
 }
 resetLayers();
@@ -104,47 +105,60 @@ async function detectPeople(img){
 
 function smartCrop(){
   const iw=photo.width, ih=photo.height, tr=W/H;
-  let sw,sh,cx=iw/2,cy=ih/2;
+  let sw,sh,baseSx,baseSy;
 
   if(boxesDetected.length){
     const avgH=boxesDetected.reduce((s,b)=>s+b.h,0)/boxesDetected.length;
-    const avgW=boxesDetected.reduce((s,b)=>s+b.w,0)/boxesDetected.length;
     const fx1=Math.min(...boxesDetected.map(b=>b.x));
     const fx2=Math.max(...boxesDetected.map(b=>b.x+b.w));
     const fy1=Math.min(...boxesDetected.map(b=>b.y));
     const fy2=Math.max(...boxesDetected.map(b=>b.y+b.h));
+    const faceCX=(fx1+fx2)/2;
 
-    // Estimate the real group tighter: preserve heads/feet but remove excessive ceiling/floor.
-    let left=Math.max(0,fx1-avgW*1.0);
-    let right=Math.min(iw,fx2+avgW*1.0);
-    let top=Math.max(0,fy1-avgH*.95);
-    let bottom=Math.min(ih,fy2+avgH*6.15);
+    // 必须保留的区域：所有人头 + 估算的身体（前排下蹲约 5 个脸高以内）。
+    const keepL=Math.max(0,fx1-avgH*1.7);
+    const keepR=Math.min(iw,fx2+avgH*1.7);
+    const keepT=Math.max(0,fy1-avgH*1.15);
+    const keepB=Math.min(ih,fy2+avgH*5.4);
 
-    let bw=right-left,bh=bottom-top;
-    left=Math.max(0,left-bw*.025);
-    right=Math.min(iw,right+bw*.025);
-    top=Math.max(0,top-bh*.02);
-    bottom=Math.min(ih,bottom+bh*.035);
-    bw=right-left;bh=bottom-top;
+    // 先按必留区域算尺寸，再统一按 4:3 修正 —— 宽高始终成比例，不会拉伸。
+    sh=keepB-keepT; sw=sh*tr;
+    if(sw<keepR-keepL){ sw=keepR-keepL; sh=sw/tr; }
+    if(sw>iw){ sw=iw; sh=sw/tr; }
+    if(sh>ih){ sh=ih; sw=sh*tr; }
 
-    if(bw/bh<tr) bw=bh*tr; else bh=bw/tr;
-    sw=Math.min(iw,bw); sh=Math.min(ih,bh);
-    cx=(left+right)/2; cy=(top+bottom)/2;
+    const z=Math.max(1,photoZoom);
+    sw/=z; sh/=z;
+
+    // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~30% 处开始，上方留出标题带。
+    baseSx=faceCX-sw/2;
+    baseSy=fy1-sh*.30;
+    // 若这样会切到脚，则下移裁剪窗，但头顶至少保留画面 14% 的标题空间。
+    if(baseSy+sh<keepB) baseSy=Math.min(keepB-sh, fy1-Math.max(avgH*.55, sh*.14));
   }else{
     if(iw/ih>tr){ sh=ih; sw=ih*tr; }
     else{ sw=iw; sh=iw/tr; }
+    const z=Math.max(1,photoZoom);
+    sw/=z; sh/=z;
+    baseSx=(iw-sw)/2;
+    baseSy=(ih-sh)/2;
   }
 
-  // Small automatic zoom-in so group photos don't feel too empty.
-  const autoZoom = boxesDetected.length ? 1.08 : 1;
-  const z=Math.max(1,photoZoom)*autoZoom;
-  sw/=z; sh/=z;
-
-  let sx=cx-sw/2-photoDX*iw/W;
-  let sy=cy-sh*.50-photoDY*ih/H;
+  let sx=baseSx-photoDX*iw/W;
+  let sy=baseSy-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
+}
+
+// 以 174px 基准字号测量当前课程主标题宽度，用于自动排版。
+function titleTextWidth(px=174){
+  const main = course==='zumba-camp' ? 'ZUMBA' : courseNames[course];
+  ctx.save();
+  ctx.font=`900 ${px}px Arial Black,Impact,sans-serif`;
+  const w=ctx.measureText(main).width;
+  ctx.restore();
+  return w||600;
 }
 
 function faceZones(){
@@ -171,65 +185,84 @@ function autoPlace(){
 
   layers.title.visible=true;
   layers.character.visible=true;
-  layers.sticker.visible=false; // decorative restraint: one character is enough by default
+  layers.sticker.visible=(density==='rich'); // 默认克制：只有"丰富"档才出贴纸
 
-  if(level==='high'){
-    layers.title.scale=.74;
-    layers.character.scale=.48;
-  }else if(level==='mid'){
-    layers.title.scale=.86;
-    layers.character.scale=.61;
-  }else{
-    layers.title.scale=.98;
-    layers.character.scale=.76;
-  }
+  if(composeMode==='corner'){
+    // ── 角落独立模式：保留旧版的四套角落构图打分 ──
+    if(level==='high'){ layers.title.scale=.74; layers.character.scale=.48; }
+    else if(level==='mid'){ layers.title.scale=.86; layers.character.scale=.61; }
+    else{ layers.title.scale=.98; layers.character.scale=.76; }
 
-  // Four curated editorial compositions.
-  // Character remains at a lower corner, while headline is pulled toward it
-  // so the two read as one designed module rather than unrelated layers.
-  const titleW=980*layers.title.scale;
-  const titleH=245*layers.title.scale;
-  const charW=420*layers.character.scale;
-  const charH=525*layers.character.scale;
+    const titleW=980*layers.title.scale;
+    const titleH=245*layers.title.scale;
+    const charW=420*layers.character.scale;
+    const charH=525*layers.character.scale;
 
-  const candidates=[
-    {tx:72,ty:58,ta:'left',  cx:W-charW-58,cy:H-charH-46,kind:'cross'},
-    {tx:W-72,ty:58,ta:'right',cx:58,cy:H-charH-46,kind:'cross'},
-    {tx:72,ty:58,ta:'left',  cx:58,cy:H-charH-46,kind:'same'},
-    {tx:W-72,ty:58,ta:'right',cx:W-charW-58,cy:H-charH-46,kind:'same'}
-  ];
+    const candidates=[
+      {tx:72,ty:58,ta:'left',  cx:W-charW-58,cy:H-charH-46,kind:'cross'},
+      {tx:W-72,ty:58,ta:'right',cx:58,cy:H-charH-46,kind:'cross'},
+      {tx:72,ty:58,ta:'left',  cx:58,cy:H-charH-46,kind:'same'},
+      {tx:W-72,ty:58,ta:'right',cx:W-charW-58,cy:H-charH-46,kind:'same'}
+    ];
 
-  let best=candidates[0],bestScore=Infinity;
-  const centerPeople={x:W*.22,y:H*.28,w:W*.56,h:H*.70};
-
-  for(const c of candidates){
-    const tb={x:c.ta==='left'?c.tx:c.tx-titleW,y:c.ty,w:titleW,h:titleH};
-    const cb={x:c.cx,y:c.cy,w:charW,h:charH};
-    let score=0;
-
-    for(const z of zones){
-      score += 1.55*overlap(tb,z);
-      score += 2.25*overlap(cb,z);
+    let best=candidates[0],bestScore=Infinity;
+    const centerPeople={x:W*.22,y:H*.28,w:W*.56,h:H*.70};
+    for(const c of candidates){
+      const tb={x:c.ta==='left'?c.tx:c.tx-titleW,y:c.ty,w:titleW,h:titleH};
+      const cb={x:c.cx,y:c.cy,w:charW,h:charH};
+      let score=0;
+      for(const z of zones){ score+=1.55*overlap(tb,z); score+=2.25*overlap(cb,z); }
+      score+=1.15*overlap(cb,centerPeople);
+      if(c.kind==='same') score-=4200;
+      if(tb.x<34||tb.x+tb.w>W-34) score+=1e7;
+      if(cb.x<34||cb.x+cb.w>W-34||cb.y+cb.h>H-28) score+=1e7;
+      if(score<bestScore){bestScore=score;best=c;}
     }
-
-    // Never cover the central real-person group with the Q character.
-    score += 1.15*overlap(cb,centerPeople);
-
-    // Same-side arrangements feel more like a designed title/mascot family,
-    // but cross-side is retained for crowded photos.
-    if(c.kind==='same') score-=4200;
-
-    if(tb.x<34||tb.x+tb.w>W-34) score+=1e7;
-    if(cb.x<34||cb.x+cb.w>W-34||cb.y+cb.h>H-28) score+=1e7;
-
-    if(score<bestScore){bestScore=score;best=c;}
+    layers.title.x=best.tx; layers.title.y=best.ty; layers.title.anchor=best.ta;
+    layers.character.x=best.cx; layers.character.y=best.cy;
+    return;
   }
 
-  layers.title.x=best.tx;
-  layers.title.y=best.ty;
-  layers.title.anchor=best.ta;
-  layers.character.x=best.cx;
-  layers.character.y=best.cy;
+  // ── 紧密组合模式（默认）：参考小红书团课封面 ──
+  // 大标题横贯顶部，Q版人物"骑"在标题一端的字母上，两者构成一个视觉模块。
+  const baseW=titleTextWidth(174);
+  const frac = level==='high'?0.72 : level==='mid'?0.78 : 0.84;
+  const ts=(W*frac)/baseW;
+  layers.title.scale=ts;
+  layers.title.anchor='center';
+  layers.title.x=W/2;
+  layers.title.y= level==='high'?38:52;
+
+  let cs = level==='high'?0.52 : level==='mid'?0.64 : 0.78;
+  const bandH=174*ts;                 // 标题字高近似
+  const halfW=W*frac/2;
+
+  // 人物放在上半区人脸更少的一侧，压在标题端部字母上。
+  const leftFaces=zones.filter(z=>z.y<H*.45 && z.x+z.w/2< W/2).length;
+  const rightFaces=zones.filter(z=>z.y<H*.45 && z.x+z.w/2>=W/2).length;
+  const side = forcedSide || (leftFaces<=rightFaces ? 'left':'right');
+
+  const place=(scale)=>{
+    const cw=505*scale, ch=600*scale;
+    let cx = side==='left' ? W/2-halfW-cw*.42 : W/2+halfW-cw*.58;
+    cx=Math.max(16,Math.min(W-cw-16,cx));
+    // 人物竖直中心略高于标题字中心 → 脚落在字母中下部，像"站在标题上"。
+    let cy=layers.title.y + bandH*.60 - ch*.52;
+    cy=Math.max(12,cy);
+    return {cx,cy,cw,ch};
+  };
+
+  let p=place(cs);
+  // 如果人物会明显压到某张真人脸，先缩小 20% 并上提一点。
+  const cb={x:p.cx,y:p.cy,w:p.cw,h:p.ch};
+  if(zones.some(z=>overlap(cb,z)>z.w*z.h*.25)){
+    cs*=.8;
+    p=place(cs);
+    p.cy=Math.max(10,p.cy-40);
+  }
+  layers.character.scale=cs;
+  layers.character.x=p.cx;
+  layers.character.y=p.cy;
 }
 
 function drawPhoto(){
@@ -262,32 +295,34 @@ function drawTitle(){
   let main=courseNames[course], secondary='';
   if(course==='zumba-camp'){ main='ZUMBA'; secondary='CAMP'; }
 
-  // Fit long course names automatically while keeping ZUMBA bold and dominant.
-  const available = Math.min(W*.60, l.anchor==='left' ? W-l.x-70 : l.x-70);
-  let probeSize = (titleIndex%5===2?186:174)*l.scale;
-  ctx.save();ctx.font=`900 ${probeSize}px Arial Black,Impact,sans-serif`;
-  let probeWidth=ctx.measureText(main).width+90;ctx.restore();
-  if(probeWidth>available) l.scale=Math.max(.68,l.scale*(available/probeWidth));
+  // 局部自适应：超出可用宽度只在本次绘制时缩小，不永久改写 l.scale。
+  const available = l.anchor==='center' ? W-100
+                  : Math.min(W*.60, l.anchor==='left' ? W-l.x-70 : l.x-70);
+  let s=l.scale;
+  ctx.save();ctx.font=`900 ${(variant===2?186:174)*s}px Arial Black,Impact,sans-serif`;
+  const probeWidth=ctx.measureText(main).width+90;ctx.restore();
+  if(probeWidth>available) s=Math.max(.3,s*(available/probeWidth));
 
-  const x=l.x,y=l.y,s=l.scale;
+  const x=l.x,y=l.y;
   ctx.save();
   ctx.textAlign=l.anchor;ctx.textBaseline='top';ctx.lineJoin='round';
 
   const size=(variant===2?186:174)*s;
   ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
-  const w=Math.min(1500,ctx.measureText(main).width+90);
+  const w=ctx.measureText(main).width+90;
+  // 标题左边缘（三种对齐统一换算），后面的装饰线/星标/副标题都基于它。
+  const bx = l.anchor==='left'?x : l.anchor==='right'?x-w : x-w/2;
 
   if(variant===0){
     ctx.strokeStyle='rgba(255,255,255,.97)';ctx.lineWidth=28*s;ctx.strokeText(main,x,y);
-    const g=ctx.createLinearGradient(l.anchor==='left'?x:x-w,y,l.anchor==='left'?x+w:x,y);
+    const g=ctx.createLinearGradient(bx,y,bx+w,y);
     g.addColorStop(0,p[0]);g.addColorStop(1,p[1]);ctx.fillStyle=g;ctx.fillText(main,x,y);
   }else if(variant===1){
     ctx.save();ctx.transform(1,-.03,-.08,1,0,0);
     ctx.strokeStyle='rgba(255,255,255,.98)';ctx.lineWidth=25*s;ctx.strokeText(main,x,y);
     ctx.fillStyle=p[0];ctx.fillText(main,x,y);ctx.restore();
     ctx.strokeStyle=p[1];ctx.lineWidth=11*s;ctx.beginPath();
-    ctx.moveTo(l.anchor==='left'?x:x-w,y+190*s);
-    ctx.lineTo(l.anchor==='left'?x+w*.72:x-w*.72,y+190*s);ctx.stroke();
+    ctx.moveTo(bx,y+190*s);ctx.lineTo(bx+w*.72,y+190*s);ctx.stroke();
   }else if(variant===2){
     ctx.shadowColor='rgba(0,0,0,.34)';ctx.shadowBlur=25;ctx.fillStyle='white';ctx.fillText(main,x,y);
     ctx.shadowBlur=0;ctx.globalAlpha=.62;ctx.strokeStyle=p[0];ctx.lineWidth=6*s;ctx.strokeText(main,x+7*s,y+7*s);
@@ -299,18 +334,23 @@ function drawTitle(){
     ctx.strokeStyle='white';ctx.lineWidth=30*s;ctx.strokeText(main,x,y);
     ctx.fillStyle=p[0];ctx.fillText(main,x,y);
     ctx.font=`900 ${50*s}px Arial Black,sans-serif`;ctx.fillStyle=p[1];
-    ctx.fillText('✦',l.anchor==='left'?x+w+18:x-w-18,y+35*s);
+    ctx.textAlign='left';
+    ctx.fillText('✦',bx+w+8,y+35*s);
+    ctx.textAlign=l.anchor;
   }
 
   if(secondary){
-    ctx.font=`900 ${68*s}px Arial Black,Impact,sans-serif`;
-    ctx.strokeStyle='white';ctx.lineWidth=14*s;ctx.fillStyle=p[1];
-    const sx=l.anchor==='left'?x+w*.76:x-w*.76, sy=y+158*s;
-    ctx.strokeText(secondary,sx,sy);ctx.fillText(secondary,sx,sy);
+    ctx.font=`900 ${52*s}px Arial Black,Impact,sans-serif`;
+    ctx.strokeStyle='white';ctx.lineWidth=12*s;ctx.fillStyle=p[1];
+    ctx.textAlign='left';
+    const sx2=bx+w*.78, sy2=y+150*s;
+    ctx.strokeText(secondary,sx2,sy2);ctx.fillText(secondary,sx2,sy2);
   }
 
   ctx.restore();
-  return {x:l.anchor==='left'?x:l.anchor==='right'?x-w:x-w/2,y,w:w+(secondary?200*s:0),h:255*s};
+  const box={x:bx,y,w:w+(secondary?110*s:0),h:(secondary?230:200)*s};
+  l.w=box.w;l.h=box.h; // 记录实测尺寸供点选命中使用
+  return box;
 }
 
 async function drawCharacter(){
@@ -385,7 +425,7 @@ function restore(raw){
     localStorage.removeItem('popshotDraftState');
     syncUI();render();return;
   }
-  layers=s.layers||{};course=s.course||course;beauty=s.beauty??beauty;visualStyle=s.visualStyle||'energetic';density=s.density||'normal';
+  layers=s.layers||{};course=s.course||course;beauty=s.beauty??beauty;visualStyle=s.visualStyle||'energetic';density=s.density||'normal';composeMode=s.composeMode||composeMode;
   photoZoom=s.photoZoom||1;photoDX=s.photoDX||0;photoDY=s.photoDY||0;
   charIndex=s.charIndex||0;titleIndex=s.titleIndex||0;frameIndex=s.frameIndex??1;stickerIndex=s.stickerIndex||0;layoutIndex=s.layoutIndex||1;
   zOrder=(s.zOrder||['title','character','sticker']).filter(x=>['title','character','sticker'].includes(x));
@@ -430,8 +470,9 @@ function point(e){
 }
 function currentBoxes(){
   const t=layers.title,c=layers.character,s=layers.sticker;
+  const tw=t.w||1200, th=t.h||280;
   return {
-    title:{x:t.anchor==='left'?t.x:t.anchor==='right'?t.x-1200:t.x-600,y:t.y,w:1200,h:280},
+    title:{x:t.anchor==='left'?t.x:t.anchor==='right'?t.x-tw:t.x-tw/2,y:t.y,w:tw,h:th},
     character:{x:c.x,y:c.y,w:c.w||480,h:c.h||570},
     sticker:{x:s.x,y:s.y,w:s.w||90,h:s.h||90}
   };
@@ -560,10 +601,9 @@ $('#changeTagBtn').onclick=showTitlePicker;
 $('#changeStickerBtn').onclick=showStickerPicker;
 $('#changeFrameBtn').onclick=()=>{push();frameIndex=(frameIndex+1)%4;render()};
 $('#layoutBtn').onclick=()=>{
-  push();layoutIndex=(layoutIndex+1)%3;resetLayers();
-  if(layoutIndex===0){layers.character.x=70;layers.title.x=W-80;layers.title.anchor='right'}
-  else if(layoutIndex===2){layers.character.x=W-500;layers.title.x=80;layers.title.anchor='left'}
-  else autoPlace();
+  push();layoutIndex=(layoutIndex+1)%3;
+  forcedSide = layoutIndex===0?'left' : layoutIndex===2?'right' : null;
+  resetLayers();autoPlace();
   render();
 };
 
@@ -664,7 +704,7 @@ async function resume(){
 $('#updateBtn').onclick=()=>$('#updateTip').classList.remove('hidden');
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert('PopShot v9 · 照片仅在本机浏览器处理');
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.0.022').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.1.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
@@ -675,7 +715,7 @@ $$('[data-compose]').forEach(b=>b.onclick=()=>{
 });
 window.addEventListener('load',()=>{
   $$('[data-compose]').forEach(x=>x.classList.toggle('on',x.dataset.compose===composeMode));
-  const vb=$('#versionBadge'); if(vb) vb.textContent='v10.0';
+  const vb=$('#versionBadge'); if(vb) vb.textContent='v10.1';
 });
 
 syncUI();
