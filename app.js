@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.3.0';
+const W = 2525, H = 1894, VERSION = '10.3.2';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -19,11 +19,17 @@ const courseNames = {
   'zumba-camp': 'ZUMBA CAMP'
 };
 const styles = {
-  energetic:{label:'活力',p:['#ff2f91','#7658ff','#ffc63d'],st:['✦','⚡','♪','✨']},
-  cool:{label:'酷飒',p:['#2f63ff','#171723','#3de0c8'],st:['⚡','★','✦','♫']},
-  cute:{label:'可爱',p:['#ff62ad','#9a73ff','#ffd166'],st:['♡','🐻','🐰','✨']},
-  clean:{label:'清爽',p:['#5d7dff','#48cbb3','#ffb84d'],st:['✦','·','♡','✨']},
-  y2k:{label:'Y2K',p:['#ff3fa4','#6c5cff','#3ddcff'],st:['✦','★','♡','♫']}
+  // p=装饰配色  st=贴纸池  g=照片调色滤镜（br亮度/ct对比/sa饱和/hue色相偏移/tint色调纱/glow柔光强度）
+  energetic:{label:'活力',p:['#ff2f91','#7658ff','#ffc63d'],st:['✦','⚡','♪','✨'],
+    g:{br:1.05,ct:1.05,sa:1.18,hue:0,  tint:'rgba(255,90,150,.11)', glow:1.0}},
+  cool:{label:'酷飒',p:['#2f63ff','#171723','#3de0c8'],st:['⚡','★','✦','♫'],
+    g:{br:1.0, ct:1.13,sa:.92, hue:-8, tint:'rgba(70,115,255,.15)', glow:.7}},
+  cute:{label:'可爱',p:['#ff62ad','#9a73ff','#ffd166'],st:['♡','🐻','🐰','✨'],
+    g:{br:1.10,ct:.94, sa:1.06,hue:4,  tint:'rgba(255,150,205,.17)',glow:1.4}},
+  clean:{label:'清爽',p:['#5d7dff','#48cbb3','#ffb84d'],st:['✦','·','♡','✨'],
+    g:{br:1.09,ct:1.0, sa:.90, hue:-4, tint:'rgba(215,238,255,.15)',glow:.95}},
+  y2k:{label:'Y2K',p:['#ff3fa4','#6c5cff','#3ddcff'],st:['✦','★','♡','♫'],
+    g:{br:1.04,ct:1.15,sa:1.30,hue:-10,tint:'rgba(190,85,255,.13)', glow:1.2}}
 };
 
 let photo = null;
@@ -327,17 +333,33 @@ function autoPlace(){
 
   // ── 紧密组合模式（默认）：参考小红书团课封面 ──
   // 大标题横贯顶部，Q版人物"骑"在标题一端的字母上，两者构成一个视觉模块。
+  // 尺寸受双重约束：① 宽度上限；② 不得越过"人脸安全线"（最高人头再往上留一点余量，
+  // 余量同时为漏检的更高个子兜底）。人多头高时标题自动变小，确保不遮人。
   const baseW=titleTextWidth(174);
   const frac = level==='high'?0.72 : level==='mid'?0.78 : 0.84;
-  const ts=(W*frac)/baseW;
-  layers.title.scale=ts;
   layers.title.anchor='center';
   layers.title.x=W/2;
   layers.title.y= level==='high'?34:44;
 
+  const medFaceH = zones.length
+    ? zones.map(z=>z.h).sort((a,b)=>a-b)[Math.floor(zones.length/2)]
+    : H*.09;
+  const minFaceTop = zones.length ? Math.min(...zones.map(z=>z.y)) : H*.30;
+  const safeBottom = Math.max(H*.15, minFaceTop - medFaceH*.35);
+
+  // 字号 = min(按宽度, 按头顶空间)，保底 90px 保证可读。
+  const tsByWidth=(W*frac)/baseW;
+  const tsByHead=(safeBottom-layers.title.y)/(174*1.08); // 1.08 ≈ 字高含起伏
+  let ts=Math.min(tsByWidth, Math.max(tsByHead, 90/174));
+  layers.title.scale=ts;
+
   let cs = level==='high'?0.52 : level==='mid'?0.64 : 0.78;
   const bandH=174*ts;                 // 标题字高近似
-  const halfW=W*frac/2;
+  const realHalf=(baseW*ts)/2; // 实际标题半宽
+
+  // 人物同样受安全线约束：底边不越线。
+  const chMax=(safeBottom - layers.title.y - bandH*.60)/.48;
+  cs=Math.min(cs, Math.max(chMax/600, .34));
 
   // 人物放在上半区人脸更少的一侧，半骑在标题端部字母上（重叠约 45%）。
   const leftFaces=zones.filter(z=>z.y<H*.45 && z.x+z.w/2< W/2).length;
@@ -346,7 +368,7 @@ function autoPlace(){
 
   const place=(scale)=>{
     const cw=505*scale, ch=600*scale;
-    let cx = side==='left' ? W/2-halfW-cw*.55 : W/2+halfW-cw*.45;
+    let cx = side==='left' ? W/2-realHalf-cw*.55 : W/2+realHalf-cw*.45;
     cx=Math.max(16,Math.min(W-cw-16,cx));
     // 人物竖直中心略高于标题字中心 → 脚落在字母中下部，像"站在标题上"。
     let cy=layers.title.y + bandH*.60 - ch*.52;
@@ -355,12 +377,14 @@ function autoPlace(){
   };
 
   let p=place(cs);
-  // 如果人物会明显压到某张真人脸，先缩小 20% 并上提一点。
-  const cb={x:p.cx,y:p.cy,w:p.cw,h:p.ch};
-  if(zones.some(z=>overlap(cb,z)>z.w*z.h*.25)){
-    cs*=.8;
+  // 终检：如果人物仍与某张真人脸有可见重叠，逐步缩小并上提，直到不遮脸或到保底尺寸。
+  for(let guard=0;guard<4;guard++){
+    const cb={x:p.cx,y:p.cy,w:p.cw,h:p.ch};
+    const hit=zones.some(z=>overlap(cb,z)>z.w*z.h*.12) || p.cy+p.ch>safeBottom+medFaceH*.25;
+    if(!hit||cs<=.36) break;
+    cs*=.82;
     p=place(cs);
-    p.cy=Math.max(10,p.cy-40);
+    p.cy=Math.max(10,p.cy-30);
   }
   layers.character.scale=cs;
   layers.character.x=p.cx;
@@ -369,25 +393,32 @@ function autoPlace(){
 
 function drawPhoto(){
   const c=smartCrop(), b=beauty/100;
+  const gr=styles[visualStyle].g;
   ctx.save();
-  // 提亮打光：亮度/对比/饱和整体上调，人物气色更好。
-  ctx.filter=`brightness(${1+b*.21}) contrast(${1+b*.03}) saturate(${1+b*.11})`;
+  // 美颜基线 × 风格滤镜：切换风格会真实改变照片的亮度/对比/饱和/色相。
+  ctx.filter=`brightness(${((1+b*.21)*gr.br).toFixed(3)}) contrast(${((1+b*.03)*gr.ct).toFixed(3)}) saturate(${((1+b*.11)*gr.sa).toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
   ctx.restore();
-  // 柔光滤镜：模糊图层以 screen 模式叠回，产生柔和高光（拖动时跳过以保证流畅）。
+  // 柔光滤镜：模糊图层以 screen 模式叠回，强度随风格变化（拖动时跳过以保证流畅）。
   if(b>0 && !dragging){
     ctx.save();
-    ctx.globalAlpha=.19*b+.07;
+    ctx.globalAlpha=Math.min(.5,(.19*b+.07)*gr.glow);
     ctx.globalCompositeOperation='screen';
     ctx.filter='blur(28px) brightness(1.15)';
     ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
     ctx.restore();
   }
+  // 风格色调纱：每种风格叠一层专属色调，切换风格的观感差异主要来自这里。
+  ctx.save();
+  ctx.globalCompositeOperation='soft-light';
+  ctx.fillStyle=gr.tint;
+  ctx.fillRect(0,0,W,H);
+  ctx.restore();
   // 柔白提亮：soft-light 白色薄纱，肤色更白净透亮
   if(b>0){
     ctx.save();
     ctx.globalCompositeOperation='soft-light';
-    ctx.fillStyle=`rgba(255,250,246,${(.30*b).toFixed(3)})`;
+    ctx.fillStyle=`rgba(255,250,246,${(.38*b).toFixed(3)})`;
     ctx.fillRect(0,0,W,H);
     ctx.restore();
   }
@@ -1052,7 +1083,7 @@ $('#updateBtn').onclick=()=>checkUpdate(false);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate(true)});
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert(`PopShot v${VERSION} · 照片仅在本机浏览器处理\n点击顶部 🔔 可检查线上是否有新版本`);
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.3.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.3.2').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
