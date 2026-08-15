@@ -1,5 +1,5 @@
 {
-  "version": "10.0.0",
+  "version": "10.4.1",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -160,5 +160,16 @@
     "composition": "4 curated editorial layouts; title and character treated as one visual family",
     "crowdProtection": "character/title scale down automatically as crowd density rises",
     "manualOverride": "photo and overlay layers remain manually adjustable"
+  },
+  "mobileSave": {
+    "primary": "Web Share API with image file",
+    "fallback1": "browser download via Blob URL",
+    "fallback2": "full-resolution image modal for long-press save",
+    "targets": [
+      "iPhone Safari",
+      "iPhone installed PWA",
+      "Android Chrome",
+      "desktop Chrome"
+    ]
   }
 }

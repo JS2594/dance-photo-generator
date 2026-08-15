@@ -90,3 +90,32 @@ canvas#canvas{
 .course-card img{
   transform:scale(1.04);
 }
+
+/* v10.4.1 mobile save fallback */
+.save-fallback-modal{
+  position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;
+  padding:16px;background:rgba(25,20,35,.55);backdrop-filter:blur(8px)
+}
+.save-fallback-modal.show{display:flex}
+.save-fallback-card{
+  width:min(560px,94vw);max-height:92vh;overflow:auto;background:#fff;border-radius:24px;
+  padding:18px;box-shadow:0 28px 80px rgba(0,0,0,.25);text-align:center;position:relative
+}
+.save-fallback-card h3{margin:6px 0 6px;font-size:19px}
+.save-fallback-card p{margin:0 10px 14px;color:#77717f;font-size:13px;line-height:1.65}
+.save-fallback-card img{display:block;width:100%;height:auto;border-radius:14px;border:1px solid #eee8f3;-webkit-touch-callout:default;user-select:auto}
+.save-fallback-close{
+  position:absolute;right:12px;top:10px;width:34px;height:34px;border:0;border-radius:50%;
+  background:#f4f1f8;font-size:24px;line-height:1;cursor:pointer
+}
+.save-fallback-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+.save-fallback-actions button{
+  border:1px solid #e8e2f0;background:#fff;border-radius:12px;padding:11px 8px;font-weight:800
+}
+.save-fallback-actions button:first-child{
+  border:0;color:#fff;background:linear-gradient(100deg,#7657ff,#ef5ea8)
+}
+#exportBtn:disabled{opacity:.68;cursor:wait}
+@media(max-width:600px){
+  .save-fallback-actions{grid-template-columns:1fr}
+}

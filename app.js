@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.4.0';
+const W = 2525, H = 1894, VERSION = '10.4.1';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -1004,14 +1004,127 @@ function updateCheck(){
   $('#exportCheck').classList.add('ok');
 }
 $('#exportBtn').onclick=async()=>{
-  if(!photo)return alert('请先上传照片');
-  selected=null;photoAdjust=false;$('.canvas-stage').classList.remove('adjusting');
-  await render();
-  const a=document.createElement('a');
-  a.download=`PopShot-${course}-${Date.now()}.jpg`;
-  a.href=canvas.toDataURL('image/jpeg',.96);
-  a.click();
+  if(!photo) return alert('请先上传照片');
+
+  const btn=$('#exportBtn');
+  const oldText=btn?.innerHTML;
+  try{
+    if(btn){btn.disabled=true;btn.innerHTML='正在生成高清图片…';}
+
+    selected=null;
+    photoAdjust=false;
+    document.querySelector('.canvas-stage')?.classList.remove('adjusting');
+    await render();
+
+    const blob=await new Promise((resolve,reject)=>{
+      canvas.toBlob(b=>b?resolve(b):reject(new Error('图片生成失败')),'image/jpeg',0.96);
+    });
+
+    const filename=`PopShot-${course}-${Date.now()}.jpg`;
+    const file=new File([blob],filename,{type:'image/jpeg'});
+
+    // 1) Mobile first: use native share sheet when the browser allows sharing files.
+    // iPhone / iPad PWA and many Android Chrome versions support this.
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({
+          files:[file],
+          title:'PopShot 高清图片'
+        });
+        return;
+      }catch(e){
+        // User cancelling the share sheet is not a hard failure.
+        if(e && e.name==='AbortError') return;
+      }
+    }
+
+    // 2) Browser download fallback (desktop Chrome / many Android browsers).
+    try{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=filename;
+      a.style.display='none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},2500);
+
+      // iOS Safari may ignore `download`; show long-press fallback as well.
+      const ua=navigator.userAgent||'';
+      const isiOS=/iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+      if(isiOS){
+        showSaveFallback(blob,filename);
+      }
+      return;
+    }catch(e){}
+
+    // 3) Last resort: show the generated image so the user can long-press Save to Photos.
+    showSaveFallback(blob,filename);
+
+  }catch(err){
+    console.error(err);
+    alert('保存失败，已为你打开长按保存方式。');
+    try{
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.96));
+      if(blob) showSaveFallback(blob,`PopShot-${course}-${Date.now()}.jpg`);
+    }catch(e){}
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML=oldText||'保存高清图片';}
+  }
 };
+
+function showSaveFallback(blob,filename){
+  let modal=document.getElementById('saveFallbackModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='saveFallbackModal';
+    modal.className='save-fallback-modal';
+    modal.innerHTML=`
+      <div class="save-fallback-card">
+        <button class="save-fallback-close" aria-label="关闭">×</button>
+        <h3>高清图片已生成</h3>
+        <p>如果手机没有自动弹出保存窗口，请长按下面的图片，选择“存储到照片”或“保存图片”。</p>
+        <img id="saveFallbackImage" alt="PopShot 高清成图">
+        <div class="save-fallback-actions">
+          <button id="saveFallbackShare">再次打开系统分享</button>
+          <button id="saveFallbackCloseBtn">完成</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    const close=()=>{
+      modal.classList.remove('show');
+      const img=document.getElementById('saveFallbackImage');
+      if(img?.dataset?.objectUrl){URL.revokeObjectURL(img.dataset.objectUrl);delete img.dataset.objectUrl;}
+    };
+    modal.querySelector('.save-fallback-close').onclick=close;
+    modal.querySelector('#saveFallbackCloseBtn').onclick=close;
+    modal.onclick=e=>{if(e.target===modal)close();};
+  }
+
+  const img=document.getElementById('saveFallbackImage');
+  if(img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+  const url=URL.createObjectURL(blob);
+  img.src=url;
+  img.dataset.objectUrl=url;
+  img.setAttribute('download',filename);
+
+  const shareBtn=document.getElementById('saveFallbackShare');
+  shareBtn.onclick=async()=>{
+    try{
+      const file=new File([blob],filename,{type:'image/jpeg'});
+      if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+        await navigator.share({files:[file],title:'PopShot 高清图片'});
+      }else{
+        alert('当前浏览器不支持系统分享，请长按图片保存。');
+      }
+    }catch(e){
+      if(e?.name!=='AbortError') alert('请长按图片保存到照片。');
+    }
+  };
+
+  modal.classList.add('show');
+}
 
 function saveDraft(){if(photo)localStorage.popshotDraftState=state()}
 function openDB(){
