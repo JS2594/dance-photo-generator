@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '9.2.1';
+const W = 2525, H = 1894, VERSION = '9.2.2';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -375,12 +375,13 @@ async function render(){
   ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
   drawFrame();
 
+  // Mandatory visual layers: title + one Q character must never disappear.
+  layers.title.visible=true;
+  layers.character.visible=true;
   const boxes={};
-  for(const n of zOrder){
-    if(n==='title') boxes.title=drawTitle();
-    if(n==='character') boxes.character=await drawCharacter();
-    if(n==='sticker') boxes.sticker=drawSticker();
-  }
+  boxes.title=drawTitle();
+  boxes.character=await drawCharacter();
+  if(layers.sticker.visible) boxes.sticker=drawSticker();
   Object.entries(boxes).forEach(([n,b])=>selectBox(b,n));
   updateCheck();
 }
@@ -403,6 +404,8 @@ function restore(raw){
   if(!layers.title||!layers.character||!layers.sticker) resetLayers();
   layers.title.visible=true;
   layers.character.visible=true;
+  if(!zOrder.includes('title'))zOrder.unshift('title');
+  if(!zOrder.includes('character'))zOrder.push('character');
   syncUI();render();
 }
 
@@ -491,7 +494,7 @@ function scale(d){
 }
 $('#smallerBtn').onclick=()=>scale(-.1);
 $('#largerBtn').onclick=()=>scale(.1);
-$('#deleteBtn').onclick=()=>{if(!selected||selected==='__photo__')return;push();layers[selected].visible=!layers[selected].visible;render();saveDraft()};
+$('#deleteBtn').onclick=()=>{if(!selected||selected==='__photo__')return;if(selected==='title'||selected==='character')return alert('课程标题和Q版人物为默认主视觉，不能隐藏；可以拖动或缩小。');push();layers[selected].visible=!layers[selected].visible;render();saveDraft()};
 $('#frontBtn').onclick=()=>{if(!selected)return;push();zOrder=zOrder.filter(x=>x!==selected).concat(selected);render()};
 $('#backBtn').onclick=()=>{if(!selected)return;push();zOrder=[selected,...zOrder.filter(x=>x!==selected)];render()};
 $('#resetLayerBtn').onclick=()=>{if(!selected)return;push();const n=selected;const old={...layers};resetLayers();old[n]=layers[n];layers=old;render()};
@@ -510,7 +513,7 @@ input.onchange=e=>{
 $('#courseGrid').onclick=e=>{
   const b=e.target.closest('[data-course]');if(!b)return;
   push();course=b.dataset.course;localStorage.popshotLastCourse=course;
-  pickCombo();resetLayers();autoPlace();syncUI();render();saveDraft();
+  pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;syncUI();render();saveDraft();
 };
 $$('[data-beauty]').forEach(b=>b.onclick=()=>{
   push();beauty=+b.dataset.beauty;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();
@@ -522,8 +525,8 @@ $$('[data-density]').forEach(b=>b.onclick=()=>{
   push();density=b.dataset.density;autoPlace();syncUI();render();saveDraft();
 });
 
-$('#generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');push();pickCombo();resetLayers();autoPlace();selected=null;render();saveDraft()};
-$('#shuffleBtn').onclick=()=>{if(!photo)return;push();pickCombo();resetLayers();autoPlace();selected=null;render();saveDraft()};
+$('#generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');push();pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;selected=null;render();saveDraft()};
+$('#shuffleBtn').onclick=()=>{if(!photo)return;push();pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;selected=null;render();saveDraft()};
 
 function showCharacterPicker(){
   $('#drawerTitle').textContent='选择人物';
@@ -673,6 +676,6 @@ async function resume(){
 $('#updateBtn').onclick=()=>$('#updateTip').classList.remove('hidden');
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert('PopShot v9 · 照片仅在本机浏览器处理');
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js?v=9').catch(()=>{});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=922').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 syncUI();
 resume();

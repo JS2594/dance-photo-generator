@@ -1,5 +1,5 @@
 {
-  "version": "9.2.1",
+  "version": "9.2.2",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -124,5 +124,11 @@
     "titleCharacterNeverDisappear": true,
     "oldDraftLayerStateMigration": "incompatible drafts are cleared",
     "extremeMode": "hide sticker first; keep and reposition title + Q character"
+  },
+  "forceVisualHotfix": {
+    "title": "mandatory",
+    "character": "mandatory",
+    "sticker": "optional",
+    "versionBadge": true
   }
 }
