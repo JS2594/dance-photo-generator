@@ -1,5 +1,5 @@
 {
-  "version": "9.3.0",
+  "version": "10.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -146,5 +146,19 @@
     "fixed preview aspect ratio matching 2525x1894 export",
     "visible runtime version badge",
     "manual pan/zoom preserved"
-  ]
+  ],
+  "layoutFix": [
+    "removed bottom-center character/title composition",
+    "headline restricted to upper band by default",
+    "single Q character restricted to lower-left/lower-right",
+    "group-photo crop tightened with modest automatic zoom"
+  ],
+  "defaultDesignRules": {
+    "characterCount": 1,
+    "defaultSticker": false,
+    "headline": "only the four real course names",
+    "composition": "4 curated editorial layouts; title and character treated as one visual family",
+    "crowdProtection": "character/title scale down automatically as crowd density rises",
+    "manualOverride": "photo and overlay layers remain manually adjustable"
+  }
 }

@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '9.3.0';
+const W = 2525, H = 1894, VERSION = '10.0.0';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -114,18 +114,18 @@ function smartCrop(){
     const fy1=Math.min(...boxesDetected.map(b=>b.y));
     const fy2=Math.max(...boxesDetected.map(b=>b.y+b.h));
 
-    // 从所有脸估算整组人的完整范围；主要裁掉天花板、空墙、过多镜面。
-    let left=Math.max(0,fx1-avgW*1.25);
-    let right=Math.min(iw,fx2+avgW*1.25);
-    let top=Math.max(0,fy1-avgH*1.25);
-    let bottom=Math.min(ih,fy2+avgH*6.65);
+    // Estimate the real group tighter: preserve heads/feet but remove excessive ceiling/floor.
+    let left=Math.max(0,fx1-avgW*1.0);
+    let right=Math.min(iw,fx2+avgW*1.0);
+    let top=Math.max(0,fy1-avgH*.95);
+    let bottom=Math.min(ih,fy2+avgH*6.15);
 
-    let bw=right-left, bh=bottom-top;
-    left=Math.max(0,left-bw*.04);
-    right=Math.min(iw,right+bw*.04);
-    top=Math.max(0,top-bh*.035);
-    bottom=Math.min(ih,bottom+bh*.055);
-    bw=right-left; bh=bottom-top;
+    let bw=right-left,bh=bottom-top;
+    left=Math.max(0,left-bw*.025);
+    right=Math.min(iw,right+bw*.025);
+    top=Math.max(0,top-bh*.02);
+    bottom=Math.min(ih,bottom+bh*.035);
+    bw=right-left;bh=bottom-top;
 
     if(bw/bh<tr) bw=bh*tr; else bh=bw/tr;
     sw=Math.min(iw,bw); sh=Math.min(ih,bh);
@@ -135,10 +135,13 @@ function smartCrop(){
     else{ sw=iw; sh=iw/tr; }
   }
 
-  const z=Math.max(1,photoZoom);
+  // Small automatic zoom-in so group photos don't feel too empty.
+  const autoZoom = boxesDetected.length ? 1.08 : 1;
+  const z=Math.max(1,photoZoom)*autoZoom;
   sw/=z; sh/=z;
+
   let sx=cx-sw/2-photoDX*iw/W;
-  let sy=cy-sh*.49-photoDY*ih/H;
+  let sy=cy-sh*.50-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -166,85 +169,67 @@ function autoPlace(){
   const zones=faceZones();
   const level=crowd();
 
-  // Single Q character only. Title + character preferably behave as one visual module.
   layers.title.visible=true;
   layers.character.visible=true;
+  layers.sticker.visible=false; // decorative restraint: one character is enough by default
 
   if(level==='high'){
-    layers.title.scale=.78;
-    layers.character.scale=.52;
-    layers.sticker.visible=false;
+    layers.title.scale=.74;
+    layers.character.scale=.48;
   }else if(level==='mid'){
     layers.title.scale=.86;
-    layers.character.scale=.66;
-    layers.sticker.visible=density==='rich';
+    layers.character.scale=.61;
   }else{
-    layers.title.scale=1;
-    layers.character.scale=density==='rich'?.88:.78;
-    layers.sticker.visible=density!=='simple';
+    layers.title.scale=.98;
+    layers.character.scale=.76;
   }
 
-  const linked = [
-    {tx:78,ty:62,ta:'left', cx:610,cy:260},                     // title top-left + char tucked below/right
-    {tx:W-78,ty:62,ta:'right',cx:W-1030,cy:260},               // title top-right + char tucked below/left
-    {tx:78,ty:H-335,ta:'left',cx:690,cy:H-650},                // title bottom-left + char above/right
-    {tx:W-78,ty:H-335,ta:'right',cx:W-1080,cy:H-650},          // title bottom-right + char above/left
-    {tx:W*.50,ty:62,ta:'center',cx:W*.50-220,cy:300},          // title top-center + char below-center
-    {tx:W*.50,ty:H-335,ta:'center',cx:W*.50-220,cy:H-700},     // title bottom-center + char above-center
+  // Four curated editorial compositions.
+  // Character remains at a lower corner, while headline is pulled toward it
+  // so the two read as one designed module rather than unrelated layers.
+  const titleW=980*layers.title.scale;
+  const titleH=245*layers.title.scale;
+  const charW=420*layers.character.scale;
+  const charH=525*layers.character.scale;
+
+  const candidates=[
+    {tx:72,ty:58,ta:'left',  cx:W-charW-58,cy:H-charH-46,kind:'cross'},
+    {tx:W-72,ty:58,ta:'right',cx:58,cy:H-charH-46,kind:'cross'},
+    {tx:72,ty:58,ta:'left',  cx:58,cy:H-charH-46,kind:'same'},
+    {tx:W-72,ty:58,ta:'right',cx:W-charW-58,cy:H-charH-46,kind:'same'}
   ];
 
-  const corner = [
-    {tx:78,ty:62,ta:'left',cx:W-500,cy:H-585},
-    {tx:W-78,ty:62,ta:'right',cx:65,cy:H-585},
-    {tx:78,ty:H-335,ta:'left',cx:W-500,cy:72},
-    {tx:W-78,ty:H-335,ta:'right',cx:65,cy:72}
-  ];
-
-  const candidates = composeMode==='corner' ? corner : linked;
-  let best=candidates[0], bestScore=Infinity;
+  let best=candidates[0],bestScore=Infinity;
+  const centerPeople={x:W*.22,y:H*.28,w:W*.56,h:H*.70};
 
   for(const c of candidates){
-    const tw=1050*layers.title.scale, th=270*layers.title.scale;
-    const tb={
-      x:c.ta==='left'?c.tx:c.ta==='right'?c.tx-tw:c.tx-tw/2,
-      y:c.ty,w:tw,h:th
-    };
-    const cb={x:c.cx,y:c.cy,w:430*layers.character.scale,h:540*layers.character.scale};
+    const tb={x:c.ta==='left'?c.tx:c.tx-titleW,y:c.ty,w:titleW,h:titleH};
+    const cb={x:c.cx,y:c.cy,w:charW,h:charH};
+    let score=0;
 
-    let score=zones.reduce((n,z)=>n+1.2*overlap(tb,z)+1.5*overlap(cb,z),0);
-
-    // Prefer title-character closeness in linked mode.
-    if(composeMode==='linked'){
-      const tx=tb.x+tb.w/2, ty=tb.y+tb.h/2;
-      const cx=cb.x+cb.w/2, cy=cb.y+cb.h/2;
-      const dist=Math.hypot(tx-cx,ty-cy);
-      score += dist*.02;
+    for(const z of zones){
+      score += 1.55*overlap(tb,z);
+      score += 2.25*overlap(cb,z);
     }
 
-    const margin=34;
-    if(tb.x<margin||tb.x+tb.w>W-margin||tb.y<margin||tb.y+tb.h>H-margin) score+=2e7;
-    if(cb.x<margin||cb.x+cb.w>W-margin||cb.y<margin||cb.y+cb.h>H-margin) score+=1e7;
+    // Never cover the central real-person group with the Q character.
+    score += 1.15*overlap(cb,centerPeople);
 
-    if(score<bestScore){bestScore=score;best=c}
+    // Same-side arrangements feel more like a designed title/mascot family,
+    // but cross-side is retained for crowded photos.
+    if(c.kind==='same') score-=4200;
+
+    if(tb.x<34||tb.x+tb.w>W-34) score+=1e7;
+    if(cb.x<34||cb.x+cb.w>W-34||cb.y+cb.h>H-28) score+=1e7;
+
+    if(score<bestScore){bestScore=score;best=c;}
   }
 
-  layers.title.x=best.tx;layers.title.y=best.ty;layers.title.anchor=best.ta;
-  layers.character.x=best.cx;layers.character.y=best.cy;
-
-  // Sticker is optional and never allowed to become the second "character-like" focal object.
-  if(layers.sticker.visible){
-    const safeStickerCandidates=[
-      {x:90,y:110},{x:W-150,y:110},{x:90,y:H-150},{x:W-150,y:H-150}
-    ];
-    let sb=safeStickerCandidates[0], ss=Infinity;
-    for(const s of safeStickerCandidates){
-      const box={x:s.x-20,y:s.y-20,w:105,h:105};
-      const sc=zones.reduce((n,z)=>n+overlap(box,z),0);
-      if(sc<ss){ss=sc;sb=s}
-    }
-    layers.sticker.x=sb.x;layers.sticker.y=sb.y;
-    if(ss>0) layers.sticker.visible=false;
-  }
+  layers.title.x=best.tx;
+  layers.title.y=best.ty;
+  layers.title.anchor=best.ta;
+  layers.character.x=best.cx;
+  layers.character.y=best.cy;
 }
 
 function drawPhoto(){
@@ -679,7 +664,7 @@ async function resume(){
 $('#updateBtn').onclick=()=>$('#updateTip').classList.remove('hidden');
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert('PopShot v9 · 照片仅在本机浏览器处理');
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=9.322').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.0.022').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
@@ -690,7 +675,7 @@ $$('[data-compose]').forEach(b=>b.onclick=()=>{
 });
 window.addEventListener('load',()=>{
   $$('[data-compose]').forEach(x=>x.classList.toggle('on',x.dataset.compose===composeMode));
-  const vb=$('#versionBadge'); if(vb) vb.textContent='v9.3';
+  const vb=$('#versionBadge'); if(vb) vb.textContent='v10.0';
 });
 
 syncUI();
