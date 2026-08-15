@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.2.0';
+const W = 2525, H = 1894, VERSION = '10.2.1';
 
 const charFiles = {
   lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
@@ -44,6 +44,12 @@ let boxesDetected = [];
 let charIndex = 0, titleIndex = 0, frameIndex = 1, stickerIndex = 0, layoutIndex = 1;
 
 let composeMode = localStorage.getItem('popshotComposeMode') || 'linked';
+// 一次性迁移：v10.2 之前留下的"角落独立"记忆会让新排版继续散着摆，强制回到紧密组合。
+if(!localStorage.popshotComposeModeV2){
+  composeMode='linked';
+  localStorage.setItem('popshotComposeMode','linked');
+  localStorage.popshotComposeModeV2='1';
+}
 let forcedSide = null; // 布局按钮可强制人物在标题左端/右端，null 表示自动选人少的一侧
 let selected = null, dragging = false, dragOffset = {x:0,y:0}, locked = null;
 let undo = [], redo = [], loaded = {};
@@ -289,12 +295,12 @@ function autoPlace(){
   // ── 紧密组合模式（默认）：参考小红书团课封面 ──
   // 大标题横贯顶部，Q版人物"骑"在标题一端的字母上，两者构成一个视觉模块。
   const baseW=titleTextWidth(174);
-  const frac = level==='high'?0.72 : level==='mid'?0.78 : 0.84;
+  const frac = level==='high'?0.76 : level==='mid'?0.82 : 0.88;
   const ts=(W*frac)/baseW;
   layers.title.scale=ts;
   layers.title.anchor='center';
   layers.title.x=W/2;
-  layers.title.y= level==='high'?38:52;
+  layers.title.y= level==='high'?34:44;
 
   let cs = level==='high'?0.52 : level==='mid'?0.64 : 0.78;
   const bandH=174*ts;                 // 标题字高近似
@@ -969,7 +975,7 @@ async function resume(){
 $('#updateBtn').onclick=()=>$('#updateTip').classList.remove('hidden');
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert('PopShot v9 · 照片仅在本机浏览器处理');
-if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.2.0').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js?v=10.2.1').then(r=>r.update()).catch(()=>{});} window.addEventListener('load',()=>{const v=document.getElementById('versionBadge');if(v)v.textContent='v'+VERSION;});
 
 $$('[data-compose]').forEach(b=>b.onclick=()=>{
   push();
