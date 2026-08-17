@@ -130,3 +130,19 @@ canvas#canvas{
 .crop-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}.save-toast{position:fixed;left:50%;bottom:28px;z-index:10002;transform:translate(-50%,18px);opacity:0;background:rgba(25,22,31,.92);color:#fff;padding:11px 16px;border-radius:999px;font-size:13px;font-weight:800;transition:.2s;pointer-events:none;white-space:nowrap}.save-toast.show{opacity:1;transform:translate(-50%,0)}
 #saveDirectBtn{color:#fff!important;border:0!important;background:linear-gradient(100deg,#7657ff,#ef5ea8)!important}.save-fallback-actions{grid-template-columns:1.25fr 1fr 1fr!important}
 @media(max-width:600px){.shell{width:min(100%,720px)!important}.hero-card,.result-card{padding:14px!important}.compact-upload{min-height:82px!important}.course-card{min-height:84px!important}.course-card img{height:68px!important}.quick-row{margin-top:10px!important}.cta{margin-top:10px!important}.save-fallback-actions{grid-template-columns:1fr 1fr!important}.save-fallback-actions button:last-child{grid-column:1/-1}.crop-actions{grid-template-columns:1fr 1fr}.crop-actions button:last-child{grid-column:1/-1}}
+
+/* v14 beauty + sticker library */
+.beauty-seg{display:grid!important;grid-template-columns:repeat(5,1fr);min-width:340px}
+.beauty-seg button{padding:7px 8px!important}
+.beauty-preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.beauty-preset-grid button{border:1px solid #e9e4f2;background:#fff;border-radius:12px;padding:10px 6px;font-size:11px;color:#666}
+.beauty-preset-grid button.on{border-color:#8a67ff;background:#f3efff;color:#6749e3;font-weight:800}
+.adjust-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.adjust-grid .range-row{grid-template-columns:66px 1fr 34px}
+.sticker-tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}.sticker-tabs::-webkit-scrollbar{display:none}
+.sticker-tabs button{flex:none;border:1px solid #e8e3f1;background:#fff;border-radius:999px;padding:7px 10px;font-size:10px;color:#666}
+.sticker-tabs button.on{background:#f0ebff;color:#6848e8;border-color:#8262ff;font-weight:800}
+.sticker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;max-height:48vh;overflow:auto;padding:2px}
+.sticker-grid .sticker-option{border:1px solid #eee9f4;background:#fff;border-radius:14px;min-height:76px;display:grid;place-items:center;padding:8px}
+.sticker-grid .sticker-option img{width:54px;height:54px;object-fit:contain}.sticker-grid .sticker-option.on{border-color:#7d5cff;box-shadow:inset 0 0 0 1px #7d5cff;background:#f8f5ff}
+.holiday-badge{display:inline-flex;align-items:center;gap:5px;color:#ee4f91;background:#fff0f6;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:800;margin-bottom:8px}
+@media(max-width:640px){.beauty-quick{align-items:stretch!important;flex-direction:column;gap:8px}.beauty-seg{min-width:0;width:100%}.beauty-preset-grid{grid-template-columns:repeat(3,1fr)}.adjust-grid{grid-template-columns:1fr}.sticker-grid{grid-template-columns:repeat(4,1fr)}}

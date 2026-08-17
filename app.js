@@ -1,10 +1,11 @@
+const INLINE_STICKER_SVGS={"./public/assets/stickers/cute/bow.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M114 111C87 57 25 54 30 113c4 47 56 46 84 17zM142 111c27-54 89-57 84 2-4 47-56 46-84 17z' fill='#ff79b8' stroke='#8a64ff' stroke-width='8'/><rect x='105' y='99' width='46' height='55' rx='15' fill='#ffd2e6' stroke='#8a64ff' stroke-width='7'/></svg>","./public/assets/stickers/cute/butterfly.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M121 119C90 53 34 46 35 94c1 36 42 49 78 45-35 20-65 58-36 78 31 21 54-20 51-71M135 119c31-66 87-73 86-25-1 36-42 49-78 45 35 20 65 58 36 78-31 21-54-20-51-71' fill='#ff78b6' stroke='#6d55ff' stroke-width='7'/><path d='M128 104v63' stroke='#333' stroke-width='8'/></svg>","./public/assets/stickers/cute/candyheart.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M128 216C92 179 36 144 36 92c0-34 27-56 56-56 18 0 31 9 36 22 6-13 19-22 37-22 30 0 55 22 55 56 0 52-55 87-92 124z' fill='#ff9acb' stroke='#fff' stroke-width='9'/><path d='M77 126h102' stroke='#8a64ff' stroke-width='13' stroke-linecap='round'/></svg>","./public/assets/stickers/cute/doubleheart.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M90 195C60 165 22 141 22 99c0-25 20-42 43-42 14 0 23 7 28 17 5-10 16-17 29-17 23 0 42 17 42 42 0 42-38 66-74 96z' fill='#ff4f91'/><path d='M174 177c-20-20-48-38-48-68 0-18 14-31 31-31 10 0 17 5 21 13 4-8 12-13 22-13 17 0 31 13 31 31 0 30-28 48-57 68z' fill='#8a64ff'/></svg>","./public/assets/stickers/cute/flower.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><g fill='#ff76b7' stroke='#fff' stroke-width='6'><circle cx='128' cy='65' r='38'/><circle cx='188' cy='105' r='38'/><circle cx='165' cy='176' r='38'/><circle cx='91' cy='176' r='38'/><circle cx='68' cy='105' r='38'/></g><circle cx='128' cy='128' r='36' fill='#ffd743'/></svg>","./public/assets/stickers/cute/mini_crown.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M35 82l46 36 46-72 48 72 46-36-18 112H53z' fill='#ffd34d' stroke='#7b4d00' stroke-width='10' stroke-linejoin='round'/><circle cx='35' cy='82' r='10' fill='#ff4fa3'/><circle cx='127' cy='46' r='10' fill='#8a64ff'/><circle cx='221' cy='82' r='10' fill='#ff4fa3'/></svg>","./public/assets/stickers/dance/disco.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><circle cx='128' cy='132' r='73' fill='#d8ddff' stroke='#775fff' stroke-width='8'/><g stroke='#8a7ee0' stroke-width='5'><path d='M55 110h146M57 145h142M72 80h112M72 180h112M95 63c-18 40-18 101 0 139M128 59v146M161 63c18 40 18 101 0 139'/></g><path d='M128 20v38' stroke='#555' stroke-width='8'/></svg>","./public/assets/stickers/dance/headphones.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M50 137v-18c0-49 34-87 78-87s78 38 78 87v18' fill='none' stroke='#7b5cff' stroke-width='18' stroke-linecap='round'/><rect x='34' y='126' width='43' height='74' rx='18' fill='#ff4fa3'/><rect x='179' y='126' width='43' height='74' rx='18' fill='#ff4fa3'/></svg>","./public/assets/stickers/dance/mic.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><rect x='91' y='25' width='74' height='112' rx='37' fill='#ff5aa4' stroke='#5d3dff' stroke-width='8'/><path d='M67 111c0 43 23 69 61 69s61-26 61-69M128 180v50M94 230h68' fill='none' stroke='#5d3dff' stroke-width='12' stroke-linecap='round'/></svg>","./public/assets/stickers/dance/music_note.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M102 54v116c0 24-17 43-42 43-18 0-31-11-31-27 0-20 18-34 43-34 7 0 13 1 18 3V73l121-27v94c0 24-17 43-42 43-18 0-31-11-31-27 0-20 18-34 43-34 6 0 12 1 17 3V20z' fill='#7b5cff' stroke='white' stroke-width='7'/></svg>","./public/assets/stickers/dance/rhythm.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M18 150c30-78 55 78 85 0s55 78 85 0 35-25 50-2' fill='none' stroke='#ff4fa3' stroke-width='16' stroke-linecap='round'/><path d='M28 98h52M176 98h50' stroke='#7b5cff' stroke-width='12' stroke-linecap='round'/></svg>","./public/assets/stickers/dance/spotlight.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M68 38h120l-26 56H94z' fill='#7b5cff'/><path d='M95 94L42 222h172L161 94z' fill='#ffe66b' opacity='.75'/><circle cx='128' cy='177' r='24' fill='#ff4fa3'/></svg>","./public/assets/stickers/fitness/dumbbell.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><g fill='#282633'><rect x='58' y='108' width='140' height='40' rx='12'/><rect x='24' y='88' width='38' height='80' rx='10'/><rect x='194' y='88' width='38' height='80' rx='10'/><rect x='9' y='103' width='18' height='50' rx='7'/><rect x='229' y='103' width='18' height='50' rx='7'/></g><rect x='92' y='112' width='72' height='32' rx='10' fill='#8a64ff'/></svg>","./public/assets/stickers/fitness/energy.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M144 18L59 136h55l-3 102 87-134h-54z' fill='#8a64ff'/><path d='M44 204h70M160 54h55' stroke='#ff4fa3' stroke-width='11' stroke-linecap='round'/></svg>","./public/assets/stickers/fitness/flame.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M139 20c12 53-35 61-18 102 10-23 32-37 47-60 25 39 47 68 35 112-11 39-42 63-80 62-45-1-76-32-72-75 3-30 23-52 44-75 2 31 12 41 26 53-1-44 16-70 18-119z' fill='#ff6b2d' stroke='#ffcf3d' stroke-width='9'/></svg>","./public/assets/stickers/fitness/kettlebell.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M89 74c0-35 18-54 39-54s39 19 39 54' fill='none' stroke='#33313b' stroke-width='16'/><path d='M68 82h120c19 35 30 63 30 88 0 43-39 68-90 68s-90-25-90-68c0-25 11-53 30-88z' fill='#7b5cff' stroke='#33313b' stroke-width='9'/><circle cx='128' cy='160' r='21' fill='#ff4fa3'/></svg>","./public/assets/stickers/fitness/plate.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><circle cx='128' cy='128' r='92' fill='#2d2b35' stroke='#ff4fa3' stroke-width='10'/><circle cx='128' cy='128' r='28' fill='#fff'/><circle cx='128' cy='128' r='13' fill='#2d2b35'/><path d='M128 45v28M128 183v28M45 128h28M183 128h28' stroke='#777' stroke-width='8'/></svg>","./public/assets/stickers/fitness/strong_star.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M128 18l27 72 77 4-60 48 20 75-64-42-64 42 20-75-60-48 77-4z' fill='#ffd34d' stroke='#6f50ff' stroke-width='8'/><path d='M90 145c23-31 53-31 76 0' fill='none' stroke='#333' stroke-width='12' stroke-linecap='round'/></svg>","./public/assets/stickers/general/crown.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M35 82l46 36 46-72 48 72 46-36-18 112H53z' fill='#ffd34d' stroke='#7b4d00' stroke-width='10' stroke-linejoin='round'/><circle cx='35' cy='82' r='10' fill='#ff4fa3'/><circle cx='127' cy='46' r='10' fill='#8a64ff'/><circle cx='221' cy='82' r='10' fill='#ff4fa3'/></svg>","./public/assets/stickers/general/heart.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M128 214C92 178 36 145 36 91c0-34 27-55 56-55 18 0 31 9 36 22 6-13 19-22 37-22 30 0 55 22 55 55 0 54-55 87-92 123z' fill='#ff4f91' stroke='white' stroke-width='9'/></svg>","./public/assets/stickers/general/lightning.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M145 18L57 143h59l-6 95 89-132h-58z' fill='#ffd23d' stroke='#7a55ff' stroke-width='10' stroke-linejoin='round'/></svg>","./public/assets/stickers/general/smiley.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><circle cx='128' cy='128' r='92' fill='#ffd83d' stroke='#5d4b00' stroke-width='10'/><circle cx='94' cy='105' r='10' fill='#5d4b00'/><circle cx='162' cy='105' r='10' fill='#5d4b00'/><path d='M82 150c20 32 73 32 92 0' fill='none' stroke='#5d4b00' stroke-width='12' stroke-linecap='round'/></svg>","./public/assets/stickers/general/sparkle.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M128 22 L146 102 L226 120 L146 138 L128 218 L110 138 L30 120 L110 102 Z' fill='#8a64ff' stroke='white' stroke-width='8'/></svg>","./public/assets/stickers/general/sparkle_burst.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><g stroke='#ff4fa3' stroke-width='14' stroke-linecap='round'><path d='M128 26v50M128 180v50M26 128h50M180 128h50M55 55l36 36M165 165l36 36M201 55l-36 36M91 165l-36 36'/></g><circle cx='128' cy='128' r='30' fill='#ffd34d'/></svg>","./public/assets/stickers/graphic/arrow.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M30 132h158M150 76l58 56-58 56' fill='none' stroke='#ff4fa3' stroke-width='18' stroke-linecap='round' stroke-linejoin='round'/></svg>","./public/assets/stickers/graphic/checker.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><rect x='28' y='28' width='200' height='200' rx='24' fill='#fff' stroke='#222' stroke-width='8'/><g fill='#222'><rect x='40' y='40' width='44' height='44'/><rect x='128' y='40' width='44' height='44'/><rect x='84' y='84' width='44' height='44'/><rect x='172' y='84' width='44' height='44'/><rect x='40' y='128' width='44' height='44'/><rect x='128' y='128' width='44' height='44'/><rect x='84' y='172' width='44' height='44'/><rect x='172' y='172' width='44' height='44'/></g></svg>","./public/assets/stickers/graphic/corner.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M35 112V35h77M221 144v77h-77' fill='none' stroke='#8a64ff' stroke-width='17' stroke-linecap='round'/><circle cx='192' cy='63' r='18' fill='#ff4fa3'/></svg>","./public/assets/stickers/graphic/dots.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><g fill='#ff4fa3'><circle cx='55' cy='58' r='16'/><circle cx='108' cy='92' r='13'/><circle cx='168' cy='54' r='20'/><circle cx='204' cy='113' r='11'/><circle cx='68' cy='171' r='20'/><circle cx='145' cy='184' r='13'/><circle cx='205' cy='193' r='18'/></g></svg>","./public/assets/stickers/graphic/scribble.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M24 163c38-85 46 80 84-5s46 75 83-3 34-54 41-26' fill='none' stroke='#7b5cff' stroke-width='15' stroke-linecap='round'/></svg>","./public/assets/stickers/graphic/tape.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><rect x='35' y='72' width='186' height='112' rx='12' fill='#ffe6a8' opacity='.9' stroke='#d2a953' stroke-width='7'/><path d='M58 91l-12 18M92 83l-14 21M180 90l-14 20M208 111l-13 20' stroke='#fff' stroke-width='7'/></svg>","./public/assets/stickers/holiday/christmas/candycane.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M90 218V90c0-46 74-50 77-3 2 27-17 42-40 42' fill='none' stroke='#fff' stroke-width='34' stroke-linecap='round'/><path d='M90 218V90c0-46 74-50 77-3 2 27-17 42-40 42' fill='none' stroke='#e94259' stroke-width='34' stroke-linecap='round' stroke-dasharray='28 24'/></svg>","./public/assets/stickers/holiday/christmas/gift.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><rect x='38' y='94' width='180' height='130' rx='12' fill='#ff506d' stroke='#fff' stroke-width='8'/><rect x='113' y='94' width='30' height='130' fill='#ffd64d'/><rect x='28' y='75' width='200' height='44' rx='12' fill='#ff6f89'/><path d='M128 75c-24-48-66-45-60-13 6 27 44 24 60 13zm0 0c24-48 66-45 60-13-6 27-44 24-60 13z' fill='#ffd64d'/></svg>","./public/assets/stickers/holiday/christmas/snowflake.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><g stroke='#63b7ff' stroke-width='12' stroke-linecap='round'><path d='M128 24v208M38 76l180 104M38 180L218 76'/></g><g stroke='#63b7ff' stroke-width='8'><path d='M128 48l-20-18M128 48l20-18M128 208l-20 18M128 208l20 18'/></g></svg>","./public/assets/stickers/holiday/christmas/tree.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M128 25l-54 68h27l-48 62h36l-43 54h164l-43-54h36l-48-62h27z' fill='#2fb36f' stroke='#176b44' stroke-width='7'/><rect x='113' y='203' width='30' height='31' fill='#8b542f'/><circle cx='128' cy='45' r='12' fill='#ffd33d'/></svg>","./public/assets/stickers/holiday/cny/firecracker.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M75 43c45 26 65 54 94 99' fill='none' stroke='#d6a52d' stroke-width='9'/><g fill='#e9434e' stroke='#94212a' stroke-width='5'><rect x='55' y='64' width='35' height='51' rx='7' transform='rotate(-23 72 89)'/><rect x='89' y='92' width='35' height='51' rx='7' transform='rotate(-23 106 117)'/><rect x='123' y='123' width='35' height='51' rx='7' transform='rotate(-23 140 148)'/><rect x='155' y='154' width='35' height='51' rx='7' transform='rotate(-23 172 179)'/></g><path d='M198 47l10 22 23 5-19 16 3 23-20-12-20 12 4-23-18-16 23-5z' fill='#ffd64d'/></svg>","./public/assets/stickers/holiday/cny/lantern.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M94 39h68M103 54c-38 23-42 116 25 140 67-24 63-117 25-140z' fill='#ef3e48' stroke='#9f2028' stroke-width='8'/><path d='M128 58v132M99 95h58M101 150h54M128 194v36M111 230h34' stroke='#ffd44b' stroke-width='7'/></svg>","./public/assets/stickers/holiday/cny/luckyfan.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M128 218L48 72c53-44 108-44 160 0z' fill='#ef424f' stroke='#9f232d' stroke-width='8'/><path d='M128 218L78 62M128 218l0-170M128 218l50-156' stroke='#ffd64d' stroke-width='7'/><circle cx='128' cy='218' r='14' fill='#ffd64d'/></svg>","./public/assets/stickers/holiday/cny/redpacket.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><rect x='55' y='35' width='146' height='190' rx='18' fill='#e9424d' stroke='#a11e2a' stroke-width='8'/><path d='M58 72l70 48 70-48' fill='#f55d68'/><circle cx='128' cy='148' r='36' fill='#ffd64d'/><path d='M110 148h36M128 130v36' stroke='#ad6b00' stroke-width='7'/></svg>","./public/assets/stickers/holiday/halloween/bat.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M128 116c-22-26-35-22-54-11L31 74l8 70 52 8 37 43 37-43 52-8 8-70-43 31c-19-11-32-15-54 11z' fill='#2b2541' stroke='#8f6cff' stroke-width='8'/></svg>","./public/assets/stickers/holiday/halloween/ghost.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M56 214V113c0-48 31-82 72-82s72 34 72 82v101l-25-22-24 22-23-22-24 22-24-22z' fill='#fff' stroke='#7763c7' stroke-width='8'/><circle cx='102' cy='111' r='11' fill='#333'/><circle cx='155' cy='111' r='11' fill='#333'/><ellipse cx='128' cy='150' rx='17' ry='22' fill='#333'/></svg>","./public/assets/stickers/holiday/halloween/pumpkin.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><ellipse cx='128' cy='145' rx='92' ry='72' fill='#ff8428' stroke='#6b3512' stroke-width='9'/><path d='M128 72c-10-24 9-44 29-42' fill='none' stroke='#3c8a3a' stroke-width='13'/><path d='M73 131l25-20 17 27M183 131l-25-20-17 27M86 166c27 20 57 20 84 0' fill='none' stroke='#4b250d' stroke-width='11' stroke-linecap='round'/></svg>","./public/assets/stickers/holiday/halloween/web.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><g fill='none' stroke='#8f6cff' stroke-width='7'><circle cx='128' cy='128' r='92'/><circle cx='128' cy='128' r='60'/><circle cx='128' cy='128' r='30'/><path d='M128 22v212M22 128h212M52 52l152 152M204 52L52 204'/></g></svg>","./public/assets/stickers/holiday/midautumn/cloudmoon.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><circle cx='154' cy='95' r='65' fill='#ffd866'/><path d='M39 176c0-22 18-40 41-40 8-25 29-39 53-34 13 3 24 11 31 23 6-4 15-7 24-7 24 0 43 19 43 43 0 23-18 42-42 42H77c-21 0-38-10-38-27z' fill='#eaf0ff' stroke='#9aa9de' stroke-width='7'/></svg>","./public/assets/stickers/holiday/midautumn/lanternmoon.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><circle cx='68' cy='73' r='39' fill='#ffd866'/><rect x='115' y='58' width='88' height='119' rx='30' fill='#ff5b66' stroke='#a62f3b' stroke-width='8'/><path d='M128 58V39h62v19M128 177v19h62v-19M159 58v119' stroke='#ffd36b' stroke-width='7'/></svg>","./public/assets/stickers/holiday/midautumn/mooncake.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><circle cx='128' cy='128' r='88' fill='#d99a45' stroke='#8a5c24' stroke-width='10'/><circle cx='128' cy='128' r='58' fill='none' stroke='#f5c779' stroke-width='8'/><path d='M92 128h72M128 92v72M102 102l52 52M154 102l-52 52' stroke='#f5c779' stroke-width='7'/></svg>","./public/assets/stickers/holiday/midautumn/moonrabbit.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><circle cx='133' cy='127' r='92' fill='#ffd866' stroke='#f0a83c' stroke-width='7'/><path d='M102 158c-18-22-14-51 10-65 6-27 7-49 18-50 12-1 8 28 8 43 13-31 24-49 35-42 11 7-6 33-16 51 22 9 37 31 34 56-5 40-54 53-89 7z' fill='#fff' opacity='.95'/></svg>","./public/assets/stickers/holiday/valentine/doubleheart.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M90 195C60 165 22 141 22 99c0-25 20-42 43-42 14 0 23 7 28 17 5-10 16-17 29-17 23 0 42 17 42 42 0 42-38 66-74 96z' fill='#ff4f91'/><path d='M174 177c-20-20-48-38-48-68 0-18 14-31 31-31 10 0 17 5 21 13 4-8 12-13 22-13 17 0 31 13 31 31 0 30-28 48-57 68z' fill='#8a64ff'/></svg>","./public/assets/stickers/holiday/valentine/heartarrow.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M116 212C83 179 36 149 36 99c0-32 24-52 51-52 17 0 29 8 34 21 6-13 18-21 35-21 27 0 51 20 51 52 0 50-47 80-91 113z' fill='#ff4f91'/><path d='M24 192L220 56M184 55h37v38' stroke='#6e55ff' stroke-width='12' stroke-linecap='round' stroke-linejoin='round'/></svg>","./public/assets/stickers/holiday/valentine/kiss.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M48 141c26-18 47-42 80-42s54 24 80 42c-28 51-132 51-160 0z' fill='#ff6c93' stroke='#b72b52' stroke-width='8'/><path d='M70 141c38 12 77 12 116 0' stroke='#fff' stroke-width='8'/></svg>","./public/assets/stickers/holiday/valentine/rose.svg":"<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'><path d='M126 116c-35-8-48-41-27-66 18-22 48-10 55 7 12-20 45-22 55 4 11 29-19 56-55 61z' fill='#ff4f72' stroke='#a6274b' stroke-width='7'/><path d='M143 117c-6 49-8 75-5 111M137 159c-30-4-45-18-56-35M141 184c30-5 43-22 53-40' fill='none' stroke='#319456' stroke-width='10'/></svg>"};
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '13.1.0';
+const W = 2525, H = 1894, VERSION = '14.0.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -37,6 +38,64 @@ const styles = {
   film:{label:'胶片',p:['#3f7f6e','#e8563f','#f2c94c'],st:['✦','·','★','♪','REC','●','DATE','FILM','SNAP'],
     g:{br:1.02,ct:1.11,sa:.85, hue:-3, tint:'rgba(125,150,142,.15)',glow:.6}}
 };
+
+
+const BEAUTY_PRESETS={
+  original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
+  natural:{label:'自然',ex:.05,ct:.02,sa:.04,temp:2,hi:.03,sh:.05,tint:'rgba(255,240,235,.025)'},
+  bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
+  vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
+  clear:{label:'清透',ex:.10,ct:.05,sa:-.03,temp:-3,hi:.06,sh:.07,tint:'rgba(210,235,255,.035)'},
+  warm:{label:'暖阳',ex:.08,ct:.02,sa:.07,temp:10,hi:.04,sh:.04,tint:'rgba(255,180,90,.055)'},
+  coolwhite:{label:'冷白',ex:.11,ct:.03,sa:-.08,temp:-10,hi:.08,sh:.05,tint:'rgba(165,210,255,.055)'},
+  softpink:{label:'柔粉',ex:.08,ct:-.03,sa:.02,temp:3,hi:.07,sh:.08,tint:'rgba(255,155,200,.06)'},
+  creamtone:{label:'奶油',ex:.09,ct:-.05,sa:-.02,temp:7,hi:.05,sh:.07,tint:'rgba(255,216,170,.065)'},
+  retro:{label:'复古',ex:-.01,ct:.09,sa:-.14,temp:5,hi:-.02,sh:-.03,tint:'rgba(160,125,95,.05)'},
+  contrast:{label:'高对比',ex:.02,ct:.16,sa:.03,temp:0,hi:.01,sh:-.06,tint:null},
+  desat:{label:'低饱和',ex:.05,ct:.02,sa:-.26,temp:0,hi:.03,sh:.05,tint:'rgba(210,215,210,.03)'},
+  colorful:{label:'鲜艳',ex:.06,ct:.06,sa:.27,temp:1,hi:.02,sh:.01,tint:null}
+};
+let beautyPreset=localStorage.popshotBeautyPreset||'natural';
+let manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};
+let stickerCategory='recommended';
+const STICKER_CATEGORIES={
+  recommended:{label:'推荐',files:[]},
+  general:{label:'通用',files:['sparkle','sparkle_burst','crown','heart','smiley','lightning'].map(x=>`./public/assets/stickers/general/${x}.svg`)},
+  dance:{label:'Dance',files:['music_note','headphones','disco','rhythm','spotlight','mic'].map(x=>`./public/assets/stickers/dance/${x}.svg`)},
+  fitness:{label:'Fitness',files:['dumbbell','plate','flame','energy','kettlebell','strong_star'].map(x=>`./public/assets/stickers/fitness/${x}.svg`)},
+  cute:{label:'可爱',files:['bow','doubleheart','butterfly','flower','candyheart','mini_crown'].map(x=>`./public/assets/stickers/cute/${x}.svg`)},
+  graphic:{label:'图形',files:['checker','arrow','tape','scribble','dots','corner'].map(x=>`./public/assets/stickers/graphic/${x}.svg`)},
+  christmas:{label:'圣诞限定',holiday:true,files:['tree','snowflake','gift','candycane'].map(x=>`./public/assets/stickers/holiday/christmas/${x}.svg`)},
+  halloween:{label:'万圣限定',holiday:true,files:['pumpkin','ghost','bat','web'].map(x=>`./public/assets/stickers/holiday/halloween/${x}.svg`)},
+  valentine:{label:'情人节限定',holiday:true,files:['heartarrow','rose','kiss','doubleheart'].map(x=>`./public/assets/stickers/holiday/valentine/${x}.svg`)},
+  midautumn:{label:'中秋限定',holiday:true,files:['moonrabbit','mooncake','lanternmoon','cloudmoon'].map(x=>`./public/assets/stickers/holiday/midautumn/${x}.svg`)},
+  cny:{label:'春节限定',holiday:true,files:['redpacket','lantern','firecracker','luckyfan'].map(x=>`./public/assets/stickers/holiday/cny/${x}.svg`)}
+};
+const FESTIVAL_DATES={
+  midautumn:{2026:'09-25',2027:'09-15',2028:'10-03',2029:'09-22',2030:'09-12'},
+  cny:{2026:'02-17',2027:'02-06',2028:'01-26',2029:'02-13',2030:'02-03'}
+};
+function nearDate(mmdd,days=4){
+  if(!mmdd)return false;const d=new Date(),[m,da]=mmdd.split('-').map(Number),t=new Date(d.getFullYear(),m-1,da);
+  return Math.abs(d-t)<=days*864e5;
+}
+function activeHolidayCategory(){
+  const d=new Date(),m=d.getMonth()+1,day=d.getDate(),y=d.getFullYear();
+  if(m===12&&day>=18&&day<=27)return'christmas';
+  if(m===10&&day>=24&&day<=31)return'halloween';
+  if(m===2&&day>=10&&day<=16)return'valentine';
+  if(nearDate(FESTIVAL_DATES.midautumn[y],4))return'midautumn';
+  if(nearDate(FESTIVAL_DATES.cny[y],7))return'cny';
+  return null;
+}
+function recommendedStickerFiles(){
+  const base=[...STICKER_CATEGORIES.general.files,...STICKER_CATEGORIES.graphic.files];
+  if(course==='buttscaler')base.push(...STICKER_CATEGORIES.fitness.files);
+  else base.push(...STICKER_CATEGORIES.dance.files);
+  if(visualStyle==='cute'||visualStyle==='cream'||visualStyle==='fair')base.push(...STICKER_CATEGORIES.cute.files);
+  const h=activeHolidayCategory();if(h)base.push(...STICKER_CATEGORIES[h].files);
+  return base;
+}
 
 let photo = null;
 let course = localStorage.popshotLastCourse || 'zumba';
@@ -92,21 +151,16 @@ function load(path){
     const im = new Image();
     im.onload = ()=>resolve(im);
     im.onerror = reject;
-    im.src = path;
+    const inlineSvg=INLINE_STICKER_SVGS[path];
+    im.src=inlineSvg
+      ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
+      : path;
   });
   return loaded[path];
 }
 
-function holidayStickers(){
-  const d=new Date(), m=d.getMonth()+1, day=d.getDate(), y=d.getFullYear();
-  if(m===12 && day>=20) return ['🎄','🎅','❄️','🎁'];
-  if(m===10 && day>=25) return ['🎃','👻','🦇'];
-  if(m===2 && day>=10 && day<=16) return ['💘','💗','🌹'];
-  if(y===2026 && m===9 && day>=23 && day<=27) return ['🌕','🐇','🥮'];
-  if(y===2027 && m===2 && day>=4 && day<=10) return ['🧧','🏮','🐉'];
-  return null;
-}
-function stickerPool(){ return holidayStickers() || styles[visualStyle].st; }
+function holidayStickers(){const h=activeHolidayCategory();return h?STICKER_CATEGORIES[h].files:null;}
+function stickerPool(){return stickerCategory==='recommended'?recommendedStickerFiles():(STICKER_CATEGORIES[stickerCategory]?.files||recommendedStickerFiles());}
 
 // ── 本地人脸检测（pico.js）：完全离线，无需访问任何外网，专治 MediaPipe 加载失败 ──
 let picoReady=null;
@@ -382,36 +436,20 @@ function autoPlace(){
 }
 
 function drawPhoto(){
-  const c=smartCrop(), b=beauty/100;
-  const gr=styles[visualStyle].g;
-  ctx.save();
-  // 美颜基线 × 风格滤镜：切换风格会真实改变照片的亮度/对比/饱和/色相。
-  ctx.filter=`brightness(${((1+b*.21)*gr.br).toFixed(3)}) contrast(${((1+b*.03)*gr.ct).toFixed(3)}) saturate(${((1+b*.11)*gr.sa).toFixed(3)}) hue-rotate(${gr.hue}deg)`;
-  ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
-  ctx.restore();
-  // 柔光滤镜：模糊图层以 screen 模式叠回，强度随风格变化（拖动时跳过以保证流畅）。
-  if(b>0 && !dragging){
-    ctx.save();
-    ctx.globalAlpha=Math.min(.5,(.19*b+.07)*gr.glow);
-    ctx.globalCompositeOperation='screen';
-    ctx.filter='blur(28px) brightness(1.15)';
-    ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
-    ctx.restore();
-  }
-  // 风格色调纱：每种风格叠一层专属色调，切换风格的观感差异主要来自这里。
-  ctx.save();
-  ctx.globalCompositeOperation='soft-light';
-  ctx.fillStyle=gr.tint;
-  ctx.fillRect(0,0,W,H);
-  ctx.restore();
-  // 柔白提亮：soft-light 白色薄纱，肤色更白净透亮
-  if(b>0){
-    ctx.save();
-    ctx.globalCompositeOperation='soft-light';
-    ctx.fillStyle=`rgba(255,250,246,${(.38*b).toFixed(3)})`;
-    ctx.fillRect(0,0,W,H);
-    ctx.restore();
-  }
+  const c=smartCrop(), b=beauty/100, gr=styles[visualStyle].g;
+  const bp=BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural;
+  const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
+  const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
+  const br=Math.max(.65,(1+b*.12+ex)*gr.br), con=Math.max(.6,(1+b*.02+ct)*gr.ct), sat=Math.max(.2,(1+b*.05+sa)*gr.sa);
+  ctx.save();ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
+  ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
+  if(b>0&&!dragging){ctx.save();ctx.globalAlpha=Math.min(.34,(.10*b+.035)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(26px) brightness(1.10)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
+  ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();
+  if(bp.tint){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=bp.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`:`rgba(90,165,255,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.20,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#8b8791';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.18,Math.abs(sh));ctx.fillStyle=sh>0?'#a6a0b2':'#4b4753';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(b>0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.20*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
 }
 function drawFrame(){
   if(!frameIndex) return;
@@ -653,22 +691,17 @@ function drawGraffiti(){
   }
 }
 
-function drawSticker(){
-  const l=layers.sticker;
-  if(!l.visible) return null;
-  const pool=stickerPool(), sticker=pool[stickerIndex%pool.length];
-  const font=62*l.scale;
-  l.w=font*1.25;l.h=font*1.25;
-  ctx.save();ctx.globalAlpha=.88;
-  ctx.font=`${font}px Apple Color Emoji,Segoe UI Emoji,sans-serif`;
-  ctx.fillText(sticker,l.x,l.y+font);
-  // 丰富档可出现一个小一点的同主题点缀，但不额外增加第二个人物。
-  if(density==='rich' && crowd()==='low'){
-    ctx.globalAlpha=.58;ctx.font=`${font*.48}px Apple Color Emoji,Segoe UI Emoji,sans-serif`;
-    ctx.fillText(pool[(stickerIndex+1)%pool.length],l.x-52,l.y+font*1.85);
-  }
-  ctx.restore();
-  return {x:l.x,y:l.y,w:l.w,h:l.h};
+async function drawSticker(){
+  const l=layers.sticker;if(!l.visible)return null;
+  const pool=stickerPool();if(!pool.length)return null;
+  const src=pool[stickerIndex%pool.length];
+  try{
+    const im=await load(src), base=132*l.scale, ar=im.width/im.height||1;
+    let w=base,h=base;if(ar>1)h=base/ar;else w=base*ar;
+    l.w=w;l.h=h;ctx.save();ctx.globalAlpha=.95;ctx.drawImage(im,l.x,l.y,w,h);
+    if(density==='rich'&&crowd()==='low'&&pool.length>1){const im2=await load(pool[(stickerIndex+1)%pool.length]);const s=base*.48,ar2=im2.width/im2.height||1;ctx.globalAlpha=.62;ctx.drawImage(im2,l.x-50,l.y+h+10,ar2>1?s:s*ar2,ar2>1?s/ar2:s);}
+    ctx.restore();return{x:l.x,y:l.y,w,h};
+  }catch(e){return null}
 }
 
 function selectBox(b,n){
@@ -695,13 +728,13 @@ async function render(){
   const boxes={};
   boxes.title=drawTitle();
   boxes.character=await drawCharacter();
-  if(layers.sticker.visible) boxes.sticker=drawSticker();
+  if(layers.sticker.visible) boxes.sticker=await drawSticker();
   Object.entries(boxes).forEach(([n,b])=>selectBox(b,n));
   updateCheck();
 }
 
 function state(){
-  return JSON.stringify({version:VERSION,layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder,composeMode,graffitiSeed});
+  return JSON.stringify({version:VERSION,layers,course,beauty,visualStyle,density,photoZoom,photoDX,photoDY,charIndex,titleIndex,frameIndex,stickerIndex,layoutIndex,zOrder,composeMode,graffitiSeed,beautyPreset,manualColor,stickerCategory});
 }
 function push(){undo.push(state());if(undo.length>30)undo.shift();redo=[];}
 function restore(raw){
@@ -711,7 +744,7 @@ function restore(raw){
     localStorage.removeItem('popshotDraftState');
     syncUI();render();return;
   }
-  layers=s.layers||{};course=s.course||course;beauty=s.beauty??beauty;visualStyle=s.visualStyle||'energetic';density=s.density||'normal';composeMode=s.composeMode||composeMode;
+  layers=s.layers||{};course=s.course||course;beauty=s.beauty??beauty;visualStyle=s.visualStyle||'energetic';density=s.density||'normal';composeMode=s.composeMode||composeMode;beautyPreset=s.beautyPreset||beautyPreset;manualColor=s.manualColor||manualColor;stickerCategory=s.stickerCategory||'recommended';
   photoZoom=s.photoZoom||1;photoDX=s.photoDX||0;photoDY=s.photoDY||0;
   charIndex=s.charIndex||0;titleIndex=s.titleIndex||0;frameIndex=s.frameIndex??1;stickerIndex=s.stickerIndex||0;layoutIndex=s.layoutIndex||1;graffitiSeed=s.graffitiSeed??graffitiSeed;
   zOrder=(s.zOrder||['title','character','sticker']).filter(x=>['title','character','sticker'].includes(x));
@@ -746,10 +779,9 @@ function pickCombo(){
 
 function syncUI(){
   $$('[data-course]').forEach(b=>b.classList.toggle('active',b.dataset.course===course));
-  $$('[data-beauty]').forEach(b=>b.classList.toggle('on',+b.dataset.beauty===beauty));
-  $$('[data-style]').forEach(b=>b.classList.toggle('on',b.dataset.style===visualStyle));
+    $$('[data-style]').forEach(b=>b.classList.toggle('on',b.dataset.style===visualStyle));
   $$('[data-density]').forEach(b=>b.classList.toggle('on',b.dataset.density===density));
-  $('#beautyText').textContent=beauty===0?'原图':beauty>=60?'活力':'自然';
+  $('#beautyText').textContent=(BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural).label;$$('[data-preset]').forEach(b=>b.classList.toggle('on',b.dataset.preset===beautyPreset));
 }
 
 function point(e){
@@ -857,9 +889,7 @@ $('#courseGrid').onclick=e=>{
   push();course=b.dataset.course;localStorage.popshotLastCourse=course;
   pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;syncUI();render();saveDraft();
 };
-$$('[data-beauty]').forEach(b=>b.onclick=()=>{
-  push();beauty=+b.dataset.beauty;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();
-});
+$$('[data-preset]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.preset;beauty=beautyPreset==='original'?0:55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();});
 $$('[data-style]').forEach(b=>b.onclick=()=>{
   push();visualStyle=b.dataset.style;localStorage.popshotStyle=visualStyle;stickerIndex=0;syncUI();render();saveDraft();
 });
@@ -898,16 +928,13 @@ function showTitlePicker(){
 }
 function showStickerPicker(){
   $('#drawerTitle').textContent='选择贴纸';
-  drawerBody.innerHTML='<div class="asset-picker" id="stickerPicker"></div>';
-  const wrap=$('#stickerPicker'), pool=stickerPool();
-  pool.forEach((s,i)=>{
-    const b=document.createElement('button');
-    b.className='asset-option sticker-option'+(i===stickerIndex?' on':'');
-    b.textContent=s;
-    b.onclick=()=>{push();stickerIndex=i;layers.sticker.visible=true;drawer.classList.remove('show');render();saveDraft()};
-    wrap.appendChild(b);
-  });
-  drawer.classList.add('show');
+  const active=activeHolidayCategory();
+  const cats=['recommended','general','dance','fitness','cute','graphic'];if(active)cats.push(active);
+  if(STICKER_CATEGORIES[stickerCategory]?.holiday&&!active)stickerCategory='recommended';
+  drawerBody.innerHTML=`${active?`<div class="holiday-badge">✦ ${STICKER_CATEGORIES[active].label}已开启</div>`:''}<div class="sticker-tabs">${cats.map(k=>`<button data-sc="${k}" class="${k===stickerCategory?'on':''}">${STICKER_CATEGORIES[k].label}</button>`).join('')}</div><div class="sticker-grid" id="stickerPicker"></div>`;
+  const build=()=>{const wrap=$('#stickerPicker'),pool=stickerPool();wrap.innerHTML='';pool.forEach((s,i)=>{const b=document.createElement('button');b.className='sticker-option'+(i===stickerIndex?' on':'');b.innerHTML=`<img src="${s}" alt="贴纸">`;b.onclick=()=>{push();stickerIndex=i;layers.sticker.visible=true;drawer.classList.remove('show');render();saveDraft()};wrap.appendChild(b)});};
+  $$('[data-sc]').forEach(b=>b.onclick=()=>{stickerCategory=b.dataset.sc;stickerIndex=0;$$('[data-sc]').forEach(x=>x.classList.toggle('on',x===b));build();});
+  build();drawer.classList.add('show');
 }
 $('#changeCharacterBtn').onclick=showCharacterPicker;
 $('#changeTagBtn').onclick=showTitlePicker;
@@ -943,10 +970,13 @@ $('#favBtn').onclick=()=>{
 $('#moreBtn').onclick=()=>{const p=$('#advancedPanel');p.classList.toggle('show');$('#moreBtn').classList.toggle('on',p.classList.contains('show'));};
 $('#drawerClose').onclick=()=>drawer.classList.remove('show');
 $('#beautyBtn').onclick=()=>{
-  $('#drawerTitle').textContent='美化调整';
-  drawerBody.innerHTML=`<div class="range-row"><span>美化强度</span><input id="beautyRange" type="range" min="0" max="100" value="${beauty}"><b>${beauty}</b></div><div class="adjust-tip">仅做基础提亮、对比度与色彩优化，不改变脸型和五官。</div>`;
+  $('#drawerTitle').textContent='美化与调色';
+  const keys=['natural','bright','vivid','clear','warm','coolwhite','softpink','creamtone','retro','contrast','desat','colorful'];
+  drawerBody.innerHTML=`<div class="adjust-tip">所有预设都会真实作用于照片渲染和最终导出；不会改变脸型和五官。</div><div class="beauty-preset-grid">${keys.map(k=>`<button data-bp="${k}" class="${beautyPreset===k?'on':''}">${BEAUTY_PRESETS[k].label}</button>`).join('')}</div><div class="adjust-grid">${[['ex','亮度'],['ct','对比'],['sa','饱和'],['temp','色温'],['hi','高光'],['sh','阴影']].map(([k,n])=>`<div class="range-row"><span>${n}</span><input data-color="${k}" type="range" min="-50" max="50" value="${manualColor[k]||0}"><b>${manualColor[k]||0}</b></div>`).join('')}</div><button id="colorReset" class="ghost">恢复当前预设</button>`;
   drawer.classList.add('show');
-  $('#beautyRange').oninput=e=>{beauty=+e.target.value;e.target.nextElementSibling.textContent=beauty;render()};
+  $$('[data-bp]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.bp;beauty=55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;$('#beautyText').textContent=BEAUTY_PRESETS[beautyPreset].label;$('#beautyBtn').click();render();saveDraft();});
+  $$('[data-color]').forEach(r=>r.oninput=e=>{manualColor[e.target.dataset.color]=+e.target.value;e.target.nextElementSibling.textContent=e.target.value;render();saveDraft();});
+  $('#colorReset').onclick=()=>{manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};$('#beautyBtn').click();render();saveDraft();};
 };
 $('#adjustPhotoBtn').onclick=()=>{
   photoAdjust=true;selected=null;$('.canvas-stage').classList.add('adjusting');
@@ -961,8 +991,8 @@ $('#adjustPhotoBtn').onclick=()=>{
 
 function updateCheck(){
   if(!photo)return;
-  const h=holidayStickers();
-  $('#exportCheck').textContent=`✓ 2525×1894 · ${boxesDetected.length?'主体识别 '+boxesDetected.length+' 人':'保守智能裁剪'} · ${h?'节日素材已开启':'通用素材模式'}`;
+  const h=activeHolidayCategory();
+  $('#exportCheck').textContent=`✓ 2525×1894 · ${boxesDetected.length?'主体识别 '+boxesDetected.length+' 人':'保守智能裁剪'} · ${h?STICKER_CATEGORIES[h].label+'可用':'通用素材模式'}`;
   $('#exportCheck').classList.add('ok');
 }
 $('#exportBtn').onclick=async()=>{

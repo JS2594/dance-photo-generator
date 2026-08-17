@@ -1,5 +1,5 @@
 {
-  "version": "13.1.0",
+  "version": "14.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -190,5 +190,39 @@
     "primarySaveAction": "保存到相册",
     "androidWebAndPWA": true,
     "charactersUserSupplied": true
-  }
+  },
+  "beautyPresets": [
+    "原图",
+    "自然",
+    "明亮",
+    "活力",
+    "清透",
+    "暖阳",
+    "冷白",
+    "柔粉",
+    "奶油",
+    "复古",
+    "高对比",
+    "低饱和",
+    "鲜艳"
+  ],
+  "stickerLibrary": {
+    "generalCategories": [
+      "通用",
+      "Dance",
+      "Fitness",
+      "可爱",
+      "图形"
+    ],
+    "holidayCategories": [
+      "圣诞",
+      "万圣节",
+      "情人节",
+      "中秋",
+      "春节"
+    ],
+    "holidayOnlyWhenActive": true
+  },
+  "packageVariant": "github-web-upload-compact",
+  "inlineStickerCount": 50
 }
