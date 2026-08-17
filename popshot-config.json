@@ -1,5 +1,5 @@
 {
-  "version": "13.0.0",
+  "version": "13.1.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -40,7 +40,7 @@
     "photoFirst": true,
     "crop": "conservative subject-aware cover",
     "preserveGroup": true,
-    "characterAndLogo": "single compact module",
+    "characterAndLogo": "top-only compact linked module by default; top-separated mode optional",
     "decorationDensity": "low",
     "adaptiveLayouts": 3
   },
@@ -60,7 +60,7 @@
     "defaultAutoLayout": true
   },
   "signaturePolicy": "UI only; never rendered onto exported photo",
-  "logoDefaultSize": "medium",
+  "logoDefaultSize": "110% visual target, adaptive to face-safe headroom",
   "features_v6": [
     "3 candidate layouts",
     "undo/redo",

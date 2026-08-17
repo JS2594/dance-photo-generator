@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '13.0.0';
+const W = 2525, H = 1894, VERSION = '13.1.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -302,38 +302,22 @@ function autoPlace(){
   layers.sticker.visible=(density==='rich'); // 默认克制：只有"丰富"档才出贴纸
 
   if(composeMode==='corner'){
-    // ── 角落独立模式：保留旧版的四套角落构图打分 ──
-    if(level==='high'){ layers.title.scale=.74; layers.character.scale=.48; }
-    else if(level==='mid'){ layers.title.scale=.86; layers.character.scale=.61; }
-    else{ layers.title.scale=.98; layers.character.scale=.76; }
-
-    const titleW=980*layers.title.scale;
-    const titleH=245*layers.title.scale;
-    const charW=420*layers.character.scale;
-    const charH=525*layers.character.scale;
-
-    const candidates=[
-      {tx:72,ty:58,ta:'left',  cx:W-charW-58,cy:H-charH-46,kind:'cross'},
-      {tx:W-72,ty:58,ta:'right',cx:58,cy:H-charH-46,kind:'cross'},
-      {tx:72,ty:58,ta:'left',  cx:58,cy:H-charH-46,kind:'same'},
-      {tx:W-72,ty:58,ta:'right',cx:W-charW-58,cy:H-charH-46,kind:'same'}
-    ];
-
-    let best=candidates[0],bestScore=Infinity;
-    const centerPeople={x:W*.22,y:H*.28,w:W*.56,h:H*.70};
-    for(const c of candidates){
-      const tb={x:c.ta==='left'?c.tx:c.tx-titleW,y:c.ty,w:titleW,h:titleH};
-      const cb={x:c.cx,y:c.cy,w:charW,h:charH};
-      let score=0;
-      for(const z of zones){ score+=1.55*overlap(tb,z); score+=2.25*overlap(cb,z); }
-      score+=1.15*overlap(cb,centerPeople);
-      if(c.kind==='same') score-=4200;
-      if(tb.x<34||tb.x+tb.w>W-34) score+=1e7;
-      if(cb.x<34||cb.x+cb.w>W-34||cb.y+cb.h>H-28) score+=1e7;
-      if(score<bestScore){bestScore=score;best=c;}
-    }
-    layers.title.x=best.tx; layers.title.y=best.ty; layers.title.anchor=best.ta;
-    layers.character.x=best.cx; layers.character.y=best.cy;
+    // ── 顶部分开模式：人物与 Logo 不重叠，但两者都固定在照片顶部安全区。 ──
+    // 仍以真人头顶为硬安全线；空间不足时同时缩小，绝不把装饰压到真人脸上。
+    const medFaceH = zones.length ? zones.map(z=>z.h).sort((a,b)=>a-b)[Math.floor(zones.length/2)] : H*.09;
+    const minFaceTop = zones.length ? Math.min(...zones.map(z=>z.y)) : H*.30;
+    const safeBottom = Math.max(H*.15, minFaceTop - medFaceH*.35);
+    layers.title.anchor='left'; layers.title.x=420; layers.title.y=38;
+    let ts=level==='high'?.72:level==='mid'?.84:.98;
+    const baseW=titleTextWidth(174), maxTitleW=W-520;
+    ts=Math.min(ts,(maxTitleW/baseW),(safeBottom-layers.title.y)/(174*1.10));
+    layers.title.scale=Math.max(.56,ts);
+    let cs=level==='high'?.40:level==='mid'?.50:.60;
+    const maxCharH=Math.max(230,safeBottom-24);
+    cs=Math.min(cs,maxCharH/600);
+    layers.character.scale=Math.max(.34,cs);
+    const cw=505*layers.character.scale, ch=600*layers.character.scale;
+    layers.character.x=42; layers.character.y=Math.max(14,(safeBottom-ch)/2);
     return;
   }
 
@@ -356,10 +340,10 @@ function autoPlace(){
   // 字号 = min(按宽度, 按头顶空间)，保底 90px 保证可读。
   const tsByWidth=(W*frac)/baseW;
   const tsByHead=(safeBottom-layers.title.y)/(174*1.08); // 1.08 ≈ 字高含起伏
-  let ts=Math.min(tsByWidth, Math.max(tsByHead, 108/174));
+  let ts=Math.min(tsByWidth*1.10, Math.max(tsByHead, 108/174));
   layers.title.scale=ts;
 
-  let cs = level==='high'?0.52 : level==='mid'?0.64 : 0.78;
+  let cs = level==='high'?0.55 : level==='mid'?0.68 : 0.82;
   const bandH=174*ts;                 // 标题字高近似
   const realHalf=(baseW*ts)/2; // 实际标题半宽
 

@@ -1,5 +1,5 @@
 {
-  "version": "13.0.0",
-  "build": 1786956738,
-  "notes": "V13 mobile-first final: original-image crop, richer frames/stickers/logos, supplied characters, Android/PWA save hardening"
+  "version": "13.1.0",
+  "build": 1786963500,
+  "notes": "V13.1 final: all 24 logo styles retained; top-only title/character layouts; linked mode default; separate top mode preserved; manual logo scaling; stronger no-face-cover safety"
 }
