@@ -4,7 +4,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '11.0.0';
+const W = 2525, H = 1894, VERSION = '11.1.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -467,110 +467,48 @@ function brushStroke(x1,y1,x2,y2,width,color,alpha=1){
   ctx.restore();
 }
 
+const TITLE_STYLE_NAMES=['Pop渐变','白边贴纸','杂志粗体','霓虹夜色','运动斜体','Y2K错位','糖果泡泡','黑白海报','彩虹分层','金属银感','手绘涂鸦','舞台明星','极简细框','双色切片','速度冲刺','柔光糖果'];
 function drawTitle(){
-  const l=layers.title;
-  if(!l.visible) return null;
-  const p=styles[visualStyle].p;
-  const variant=titleIndex%12;
-  const main=courseNames[course]; // ZUMBA CAMP 与 ZUMBA 同字号，仅隔一个空格
-  const dark='rgba(28,20,44,.92)';
-
-  // 局部自适应：超出可用宽度只在本次绘制时缩小，不永久改写 l.scale。
-  const available = l.anchor==='center' ? W-90
-                  : Math.min(W*.62, l.anchor==='left' ? W-l.x-60 : l.x-60);
-  let s=l.scale;
-  if(measureWord(main,174*s).total>available) s=Math.max(.3,s*(available/measureWord(main,174*s).total));
-
-  const size=174*s;
-  const m=measureWord(main,size);
-  const bx = l.anchor==='left'?l.x : l.anchor==='right'?l.x-m.total : l.x-m.total/2;
-  const y=l.y;
-  const letters=[...main];
-
-  ctx.save();
-  ctx.lineJoin='round';
-
-  // 底层笔刷（涂鸦多彩=淡色横扫底纹；斜切刷线=点缀色短划线，不再是黑粗条）
-  if(variant===0){
-    brushStroke(bx-size*.18, y+size*.70, bx+m.total+size*.22, y+size*.50, size*.58, p[0], .26);
-  }else if(variant===1){
-    brushStroke(bx+m.total*.05, y+size*1.06, bx+m.total*.60, y+size*1.00, size*.085, p[2], .95);
-  }
-
-  // 逐字母绘制：旋转 + 起伏 + 逐字配色（空格只占位不绘制）
-  let cx0=bx, ci=0;
-  letters.forEach((ch,i)=>{
-    const lcx=cx0+m.ws[i]/2;
-    if(ch===' '){ cx0+=m.ws[i]+m.track; return; }
-    const lcy=y+size*.55+LETTER_DY[ci%8]*size;
-    const rot=LETTER_ROT[ci%8]*Math.PI/180;
-    const isLast=i===letters.length-1;
-    ctx.save();
-    ctx.translate(lcx,lcy);
-    ctx.rotate(rot);
-    if(variant===1) ctx.transform(1,0,-.16,1,0,0); // 斜切
-    ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
-    ctx.textAlign='center';ctx.textBaseline='middle';
-
-    if(variant===0){ // 涂鸦多彩：深描边+白描边+逐字彩色，尾字亮色点睛
-      ctx.strokeStyle=dark;ctx.lineWidth=size*.20;ctx.strokeText(ch,0,0);
-      ctx.strokeStyle='#fff';ctx.lineWidth=size*.115;ctx.strokeText(ch,0,0);
-      ctx.fillStyle=isLast?p[2]:(ci%2?p[1]:p[0]);
-      ctx.fillText(ch,0,0);
-    }else if(variant===1){ // 斜切刷线：单色+白边+刷线
-      ctx.strokeStyle='#fff';ctx.lineWidth=size*.15;ctx.strokeText(ch,0,0);
-      ctx.fillStyle=isLast?p[2]:p[0];
-      ctx.fillText(ch,0,0);
-    }else if(variant===2){ // 白字海报：白字+彩色错位残影
-      ctx.fillStyle=p[0];ctx.globalAlpha=.85;ctx.fillText(ch,size*.05,size*.05);
-      ctx.globalAlpha=1;
-      ctx.shadowColor='rgba(0,0,0,.32)';ctx.shadowBlur=size*.10;
-      ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
-    }else if(variant===3){ // 泡泡双描边
-      ctx.strokeStyle=isLast?p[2]:p[0];ctx.lineWidth=size*.24;ctx.strokeText(ch,0,0);
-      ctx.strokeStyle='#fff';ctx.lineWidth=size*.12;ctx.strokeText(ch,0,0);
-      ctx.fillStyle=p[1];ctx.fillText(ch,0,0);
-    }else if(variant===4){ // 贴纸拼贴
-      const pw=m.ws[i]*1.12, ph=size*.98, r=size*.14;
-      ctx.fillStyle=isLast?p[2]:(ci%2?p[1]:p[0]);ctx.strokeStyle='#fff';ctx.lineWidth=size*.05;
-      ctx.beginPath();ctx.roundRect(-pw/2,-ph/2,pw,ph,r);ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
-    }else if(variant===5){ // 极简杂志
-      ctx.fillStyle='#fff';ctx.shadowColor='rgba(0,0,0,.35)';ctx.shadowBlur=size*.06;ctx.fillText(ch,0,0);
-    }else if(variant===6){ // 霓虹
-      ctx.strokeStyle=p[1];ctx.lineWidth=size*.16;ctx.shadowColor=p[0];ctx.shadowBlur=size*.22;ctx.strokeText(ch,0,0);ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
-    }else if(variant===7){ // 运动斜体
-      ctx.transform(1,0,-.22,1,0,0);ctx.strokeStyle='#fff';ctx.lineWidth=size*.16;ctx.strokeText(ch,0,0);ctx.fillStyle=ci%2?p[0]:p[1];ctx.fillText(ch,0,0);
-    }else if(variant===8){ // 黑白粗体
-      ctx.strokeStyle='#fff';ctx.lineWidth=size*.12;ctx.strokeText(ch,0,0);ctx.fillStyle='#18151f';ctx.fillText(ch,0,0);
-    }else if(variant===9){ // 糖果渐变感
-      ctx.strokeStyle='#fff';ctx.lineWidth=size*.18;ctx.strokeText(ch,0,0);ctx.fillStyle=[p[0],p[1],p[2]][ci%3];ctx.fillText(ch,0,0);
-    }else if(variant===10){ // 街头错位
-      ctx.fillStyle=p[1];ctx.fillText(ch,size*.07,size*.06);ctx.fillStyle=p[0];ctx.fillText(ch,-size*.04,-size*.02);ctx.strokeStyle='#fff';ctx.lineWidth=size*.06;ctx.strokeText(ch,0,0);
-    }else{ // 舞台明星
-      ctx.strokeStyle='#fff';ctx.lineWidth=size*.17;ctx.strokeText(ch,0,0);ctx.fillStyle=isLast?p[2]:p[0];ctx.shadowColor=p[1];ctx.shadowBlur=size*.12;ctx.fillText(ch,0,0);
-    }
-    // 糖果高光：涂鸦/泡泡/贴纸样式的每个字母左上加一点白色光斑
-    if([0,3,4,9,11].includes(variant)){
-      ctx.fillStyle='rgba(255,255,255,.72)';
-      ctx.beginPath();
-      ctx.ellipse(-size*.14,-size*.22,size*.085,size*.04,-.6,0,7);
-      ctx.fill();
-    }
-    ctx.restore();
-    cx0+=m.ws[i]+m.track;
-    ci++;
-  });
-
-  // 标题两端各一枚小闪光点缀，丰富花字氛围
-  if(variant!==2){
-    drawDoodle('sparkle', bx-size*.02, y+size*.10, size*.16, p[2]);
-    drawDoodle('sparkle', bx+m.total+size*.04, y+size*.85, size*.12, '#fff');
-  }
-
+  const l=layers.title;if(!l.visible)return null;
+  const p=styles[visualStyle].p, variant=titleIndex%TITLE_STYLE_NAMES.length;
+  const main=courseNames[course];
+  // Logo 永远只画完整课程名；长标题按可用宽度缩字号，不裁字、不截字。
+  const maxW=l.anchor==='center'?W-150:Math.min(W*.70,l.anchor==='left'?W-l.x-70:l.x-70);
+  let size=174*l.scale;
+  let mw=measureWord(main,size).total;
+  if(mw>maxW){size*=maxW/mw;mw=measureWord(main,size).total;}
+  size=Math.max(82,Math.min(size,205));mw=measureWord(main,size).total;
+  const x=l.anchor==='left'?l.x:l.anchor==='right'?l.x-mw:l.x-mw/2;
+  const y=l.y, base=y+size*.86;
+  const grad=ctx.createLinearGradient(x,0,x+mw,0);grad.addColorStop(0,p[0]);grad.addColorStop(.52,p[1]);grad.addColorStop(1,p[2]);
+  ctx.save();ctx.lineJoin='round';ctx.textBaseline='alphabetic';ctx.textAlign='left';
+  ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
+  const fill=(c)=>{ctx.fillStyle=c;ctx.fillText(main,x,base)};
+  const stroke=(c,w)=>{ctx.strokeStyle=c;ctx.lineWidth=w;ctx.strokeText(main,x,base)};
+  if(variant===0){stroke('#fff',size*.12);ctx.fillStyle=grad;ctx.fillText(main,x,base);}
+  else if(variant===1){stroke('rgba(25,20,35,.22)',size*.20);stroke('#fff',size*.14);fill(p[0]);}
+  else if(variant===2){ctx.shadowColor='rgba(0,0,0,.28)';ctx.shadowBlur=size*.08;fill('#fff');ctx.shadowBlur=0;ctx.fillStyle=p[0];ctx.fillRect(x,base+size*.08,Math.min(mw,size*2.2),Math.max(7,size*.045));}
+  else if(variant===3){ctx.shadowColor=p[0];ctx.shadowBlur=size*.24;stroke(p[1],size*.11);fill('#fff');}
+  else if(variant===4){ctx.transform(1,0,-.16,1,0,0);stroke('#fff',size*.13);ctx.fillStyle=grad;ctx.fillText(main,x+base*.16,base);}
+  else if(variant===5){fill(p[1]);ctx.globalAlpha=.9;ctx.fillText(main,x+size*.055,base+size*.045);ctx.globalAlpha=1;stroke('#fff',size*.07);fill(p[0]);}
+  else if(variant===6){stroke('#fff',size*.18);stroke(p[1],size*.10);fill(p[2]);}
+  else if(variant===7){stroke('#fff',size*.09);fill('#18151f');}
+  else if(variant===8){stroke('#fff',size*.12);ctx.fillStyle=grad;ctx.fillText(main,x,base);ctx.globalAlpha=.32;fill(p[2]);ctx.globalAlpha=1;}
+  else if(variant===9){const g=ctx.createLinearGradient(0,y,0,base);g.addColorStop(0,'#fff');g.addColorStop(.45,'#d9dce5');g.addColorStop(.55,'#7b7f8e');g.addColorStop(1,'#f7f8fb');stroke('#fff',size*.10);ctx.fillStyle=g;ctx.fillText(main,x,base);}
+  else if(variant===10){stroke('#fff',size*.13);fill(p[0]);brushStroke(x-size*.04,base+size*.10,x+mw*.58,base+size*.06,size*.045,p[2],.9);}
+  else if(variant===11){stroke('#fff',size*.15);ctx.shadowColor=p[1];ctx.shadowBlur=size*.13;ctx.fillStyle=grad;ctx.fillText(main,x,base);}
+  else if(variant===12){stroke('rgba(255,255,255,.92)',size*.055);fill('#fff');ctx.globalAlpha=.8;ctx.fillStyle=p[0];ctx.fillRect(x,base+size*.09,mw,Math.max(5,size*.025));}
+  else if(variant===13){stroke('#fff',size*.12);ctx.save();ctx.beginPath();ctx.rect(x,y,mw*.52,size*1.15);ctx.clip();fill(p[0]);ctx.restore();ctx.save();ctx.beginPath();ctx.rect(x+mw*.52,y,mw*.48,size*1.15);ctx.clip();fill(p[1]);ctx.restore();}
+  else if(variant===14){ctx.transform(1,0,-.20,1,0,0);stroke('#fff',size*.14);fill(p[0]);for(let i=0;i<3;i++){ctx.globalAlpha=.55-i*.15;ctx.fillStyle=p[2];ctx.fillRect(x+base*.20-mw*.08-i*size*.16,base+size*(.13+i*.08),mw*.22,size*.025)}ctx.globalAlpha=1;}
+  else {ctx.shadowColor='rgba(255,255,255,.75)';ctx.shadowBlur=size*.18;stroke('#fff',size*.12);ctx.fillStyle=grad;ctx.fillText(main,x,base);}
   ctx.restore();
-  const box={x:bx-size*.1,y:y-size*.12,w:m.total+size*.2,h:size*1.25};
-  l.w=box.w;l.h=box.h;
-  return box;
+  // 小点缀仅在标题外围，不使用大色块，避免遮住真人。
+  if([0,1,6,10,11,15].includes(variant)){
+    drawDoodle('sparkle',Math.max(45,x-size*.08),y+size*.18,size*.12,p[2]);
+    drawDoodle('sparkle',Math.min(W-45,x+mw+size*.08),y+size*.72,size*.09,'#fff');
+  }
+  const box={x:Math.max(0,x-size*.14),y:Math.max(0,y-size*.08),w:Math.min(W-x,mw+size*.28),h:size*1.20};
+  l.w=box.w;l.h=box.h;return box;
 }
 
 // 给 Q 版人物加白色"刀版贴纸"描边，和标题贴纸感统一。
@@ -796,7 +734,7 @@ function pickCombo(){
   const now=Date.now(), h=hist().filter(x=>x.time>now-14*864e5), wd=new Date().getDay();
   for(let i=0;i<120;i++){
     charIndex=Math.floor(Math.random()*6);
-    titleIndex=Math.floor(Math.random()*12);
+    titleIndex=Math.floor(Math.random()*16);
     frameIndex=Math.floor(Math.random()*12);
     stickerIndex=Math.floor(Math.random()*stickerPool().length);
     layoutIndex=Math.floor(Math.random()*3);
@@ -952,7 +890,7 @@ function showTitlePicker(){
   $('#drawerTitle').textContent='选择标题样式';
   drawerBody.innerHTML='<div class="asset-picker" id="titlePicker"></div>';
   const wrap=$('#titlePicker');
-  ['涂鸦多彩','斜切刷线','白字残影','泡泡双边','贴纸拼贴'].forEach((name,i)=>{
+  TITLE_STYLE_NAMES.forEach((name,i)=>{
     const b=document.createElement('button');
     b.className='asset-option title-option'+(i===titleIndex?' on':'');
     b.textContent=name;
