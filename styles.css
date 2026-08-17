@@ -120,7 +120,7 @@ canvas#canvas{
   .save-fallback-actions{grid-template-columns:1fr}
 }
 
-/* V11 mobile-first compact UI */
+/* V13 mobile-first compact UI */
 .compact-upload{min-height:92px!important;padding:14px 18px!important;display:grid!important;grid-template-columns:44px 1fr auto!important;gap:12px!important;align-items:center!important}
 .compact-upload .upload-deco{width:42px!important;height:42px!important;font-size:26px!important;margin:0!important}
 .compact-upload .upload-copy{text-align:left!important}.compact-upload .upload-copy strong{font-size:16px!important}.compact-upload .upload-copy span{font-size:11px!important;margin-top:3px!important}.compact-upload .upload-copy em{display:none!important}.compact-upload .upload-mascot{font-size:15px!important}

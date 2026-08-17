@@ -1,5 +1,5 @@
 {
-  "version": "11.2.0",
+  "version": "13.0.0",
   "build": 1786956738,
-  "notes": "V11 mobile-first final: original-image crop, richer frames/stickers/logos, supplied characters, Android/PWA save hardening"
+  "notes": "V13 mobile-first final: original-image crop, richer frames/stickers/logos, supplied characters, Android/PWA save hardening"
 }

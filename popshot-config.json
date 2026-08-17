@@ -1,5 +1,5 @@
 {
-  "version": "11.2.0",
+  "version": "13.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -179,7 +179,7 @@
     "versionJsonCheck": true,
     "reloadAfterActivation": true
   },
-  "v11": {
+  "v13": {
     "output": "2525x1894",
     "courseLayout": "2x2 compact",
     "originalPhotoAdjustment": true,
