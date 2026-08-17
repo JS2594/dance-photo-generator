@@ -1,5 +1,5 @@
 {
-  "version": "14.0.0",
-  "build": 1786966600,
-  "notes": "V13.1 final: all 24 logo styles retained; top-only title/character layouts; linked mode default; separate top mode preserved; manual logo scaling; stronger no-face-cover safety"
+  "version": "14.1.0",
+  "build": 1786968210,
+  "notes": "Larger top logo+character composition with half-character side margins and safety fallback"
 }

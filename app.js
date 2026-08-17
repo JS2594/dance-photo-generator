@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '14.0.0';
+const W = 2525, H = 1894, VERSION = '14.1.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -1249,3 +1249,28 @@ window.addEventListener('load',()=>{
 
 syncUI();
 resume();
+
+
+// v14.1 — 顶部人物×Logo组合：目标 150%，但始终服从真人安全区与左右留白。
+function clampTopComboLayout(box, canvasW, canvasH, occupiedTopRects=[]){
+  const halfCharacterGap=Math.max(70, box.characterVisualWidth*0.5);
+  const sideSafe=halfCharacterGap;
+  const topSafe=Math.max(28, canvasH*0.018);
+  const maxW=Math.max(1, canvasW-sideSafe*2);
+
+  let scale=Math.min(1.5, maxW/Math.max(1,box.baseWidth));
+  let w=box.baseWidth*scale, h=box.baseHeight*scale;
+  let x=(canvasW-w)/2, y=topSafe;
+
+  // 若顶部真人安全区与组合相交，则逐级回落，绝不硬盖脸。
+  const intersects=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+  for(let i=0;i<12;i++){
+    const test={x,y,w,h};
+    if(!occupiedTopRects.some(r=>intersects(test,r))) break;
+    scale*=0.94;
+    w=box.baseWidth*scale; h=box.baseHeight*scale;
+    x=(canvasW-w)/2;
+  }
+  return {x,y,w,h,scale,sideSafe};
+}
+
