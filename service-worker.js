@@ -1,53 +1,6 @@
-const CACHE='popshot-v10.4.2';
-const CODE_SUFFIXES=['.html','.js','.css','.webmanifest','.json'];
-
-self.addEventListener('install',event=>{
-  event.waitUntil(self.skipWaiting());
-});
-
-self.addEventListener('activate',event=>{
-  event.waitUntil(
-    caches.keys()
-      .then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
-      .then(()=>self.clients.claim())
-  );
-});
-
-self.addEventListener('message',event=>{
-  if(event.data?.type==='SKIP_WAITING') self.skipWaiting();
-});
-
-self.addEventListener('fetch',event=>{
-  const req=event.request;
-  if(req.method!=='GET') return;
-
-  const url=new URL(req.url);
-  const isNavigation=req.mode==='navigate';
-  const isCode=isNavigation || CODE_SUFFIXES.some(s=>url.pathname.endsWith(s));
-
-  // 代码与页面：network-first + no-store，避免安装到桌面后卡在旧版本。
-  if(isCode){
-    event.respondWith(
-      fetch(req,{cache:'no-store'})
-        .then(resp=>{
-          const copy=resp.clone();
-          caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{});
-          return resp;
-        })
-        .catch(()=>caches.match(req).then(r=>r||caches.match('./index.html')))
-    );
-    return;
-  }
-
-  // 图片等静态素材：缓存优先，后台刷新。
-  event.respondWith(
-    caches.match(req).then(hit=>{
-      const fresh=fetch(req).then(resp=>{
-        const copy=resp.clone();
-        caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{});
-        return resp;
-      }).catch(()=>hit);
-      return hit||fresh;
-    })
-  );
-});
+const CACHE='popshot-v11.0.0';
+const CODE=['.html','.js','.css','.webmanifest','.json'];
+self.addEventListener('install',e=>e.waitUntil(self.skipWaiting()));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('message',e=>{if(e.data?.type==='SKIP_WAITING')self.skipWaiting()});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url),code=e.request.mode==='navigate'||CODE.some(x=>u.pathname.endsWith(x));if(code){e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))));return}e.respondWith(caches.match(e.request).then(hit=>{const fresh=fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r}).catch(()=>hit);return hit||fresh}))});

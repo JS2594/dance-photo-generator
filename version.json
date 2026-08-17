@@ -1,5 +1,5 @@
 {
-  "version": "10.4.2",
-  "build": 1786785421,
-  "notes": "Mobile save + automatic PWA update + stale cache cleanup"
+  "version": "11.0.0",
+  "build": 1786956738,
+  "notes": "V11 mobile-first final: original-image crop, richer frames/stickers/logos, supplied characters, Android/PWA save hardening"
 }

@@ -119,3 +119,14 @@ canvas#canvas{
 @media(max-width:600px){
   .save-fallback-actions{grid-template-columns:1fr}
 }
+
+/* V11 mobile-first compact UI */
+.compact-upload{min-height:92px!important;padding:14px 18px!important;display:grid!important;grid-template-columns:44px 1fr auto!important;gap:12px!important;align-items:center!important}
+.compact-upload .upload-deco{width:42px!important;height:42px!important;font-size:26px!important;margin:0!important}
+.compact-upload .upload-copy{text-align:left!important}.compact-upload .upload-copy strong{font-size:16px!important}.compact-upload .upload-copy span{font-size:11px!important;margin-top:3px!important}.compact-upload .upload-copy em{display:none!important}.compact-upload .upload-mascot{font-size:15px!important}
+.course-cards{grid-template-columns:1fr 1fr!important;gap:10px!important}.course-card{min-height:92px!important;padding:8px 14px!important}.course-card img{height:76px!important;max-width:82px!important;object-fit:contain!important}.course-card .course-name{font-size:18px!important}.course-card .course-arrow{font-size:20px!important}
+.quick-tools{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}.quick-tools button{min-height:64px!important}.quick-tools button span{font-size:19px!important}.quick-tools button b{font-size:11px!important}
+.advanced-panel{display:none;margin-top:10px;padding:12px;border-radius:16px;background:#f8f7fb;border:1px solid #eeeaf5}.advanced-panel.show{display:block}.advanced-title{font-weight:900;font-size:12px;margin-bottom:8px}.advanced-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.advanced-actions button{border:1px solid #e9e4f3;background:#fff;border-radius:12px;padding:10px;font-weight:800}.advanced-panel .style-row{margin-top:10px}
+.crop-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}.save-toast{position:fixed;left:50%;bottom:28px;z-index:10002;transform:translate(-50%,18px);opacity:0;background:rgba(25,22,31,.92);color:#fff;padding:11px 16px;border-radius:999px;font-size:13px;font-weight:800;transition:.2s;pointer-events:none;white-space:nowrap}.save-toast.show{opacity:1;transform:translate(-50%,0)}
+#saveDirectBtn{color:#fff!important;border:0!important;background:linear-gradient(100deg,#7657ff,#ef5ea8)!important}.save-fallback-actions{grid-template-columns:1.25fr 1fr 1fr!important}
+@media(max-width:600px){.shell{width:min(100%,720px)!important}.hero-card,.result-card{padding:14px!important}.compact-upload{min-height:82px!important}.course-card{min-height:84px!important}.course-card img{height:68px!important}.quick-row{margin-top:10px!important}.cta{margin-top:10px!important}.save-fallback-actions{grid-template-columns:1fr 1fr!important}.save-fallback-actions button:last-child{grid-column:1/-1}.crop-actions{grid-template-columns:1fr 1fr}.crop-actions button:last-child{grid-column:1/-1}}

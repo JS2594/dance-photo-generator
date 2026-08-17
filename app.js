@@ -4,13 +4,13 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '10.4.2';
+const W = 2525, H = 1894, VERSION = '11.0.0';
 
 const charFiles = {
-  lelepop: [1,2,3,4,5,6].map(n=>`lelepop_0${n}.png`),
-  buttscaler: [1,2,3,4,5,6].map(n=>`buttscaler_0${n}.png`),
-  zumba: [1,2,3,4,5,6].map(n=>`zumba_0${n}.png`),
-  'zumba-camp': [1,2,3,4,5,6].map(n=>`zumba_camp_0${n}.png`)
+  lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
+  buttscaler: Array.from({length:11},(_,i)=>`buttscaler_${String(i+1).padStart(2,'0')}.png`),
+  zumba: Array.from({length:13},(_,i)=>`zumba_${String(i+1).padStart(2,'0')}.png`),
+  'zumba-camp': Array.from({length:9},(_,i)=>`zumba_camp_${String(i+1).padStart(2,'0')}.png`)
 };
 const courseNames = {
   lelepop: 'Lelepop',
@@ -20,21 +20,21 @@ const courseNames = {
 };
 const styles = {
   // p=装饰配色  st=贴纸池  g=照片调色滤镜（br亮度/ct对比/sa饱和/hue色相偏移/tint色调纱/glow柔光强度）
-  energetic:{label:'活力',p:['#ff2f91','#7658ff','#ffc63d'],st:['✦','⚡','♪','✨'],
+  energetic:{label:'活力',p:['#ff2f91','#7658ff','#ffc63d'],st:['✦','⚡','♪','✨','♫','★','➜','●','♡','MOVE','DANCE','WOW'],
     g:{br:1.05,ct:1.05,sa:1.18,hue:0,  tint:'rgba(255,90,150,.11)', glow:1.0}},
-  cool:{label:'酷飒',p:['#2f63ff','#171723','#3de0c8'],st:['⚡','★','✦','♫'],
+  cool:{label:'酷飒',p:['#2f63ff','#171723','#3de0c8'],st:['⚡','★','✦','♫','➜','◆','●','MOVE','BEAT','GO'],
     g:{br:1.0, ct:1.13,sa:.92, hue:-8, tint:'rgba(70,115,255,.15)', glow:.7}},
-  cute:{label:'可爱',p:['#ff62ad','#9a73ff','#ffd166'],st:['♡','🐻','🐰','✨'],
+  cute:{label:'可爱',p:['#ff62ad','#9a73ff','#ffd166'],st:['♡','✨','★','✦','☺','🎀','➜','SMILE','YAY','LOVE'],
     g:{br:1.10,ct:.94, sa:1.06,hue:4,  tint:'rgba(255,150,205,.17)',glow:1.4}},
-  clean:{label:'清爽',p:['#5d7dff','#48cbb3','#ffb84d'],st:['✦','·','♡','✨'],
+  clean:{label:'清爽',p:['#5d7dff','#48cbb3','#ffb84d'],st:['✦','·','♡','✨','○','＋','➜','MOVE','TODAY'],
     g:{br:1.09,ct:1.0, sa:.90, hue:-4, tint:'rgba(215,238,255,.15)',glow:.95}},
-  y2k:{label:'Y2K',p:['#ff3fa4','#6c5cff','#3ddcff'],st:['✦','★','♡','♫'],
+  y2k:{label:'Y2K',p:['#ff3fa4','#6c5cff','#3ddcff'],st:['✦','★','♡','♫','⚡','◆','➜','Y2K','POP','DANCE'],
     g:{br:1.04,ct:1.15,sa:1.30,hue:-10,tint:'rgba(190,85,255,.13)', glow:1.2}},
-  fair:{label:'白皙',p:['#f36fa8','#8fa0ff','#ffd9a0'],st:['✨','♡','✦','·'],
+  fair:{label:'白皙',p:['#f36fa8','#8fa0ff','#ffd9a0'],st:['✨','♡','✦','·','○','＋','SMILE','DAY'],
     g:{br:1.15,ct:.97, sa:.80, hue:0,  tint:'rgba(255,236,240,.24)',glow:1.5}},
-  cream:{label:'奶油',p:['#ff9f68','#f56fa1','#ffe08a'],st:['🧸','♡','✨','·'],
+  cream:{label:'奶油',p:['#ff9f68','#f56fa1','#ffe08a'],st:['♡','✨','·','★','○','🎀','SMILE','HAPPY'],
     g:{br:1.11,ct:.95, sa:.96, hue:6,  tint:'rgba(255,226,200,.21)',glow:1.35}},
-  film:{label:'胶片',p:['#3f7f6e','#e8563f','#f2c94c'],st:['✦','·','★','♪'],
+  film:{label:'胶片',p:['#3f7f6e','#e8563f','#f2c94c'],st:['✦','·','★','♪','REC','●','DATE','FILM','SNAP'],
     g:{br:1.02,ct:1.11,sa:.85, hue:-3, tint:'rgba(125,150,142,.15)',glow:.6}}
 };
 
@@ -233,7 +233,7 @@ function smartCrop(){
     if(sw>iw){ sw=iw; sh=sw/tr; }
     if(sh>ih){ sh=ih; sw=sh*tr; }
 
-    const z=Math.max(1,photoZoom);
+    const z=Math.max(.72,photoZoom);
     sw/=z; sh/=z;
 
     // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~27% 处开始，上方留出标题带。
@@ -246,7 +246,7 @@ function smartCrop(){
     // 默认放大 1.22 倍并把裁剪窗对准画面 58% 高度的中心。
     if(iw/ih>tr){ sh=ih; sw=ih*tr; }
     else{ sw=iw; sh=iw/tr; }
-    const z=Math.max(1,photoZoom)*1.35;
+    const z=Math.max(.72,photoZoom)*1.35;
     sw/=z; sh/=z;
     baseSx=(iw-sw)/2;
     baseSy=ih*.58-sh*.5;
@@ -431,16 +431,19 @@ function drawPhoto(){
 }
 function drawFrame(){
   if(!frameIndex) return;
-  ctx.save();
-  const p=styles[visualStyle].p;
-  if(frameIndex===1){ctx.strokeStyle='rgba(255,255,255,.78)';ctx.lineWidth=10}
-  else if(frameIndex===2){ctx.strokeStyle=p[0];ctx.globalAlpha=.52;ctx.lineWidth=12}
-  else{
-    const g=ctx.createLinearGradient(0,0,W,H);
-    g.addColorStop(0,p[0]);g.addColorStop(1,p[1]);
-    ctx.strokeStyle=g;ctx.globalAlpha=.64;ctx.lineWidth=13;
-  }
-  ctx.strokeRect(30,30,W-60,H-60);
+  ctx.save();const p=styles[visualStyle].p;const v=frameIndex%12;
+  const inset= v===5?46:30;
+  if(v===1){ctx.strokeStyle='rgba(255,255,255,.86)';ctx.lineWidth=10;ctx.strokeRect(inset,inset,W-inset*2,H-inset*2)}
+  else if(v===2){ctx.strokeStyle=p[0];ctx.globalAlpha=.65;ctx.lineWidth=12;ctx.strokeRect(inset,inset,W-inset*2,H-inset*2)}
+  else if(v===3){const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,p[0]);g.addColorStop(.5,p[1]);g.addColorStop(1,p[2]);ctx.strokeStyle=g;ctx.lineWidth=15;ctx.strokeRect(inset,inset,W-inset*2,H-inset*2)}
+  else if(v===4){ctx.strokeStyle='#fff';ctx.lineWidth=9;ctx.strokeRect(30,30,W-60,H-60);ctx.strokeStyle=p[0];ctx.lineWidth=4;ctx.strokeRect(48,48,W-96,H-96)}
+  else if(v===5){ctx.fillStyle='rgba(255,255,255,.14)';ctx.fillRect(0,0,W,48);ctx.fillRect(0,H-48,W,48);ctx.fillRect(0,0,48,H);ctx.fillRect(W-48,0,48,H);ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.strokeRect(52,52,W-104,H-104)}
+  else if(v===6){ctx.strokeStyle=p[1];ctx.lineWidth=18;ctx.setLineDash([70,24]);ctx.strokeRect(32,32,W-64,H-64)}
+  else if(v===7){ctx.strokeStyle='#fff';ctx.lineWidth=22;ctx.strokeRect(24,24,W-48,H-48);ctx.strokeStyle='#18151f';ctx.lineWidth=5;ctx.strokeRect(40,40,W-80,H-80)}
+  else if(v===8){ctx.strokeStyle=p[2];ctx.lineWidth=8;ctx.strokeRect(36,36,W-72,H-72);[['↗',65,95],['✦',W-105,100],['●',75,H-70],['＋',W-110,H-70]].forEach(([t,x,y])=>{ctx.font='700 54px Arial';ctx.fillStyle='#fff';ctx.fillText(t,x,y)})}
+  else if(v===9){ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=8;ctx.strokeRect(28,28,W-56,H-56);ctx.globalAlpha=.7;ctx.strokeStyle=p[0];ctx.lineWidth=6;ctx.strokeRect(58,58,W-116,H-116)}
+  else if(v===10){ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(0,H-78,W,78);ctx.fillRect(0,0,W,20);ctx.font='700 25px Arial';ctx.fillStyle='#222';ctx.fillText('POPSHOT · MOVE · SMILE · ENJOY',48,H-30)}
+  else if(v===11){ctx.strokeStyle=p[0];ctx.lineWidth=20;ctx.globalAlpha=.38;ctx.strokeRect(20,20,W-40,H-40);ctx.strokeStyle='#fff';ctx.lineWidth=6;ctx.globalAlpha=.9;ctx.strokeRect(42,42,W-84,H-84)}
   ctx.restore();
 }
 
@@ -468,7 +471,7 @@ function drawTitle(){
   const l=layers.title;
   if(!l.visible) return null;
   const p=styles[visualStyle].p;
-  const variant=titleIndex%5;
+  const variant=titleIndex%12;
   const main=courseNames[course]; // ZUMBA CAMP 与 ZUMBA 同字号，仅隔一个空格
   const dark='rgba(28,20,44,.92)';
 
@@ -527,17 +530,27 @@ function drawTitle(){
       ctx.strokeStyle=isLast?p[2]:p[0];ctx.lineWidth=size*.24;ctx.strokeText(ch,0,0);
       ctx.strokeStyle='#fff';ctx.lineWidth=size*.12;ctx.strokeText(ch,0,0);
       ctx.fillStyle=p[1];ctx.fillText(ch,0,0);
-    }else{ // 贴纸拼贴：每个字母坐在一张彩色小贴纸上
+    }else if(variant===4){ // 贴纸拼贴
       const pw=m.ws[i]*1.12, ph=size*.98, r=size*.14;
-      ctx.fillStyle=isLast?p[2]:(ci%2?p[1]:p[0]);
-      ctx.strokeStyle='#fff';ctx.lineWidth=size*.05;
-      ctx.beginPath();
-      ctx.roundRect(-pw/2,-ph/2,pw,ph,r);
-      ctx.fill();ctx.stroke();
-      ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
+      ctx.fillStyle=isLast?p[2]:(ci%2?p[1]:p[0]);ctx.strokeStyle='#fff';ctx.lineWidth=size*.05;
+      ctx.beginPath();ctx.roundRect(-pw/2,-ph/2,pw,ph,r);ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
+    }else if(variant===5){ // 极简杂志
+      ctx.fillStyle='#fff';ctx.shadowColor='rgba(0,0,0,.35)';ctx.shadowBlur=size*.06;ctx.fillText(ch,0,0);
+    }else if(variant===6){ // 霓虹
+      ctx.strokeStyle=p[1];ctx.lineWidth=size*.16;ctx.shadowColor=p[0];ctx.shadowBlur=size*.22;ctx.strokeText(ch,0,0);ctx.fillStyle='#fff';ctx.fillText(ch,0,0);
+    }else if(variant===7){ // 运动斜体
+      ctx.transform(1,0,-.22,1,0,0);ctx.strokeStyle='#fff';ctx.lineWidth=size*.16;ctx.strokeText(ch,0,0);ctx.fillStyle=ci%2?p[0]:p[1];ctx.fillText(ch,0,0);
+    }else if(variant===8){ // 黑白粗体
+      ctx.strokeStyle='#fff';ctx.lineWidth=size*.12;ctx.strokeText(ch,0,0);ctx.fillStyle='#18151f';ctx.fillText(ch,0,0);
+    }else if(variant===9){ // 糖果渐变感
+      ctx.strokeStyle='#fff';ctx.lineWidth=size*.18;ctx.strokeText(ch,0,0);ctx.fillStyle=[p[0],p[1],p[2]][ci%3];ctx.fillText(ch,0,0);
+    }else if(variant===10){ // 街头错位
+      ctx.fillStyle=p[1];ctx.fillText(ch,size*.07,size*.06);ctx.fillStyle=p[0];ctx.fillText(ch,-size*.04,-size*.02);ctx.strokeStyle='#fff';ctx.lineWidth=size*.06;ctx.strokeText(ch,0,0);
+    }else{ // 舞台明星
+      ctx.strokeStyle='#fff';ctx.lineWidth=size*.17;ctx.strokeText(ch,0,0);ctx.fillStyle=isLast?p[2]:p[0];ctx.shadowColor=p[1];ctx.shadowBlur=size*.12;ctx.fillText(ch,0,0);
     }
     // 糖果高光：涂鸦/泡泡/贴纸样式的每个字母左上加一点白色光斑
-    if(variant===0||variant===3||variant===4){
+    if([0,3,4,9,11].includes(variant)){
       ctx.fillStyle='rgba(255,255,255,.72)';
       ctx.beginPath();
       ctx.ellipse(-size*.14,-size*.22,size*.085,size*.04,-.6,0,7);
@@ -783,8 +796,8 @@ function pickCombo(){
   const now=Date.now(), h=hist().filter(x=>x.time>now-14*864e5), wd=new Date().getDay();
   for(let i=0;i<120;i++){
     charIndex=Math.floor(Math.random()*6);
-    titleIndex=Math.floor(Math.random()*5);
-    frameIndex=Math.floor(Math.random()*4);
+    titleIndex=Math.floor(Math.random()*12);
+    frameIndex=Math.floor(Math.random()*12);
     stickerIndex=Math.floor(Math.random()*stickerPool().length);
     layoutIndex=Math.floor(Math.random()*3);
     const k=comboKey();
@@ -854,6 +867,17 @@ function up(){if(dragging)saveDraft();dragging=false;}
 canvas.addEventListener('mousedown',down);
 canvas.addEventListener('mousemove',move);
 window.addEventListener('mouseup',up);
+let pinchStartDist=0,pinchStartZoom=1;
+canvas.addEventListener('touchstart',e=>{
+  if(photoAdjust&&e.touches.length===2){
+    e.preventDefault();pinchStartDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinchStartZoom=photoZoom;
+  }
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  if(photoAdjust&&e.touches.length===2&&pinchStartDist){
+    e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);photoZoom=Math.max(.72,Math.min(2.2,pinchStartZoom*d/pinchStartDist));render();
+  }
+},{passive:false});
 canvas.addEventListener('touchstart',down,{passive:false});
 canvas.addEventListener('touchmove',move,{passive:false});
 window.addEventListener('touchend',up);
@@ -953,7 +977,7 @@ function showStickerPicker(){
 $('#changeCharacterBtn').onclick=showCharacterPicker;
 $('#changeTagBtn').onclick=showTitlePicker;
 $('#changeStickerBtn').onclick=showStickerPicker;
-$('#changeFrameBtn').onclick=()=>{push();frameIndex=(frameIndex+1)%4;render()};
+$('#changeFrameBtn').onclick=()=>{push();frameIndex=(frameIndex+1)%12;render()};
 $('#layoutBtn').onclick=()=>{
   push();layoutIndex=(layoutIndex+1)%3;
   forcedSide = layoutIndex===0?'left' : layoutIndex===2?'right' : null;
@@ -981,6 +1005,7 @@ $('#favBtn').onclick=()=>{
   $('#favBtn').textContent='♥ 已收藏';
 };
 
+$('#moreBtn').onclick=()=>{const p=$('#advancedPanel');p.classList.toggle('show');$('#moreBtn').classList.toggle('on',p.classList.contains('show'));};
 $('#drawerClose').onclick=()=>drawer.classList.remove('show');
 $('#beautyBtn').onclick=()=>{
   $('#drawerTitle').textContent='美化调整';
@@ -989,12 +1014,14 @@ $('#beautyBtn').onclick=()=>{
   $('#beautyRange').oninput=e=>{beauty=+e.target.value;e.target.nextElementSibling.textContent=beauty;render()};
 };
 $('#adjustPhotoBtn').onclick=()=>{
-  photoAdjust=!photoAdjust;selected=null;$('.canvas-stage').classList.toggle('adjusting',photoAdjust);
-  $('#drawerTitle').textContent='调整照片';
-  drawerBody.innerHTML=`<div class="range-row"><span>照片缩放</span><input id="zoomRange" type="range" min="100" max="190" value="${Math.round(photoZoom*100)}"><b>${Math.round(photoZoom*100)}%</b></div><div class="adjust-tip">${photoAdjust?'调整模式已开启：直接拖动画面中的照片即可移动位置。':'点击“调整照片”再次开启拖动。'} 自动裁剪只是默认建议，最终位置完全可以人工决定。</div><button id="cropReset" class="ghost" style="margin-top:10px">恢复智能裁剪</button>`;
+  photoAdjust=true;selected=null;$('.canvas-stage').classList.add('adjusting');
+  $('#drawerTitle').textContent='调整原图';
+  drawerBody.innerHTML=`<div class="adjust-tip"><b>原图级调整</b> · 成图框固定为 2525×1894。直接拖动原始照片；手机可双指缩放。系统不会真正裁掉原图。</div><div class="range-row"><span>原图缩放</span><input id="zoomRange" type="range" min="72" max="220" value="${Math.round(photoZoom*100)}"><b>${Math.round(photoZoom*100)}%</b></div><div class="crop-actions"><button id="showFull" class="ghost">显示更多原图</button><button id="cropReset" class="ghost">智能构图</button><button id="cropDone" class="primary-mini">完成</button></div>`;
   drawer.classList.add('show');
   $('#zoomRange').oninput=e=>{photoZoom=+e.target.value/100;e.target.nextElementSibling.textContent=e.target.value+'%';render();saveDraft()};
+  $('#showFull').onclick=()=>{photoZoom=.78;photoDX=photoDY=0;render();saveDraft()};
   $('#cropReset').onclick=()=>{photoZoom=1;photoDX=photoDY=0;render();saveDraft()};
+  $('#cropDone').onclick=()=>{photoAdjust=false;$('.canvas-stage').classList.remove('adjusting');drawer.classList.remove('show');saveDraft()};
 };
 
 function updateCheck(){
@@ -1004,76 +1031,24 @@ function updateCheck(){
   $('#exportCheck').classList.add('ok');
 }
 $('#exportBtn').onclick=async()=>{
-  if(!photo) return alert('请先上传照片');
-
-  const btn=$('#exportBtn');
-  const oldText=btn?.innerHTML;
+  if(!photo)return alert('请先上传照片');
+  const btn=$('#exportBtn'),old=btn.innerHTML;
   try{
-    if(btn){btn.disabled=true;btn.innerHTML='正在生成高清图片…';}
-
-    selected=null;
-    photoAdjust=false;
-    document.querySelector('.canvas-stage')?.classList.remove('adjusting');
-    await render();
-
-    const blob=await new Promise((resolve,reject)=>{
-      canvas.toBlob(b=>b?resolve(b):reject(new Error('图片生成失败')),'image/jpeg',0.96);
-    });
-
-    const filename=`PopShot-${course}-${Date.now()}.jpg`;
-    const file=new File([blob],filename,{type:'image/jpeg'});
-
-    // 1) Mobile first: use native share sheet when the browser allows sharing files.
-    // iPhone / iPad PWA and many Android Chrome versions support this.
-    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-      try{
-        await navigator.share({
-          files:[file],
-          title:'PopShot 高清图片'
-        });
-        return;
-      }catch(e){
-        // User cancelling the share sheet is not a hard failure.
-        if(e && e.name==='AbortError') return;
-      }
+    btn.disabled=true;btn.innerHTML='正在保存…';selected=null;photoAdjust=false;$('.canvas-stage').classList.remove('adjusting');await render();
+    const blob=await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/jpeg',.96));
+    const filename=`PopShot-${course}-${Date.now()}.jpg`,file=new File([blob],filename,{type:'image/jpeg'});
+    const ua=navigator.userAgent||'', isiOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), isAndroid=/Android/i.test(ua);
+    if(isiOS&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+      try{await navigator.share({files:[file],title:'保存 PopShot 图片'});showSaveToast('请选择“存储图像”保存到相册');return}catch(err){if(err?.name==='AbortError')return}
     }
-
-    // 2) Browser download fallback (desktop Chrome / many Android browsers).
-    try{
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.href=url;
-      a.download=filename;
-      a.style.display='none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},2500);
-
-      // iOS Safari may ignore `download`; show long-press fallback as well.
-      const ua=navigator.userAgent||'';
-      const isiOS=/iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-      if(isiOS){
-        showSaveFallback(blob,filename);
-      }
-      return;
-    }catch(e){}
-
-    // 3) Last resort: show the generated image so the user can long-press Save to Photos.
-    showSaveFallback(blob,filename);
-
-  }catch(err){
-    console.error(err);
-    alert('保存失败，已为你打开长按保存方式。');
-    try{
-      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.96));
-      if(blob) showSaveFallback(blob,`PopShot-${course}-${Date.now()}.jpg`);
-    }catch(e){}
-  }finally{
-    if(btn){btn.disabled=false;btn.innerHTML=oldText||'保存高清图片';}
-  }
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+    if(isAndroid){setTimeout(()=>showSaveFallback(blob,filename,true),650)}else{showSaveToast('高清图片已请求保存');setTimeout(()=>URL.revokeObjectURL(url),3000)}
+  }catch(err){console.error(err);const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',.96));if(blob)showSaveFallback(blob,`PopShot-${course}-${Date.now()}.jpg`,true)}
+  finally{btn.disabled=false;btn.innerHTML=old||'↓ 保存到相册'}
 };
+function showSaveToast(text){let t=document.getElementById('saveToast');if(!t){t=document.createElement('div');t.id='saveToast';t.className='save-toast';document.body.appendChild(t)}t.textContent=text;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),2600)}
 
-function showSaveFallback(blob,filename){
+function showSaveFallback(blob,filename,androidHint=false){
   let modal=document.getElementById('saveFallbackModal');
   if(!modal){
     modal=document.createElement('div');
@@ -1082,11 +1057,11 @@ function showSaveFallback(blob,filename){
     modal.innerHTML=`
       <div class="save-fallback-card">
         <button class="save-fallback-close" aria-label="关闭">×</button>
-        <h3>高清图片已生成</h3>
-        <p>如果手机没有自动弹出保存窗口，请长按下面的图片，选择“存储到照片”或“保存图片”。</p>
+        <h3>图片已生成 ✨</h3>
+        <p>若没有自动保存，请点“保存图片”；仍无反应时可长按高清成图保存。</p>
         <img id="saveFallbackImage" alt="PopShot 高清成图">
         <div class="save-fallback-actions">
-          <button id="saveFallbackShare">再次打开系统分享</button>
+          <button id="saveDirectBtn">↓ 保存图片</button><button id="saveFallbackShare">系统分享</button>
           <button id="saveFallbackCloseBtn">完成</button>
         </div>
       </div>`;
@@ -1108,6 +1083,10 @@ function showSaveFallback(blob,filename){
   img.src=url;
   img.dataset.objectUrl=url;
   img.setAttribute('download',filename);
+
+  
+  const directBtn=document.getElementById('saveDirectBtn');
+  if(directBtn) directBtn.onclick=()=>{const a=document.createElement('a');a.href=url;a.download=filename;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();showSaveToast('已请求手机保存图片')};
 
   const shareBtn=document.getElementById('saveFallbackShare');
   shareBtn.onclick=async()=>{
@@ -1217,7 +1196,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdat
 $('#closeUpdateTip').onclick=()=>$('#updateTip').classList.add('hidden');
 $('#settingsBtn').onclick=()=>alert(`PopShot v${VERSION} · 照片仅在本机浏览器处理\n点击顶部 🔔 可检查线上是否有新版本`);
 
-// ── v10.4.2：PWA 无感自动更新 ──
+// ── v11：PWA 无感自动更新 ──
 async function activateWaitingWorker(reg){
   if(!reg?.waiting) return false;
   return new Promise(resolve=>{

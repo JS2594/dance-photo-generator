@@ -1,5 +1,5 @@
 {
-  "version": "10.4.2",
+  "version": "11.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -178,5 +178,17 @@
     "clearOldCaches": true,
     "versionJsonCheck": true,
     "reloadAfterActivation": true
+  },
+  "v11": {
+    "output": "2525x1894",
+    "courseLayout": "2x2 compact",
+    "originalPhotoAdjustment": true,
+    "pinchZoom": true,
+    "titleLogoStyles": 12,
+    "frameStyles": 12,
+    "stickerPools": "expanded",
+    "primarySaveAction": "保存到相册",
+    "androidWebAndPWA": true,
+    "charactersUserSupplied": true
   }
 }

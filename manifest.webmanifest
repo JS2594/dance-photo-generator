@@ -1,7 +1,7 @@
 {
   "name": "PopShot",
   "short_name": "PopShot",
-  "start_url": "./?app=popshot",
+  "start_url": "./?app=popshot-v11",
   "display": "standalone",
   "background_color": "#f7f7fb",
   "theme_color": "#f55aa0",
