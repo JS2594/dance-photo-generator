@@ -1,5 +1,5 @@
 {
-  "version": "17.0.1",
+  "version": "17.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -313,10 +313,5 @@
       "更多"
     ],
     "beautyBar": "single-row-horizontal-scroll"
-  },
-  "assetPackaging": {
-    "stickers": "embedded in app.js as INLINE_STICKER_SVGS",
-    "customCombos": "kept as replaceable PNG files",
-    "characters": "kept as replaceable PNG files"
   }
 }

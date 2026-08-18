@@ -24,12 +24,3 @@
 - public/custom-combos/zumba-camp/
 
 不需要自己拼接代码。
-
-## V17.0.1 Compact
-这是 GitHub 网页上传精简包。
-
-- 贴纸功能没有删除：所有贴纸 SVG 已经内嵌到 `app.js`，不再作为几十个独立文件上传。
-- Q版人物 PNG 保留。
-- `public/custom-combos/` 成品组合 PNG 保留，之后仍可直接人工替换。
-- 网页功能与 V17 Mobile Demo 保持一致。
-- 目标：解压后全部文件一次拖入 GitHub，不触发“fewer than 100 files”提示。

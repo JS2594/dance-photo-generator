@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#7c52ff">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./styles.css?v=17.0.1">
+<link rel="stylesheet" href="./styles.css?v=17.1.0">
 <title>PopShot</title>
 </head>
 <body>
 <div class="shell">
 <header class="topbar">
-  <div><div class="signature">for Lisa, and only Lisa ♡</div><div class="brand">PopShot<span>✦</span><em id="versionBadge">V17.0.1</em></div></div>
+  <div><div class="signature">for Lisa, and only Lisa ♡</div><div class="brand">PopShot<span>✦</span><em id="versionBadge">V17.1</em></div></div>
   <div class="top-actions"><button class="icon-btn" id="updateBtn">🔔<i></i></button><button class="icon-btn" id="settingsBtn">⚙️</button></div>
 </header>
 
@@ -38,7 +38,7 @@
     <img src="./public/assets/characters/zumba-camp/zumba_camp_01.png"><span class="course-copy"><strong>ZUMBA CAMP</strong><small>小班分解课程</small></span>
   </button>
 </div>
-<div class="course-hint">课程不同，成品组合、贴纸、相框会自动匹配 ✨</div>
+<div class="course-hint">课程不同，默认搭配、贴纸、相框会自动匹配 ✨</div>
 
 <div class="beauty-block">
   <div class="beauty-head"><b>基础美化</b><small id="beautyText">质感</small></div>
@@ -55,13 +55,13 @@
   <div class="canvas-stage"><canvas id="canvas" width="2525" height="1894"></canvas><div class="canvas-placeholder" id="placeholder">上传照片后，这里会显示成片</div></div>
 
   <div class="tools main-tools">
-    <button id="comboHubBtn2" class="tool-main"><span>▦</span><b>组合</b></button>
+    <button id="comboHubBtn2" class="tool-main"><span>▦</span><b>搭配</b></button>
     <button id="changeFrameBtn" class="tool-main"><span>▣</span><b>相框</b></button>
     <button id="changeStickerBtn" class="tool-main"><span>✦</span><b>贴纸</b></button>
     <button id="adjustPhotoBtn" class="tool-main"><span>↗</span><b>调整照片</b></button>
     <button id="moreBtn" class="tool-main"><span>•••</span><b>更多</b></button>
   </div>
-  <div class="result-tip">默认使用 <b>成品组合</b>；需要自己搭配时，点「组合 → 自定义组合」</div>
+  <div class="result-tip">默认使用 <b>默认搭配</b>；想自己搭配时，点「搭配 → 自定义搭配」</div>
 
   <div class="advanced-panel" id="advancedPanel">
     <div class="advanced-title">更多功能</div>
@@ -89,12 +89,12 @@
 </div>
 
 <div class="resume-modal hidden" id="resumeModal"><div class="resume-card"><div class="resume-icon">✦</div><h3>发现上次未完成的作品</h3><p>是否继续上次的编辑？</p><div class="resume-actions"><button id="discardResume">重新开始</button><button id="continueResume" class="primary-mini">继续编辑</button></div></div></div>
-<div class="toast hidden" id="updateTip"><span id="updateTipMsg">✨ 素材库有更新</span><button id="forceRefreshBtn" class="hidden">⟳ 立即更新</button><button id="closeUpdateTip">知道了</button></div>
+<div class="toast hidden" id="updateTip"><span id="updateTipMsg">✨ 素材库有更新</span><button id="forceRefreshBtn" class="hidden">更新并刷新</button><button id="closeUpdateTip">稍后更新</button></div>
 
 <!-- Compatibility hooks retained for the stable rendering engine -->
 <div class="hidden">
 <button id="changeCharacterBtn"></button><button id="customComboBtn2"></button><button id="finishedComboBtn"></button><button id="customComboBtn"></button>
 <button id="comboHubBtn"></button>
 </div>
-<script src="./app.js?v=17.0.1"></script>
+<script src="./app.js?v=17.1.0"></script>
 </body></html>

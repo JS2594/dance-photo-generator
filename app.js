@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '16.1.0';
+const W = 2525, H = 1894, VERSION = '17.1.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -723,7 +723,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=17.0.1';
+    im.src=src+'?v=17.0.0';
   });
 }
 async function listCustomCombos(){
@@ -994,11 +994,11 @@ function applyFinishedComboScale(v){
 }
 
 function showComboHub(){
-  $('#drawerTitle').textContent='组合';
+  $('#drawerTitle').textContent='搭配';
   drawerBody.innerHTML=`
     <div class="combo-mode-tabs">
-      <button id="comboTabFinished" class="on">成品组合</button>
-      <button id="comboTabCustom">自定义组合</button>
+      <button id="comboTabFinished" class="on">默认搭配</button>
+      <button id="comboTabCustom">自定义搭配</button>
     </div>
     <div id="comboModeContent"></div>`;
   drawer.classList.add('show');
@@ -1012,11 +1012,11 @@ async function renderComboMode(mode){
   if(mode==='finished'){
     comboMode='finished';
     wrap.innerHTML=`
-      <div class="adjust-tip">推荐：直接使用已经搭配好的完整组合；不会再叠加自定义Q版人物或课程文字。</div>
+      <div class="adjust-tip">系统已经搭配好的完整方案。默认优先使用，不会叠加自定义Q版人物或课程文字。</div>
       <div class="asset-picker" id="finishedComboPicker"><span>正在读取成品组合…</span></div>
       <label class="slider-row"><span>整体大小</span><input id="finishedScale" type="range" min="65" max="145" value="${Math.round((customComboScale||1)*100)}"><b>${Math.round((customComboScale||1)*100)}%</b></label>`;
     const arr=await listCustomCombos(),picker=$('#finishedComboPicker');picker.innerHTML='';
-    if(!arr.length){picker.innerHTML='<div class="adjust-tip">当前课程暂无成品组合。</div>'}
+    if(!arr.length){picker.innerHTML='<div class="adjust-tip">当前课程暂无默认搭配。</div>'}
     else arr.forEach(({src,im})=>{const btn=document.createElement('button');btn.className='asset-option'+(src===customComboSrc?' on':'');btn.innerHTML=`<img src="${src}" alt="">`;btn.onclick=()=>{customComboSrc=src;customComboImage=im;comboMode='finished';render();saveDraft();renderComboMode('finished')};picker.appendChild(btn)});
     const r=$('#finishedScale'),v=r.nextElementSibling;
     r.oninput=()=>{customComboScale=Math.max(.65,Math.min(1.45,Number(r.value)/100));v.textContent=r.value+'%';render();saveDraft()};
@@ -1110,7 +1110,8 @@ function showStickerPicker(){
   const cats=['recommended','general','dance','fitness','cute','graphic'];if(active)cats.push(active);
   if(STICKER_CATEGORIES[stickerCategory]?.holiday&&!active)stickerCategory='recommended';
   drawerBody.innerHTML=`${active?`<div class="holiday-badge">✦ ${STICKER_CATEGORIES[active].label}已开启</div>`:''}<div class="sticker-tabs">${cats.map(k=>`<button data-sc="${k}" class="${k===stickerCategory?'on':''}">${STICKER_CATEGORIES[k].label}</button>`).join('')}</div><div class="sticker-grid" id="stickerPicker"></div>`;
-  const build=()=>{const wrap=$('#stickerPicker'),pool=stickerPool();wrap.innerHTML='';pool.forEach((s,i)=>{const b=document.createElement('button');b.className='sticker-option'+(i===stickerIndex?' on':'');b.innerHTML=`<img src="${s}" alt="贴纸">`;b.onclick=()=>{push();stickerIndex=i;layers.sticker.visible=true;drawer.classList.remove('show');render();saveDraft()};wrap.appendChild(b)});};
+  const stickerName=(src,i)=>{const f=(src.split('/').pop()||'').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');return f?f.replace(/\b\w/g,c=>c.toUpperCase()):`贴纸 ${i+1}`};
+  const build=()=>{const wrap=$('#stickerPicker'),pool=stickerPool();wrap.innerHTML='';pool.forEach((s,i)=>{const b=document.createElement('button');b.className='sticker-option'+(i===stickerIndex?' on':'');const name=stickerName(s,i);b.innerHTML=`<img src="${s}" alt=""><span class="sticker-name">${name}</span>`;const im=b.querySelector('img');im.onerror=()=>{im.remove();b.classList.add('text-only')};b.onclick=()=>{push();stickerIndex=i;layers.sticker.visible=true;drawer.classList.remove('show');render();saveDraft();toast(`已选择：${name}`)};wrap.appendChild(b)});if(!pool.length)wrap.innerHTML='<div class="adjust-tip">当前分类暂无贴纸</div>';};
   $$('[data-sc]').forEach(b=>b.onclick=()=>{stickerCategory=b.dataset.sc;stickerIndex=0;$$('[data-sc]').forEach(x=>x.classList.toggle('on',x===b));build();});
   build();drawer.classList.add('show');
 }
@@ -1316,6 +1317,8 @@ function showUpdateToast(msg,showBtn){
   $('#updateTip').classList.remove('hidden');
 }
 async function forceRefresh(){
+  const btn=$('#forceRefreshBtn'); if(btn){btn.disabled=true;btn.textContent='正在更新…';}
+  showUpdateToast('正在更新到最新版本，请稍候…',false);
   try{
     if('serviceWorker'in navigator){
       const regs=await navigator.serviceWorker.getRegistrations();

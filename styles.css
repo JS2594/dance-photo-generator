@@ -45,3 +45,10 @@ button{font:inherit;cursor:pointer;touch-action:manipulation}
 }
 
 .frame-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.frame-option{border:1px solid #ece8f3;background:#fff;border-radius:15px;padding:7px;min-height:112px}.frame-option.on{border-color:#7d5cff;background:#f8f5ff}.frame-option b{display:block;font-size:10px;color:#777;margin-top:5px}.frame-preview{display:block;height:76px;border-radius:10px;background:#f7f5fa;border:5px solid #eee}.fp-1{border-color:#ff5ba7}.fp-2{border-color:#7657ff}.fp-3{border-color:#ffbd3d}.fp-4{border-style:dashed;border-color:#7657ff}.fp-5{border-color:#222}.fp-6{border-color:#ff8b62}.fp-7{border-color:#63c5da}.fp-8{border-color:#e6b8ff}.fp-9{border-style:double;border-color:#ff5ba7}.fp-10{border-style:dotted;border-color:#7657ff}.fp-11{border-color:#d6b45d}
+
+/* v17.1 interaction stability */
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.tool-main,.ghost,.icon-btn,.wide-btn,.resume-actions button,.combo-mode-tabs button{min-height:48px}
+.sticker-option{min-height:92px;gap:5px;grid-template-rows:1fr auto}.sticker-option .sticker-name{display:block;font-size:11px;line-height:1.15;color:#666;word-break:break-word}.sticker-option.text-only{grid-template-rows:1fr;font-weight:700;font-size:13px;padding:12px}.sticker-option.text-only .sticker-name{font-size:13px;color:#4b4656}
+.combo-mode-tabs{position:sticky;top:0;z-index:2;background:#fff;padding:4px 0 10px}
+@media(max-width:520px){.tool-main{min-height:76px}.ghost{min-width:108px;min-height:52px}.drawer-head button{width:52px;height:52px}.combo-mode-tabs button{min-height:52px}}
