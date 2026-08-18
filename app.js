@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '17.4.0';
+const W = 2525, H = 1894, VERSION = '17.5.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -61,7 +61,7 @@ let manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};
 let stickerCategory='recommended';
 const STICKER_CATEGORIES={
   recommended:{label:'推荐',files:[]},
-  general:{label:'通用',files:['sparkle','sparkle_burst','crown','heart','smiley','lightning'].map(x=>`./public/assets/stickers/general/${x}.svg`)},
+  general:{label:'通用',files:[...['sparkle','sparkle_burst','crown','heart','smiley','lightning'].map(x=>`./public/assets/stickers/general/${x}.svg`),...Array.from({length:30},(_,i)=>`./public/sticker-library/general/sticker_${String(i+1).padStart(2,'0')}.png`)]},
   dance:{label:'Dance',files:['music_note','headphones','disco','rhythm','spotlight','mic'].map(x=>`./public/assets/stickers/dance/${x}.svg`)},
   fitness:{label:'Fitness',files:['dumbbell','plate','flame','energy','kettlebell','strong_star'].map(x=>`./public/assets/stickers/fitness/${x}.svg`)},
   cute:{label:'可爱',files:['bow','doubleheart','butterfly','flower','candyheart','mini_crown'].map(x=>`./public/assets/stickers/cute/${x}.svg`)},
@@ -89,10 +89,13 @@ function activeHolidayCategory(){
   if(nearDate(FESTIVAL_DATES.cny[y],7))return'cny';
   return null;
 }
+const USER_STICKER_SLOTS=Array.from({length:30},(_,i)=>String(i+1).padStart(2,'0'));
+function userStickerFiles(cat){return USER_STICKER_SLOTS.map(n=>`./public/sticker-library/${cat}/sticker_${n}.png`)}
 function recommendedStickerFiles(){
-  const base=[...STICKER_CATEGORIES.general.files,...STICKER_CATEGORIES.graphic.files];
-  if(course==='buttscaler')base.push(...STICKER_CATEGORIES.fitness.files);
-  else base.push(...STICKER_CATEGORIES.dance.files);
+  // 推荐与通用彻底分开：推荐 = 当前课程专属 + 用户后续补充的 recommended/课程 文件夹。
+  const base=[...userStickerFiles('recommended/'+course)];
+  if(course==='buttscaler')base.push(...STICKER_CATEGORIES.fitness.files,...userStickerFiles('fitness'));
+  else base.push(...STICKER_CATEGORIES.dance.files,...userStickerFiles('dance')); 
   if(visualStyle==='cute'||visualStyle==='cream'||visualStyle==='fair')base.push(...STICKER_CATEGORIES.cute.files);
   const h=activeHolidayCategory();if(h)base.push(...STICKER_CATEGORIES[h].files);
   return base;
@@ -273,8 +276,18 @@ function smartCrop(){
   if(iw/ih>tr){ sh=ih; sw=ih*tr; }
   else{ sw=iw; sh=iw/tr; }
 
-  // 只有用户主动放大照片时才缩小取样区域；默认绝不自动放大。
-  const z=Math.max(1,Number(photoZoom)||1);
+  // V17.5 默认构图：适当放大真人，但左右仍尽量各保留约 1 个站位。
+  // 识别到多人时，用中位脸宽估算“一个人的站位”，只在安全范围内放大；用户手动缩放仍优先。
+  let autoZoom=1.10;
+  if(boxesDetected.length>=2){
+    const xs1=Math.min(...boxesDetected.map(b=>b.x)), xs2=Math.max(...boxesDetected.map(b=>b.x+b.w));
+    const widths=boxesDetected.map(b=>b.w).sort((a,b)=>a-b);
+    const personSlot=Math.max(widths[Math.floor(widths.length/2)]*1.7, iw*.055);
+    const needW=(xs2-xs1)+personSlot*2;
+    autoZoom=Math.max(1.04,Math.min(1.18,sw/Math.max(needW,sw/1.18)));
+  }
+  const userZoom=Math.max(.72,Number(photoZoom)||1);
+  const z=userZoom===1?autoZoom:userZoom;
   sw/=z; sh/=z;
 
   let cx=iw/2, cy=ih/2;
@@ -284,9 +297,8 @@ function smartCrop(){
     const y1=Math.min(...boxesDetected.map(b=>b.y));
     const y2=Math.max(...boxesDetected.map(b=>b.y+b.h));
     cx=(x1+x2)/2;
-    // 人群通常位于画面中下部：只做轻微垂直跟随，避免切脚/切头。
     const faceCenter=(y1+y2)/2;
-    cy=Math.max(sh/2,Math.min(ih-sh/2,faceCenter+sh*.18));
+    cy=Math.max(sh/2,Math.min(ih-sh/2,faceCenter+sh*.20));
   }
 
   let sx=cx-sw/2-photoDX*iw/W;
@@ -426,6 +438,9 @@ function drawPhoto(){
   const br=Math.max(.65,(1+b*.12+ex)*gr.br), con=Math.max(.6,(1+b*.02+ct)*gr.ct), sat=Math.max(.2,(1+b*.05+sa)*gr.sa);
   ctx.save();ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
+  // V17.5 轻量高清叠加：直接基于原始照片再刷一层微弱细节对比，不插值生成新像素、不做AI重绘。
+  // 强度刻意很低，避免改变整体色彩观感或产生锐化白边。
+  if(!dragging){ctx.save();ctx.globalAlpha=.10;ctx.filter='contrast(1.035)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
   if(b>0&&!dragging&&beautyPreset!=='texture'){ctx.save();ctx.globalAlpha=Math.min(.22,(.07*b+.02)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(18px) brightness(1.06)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
   if(beautyPreset!=='texture'){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
   if(bp.tint){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=bp.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
@@ -679,7 +694,7 @@ async function drawSticker(){
   const pool=stickerPool();if(!pool.length)return null;
   const src=pool[stickerIndex%pool.length];
   try{
-    const im=await load(src), base=132*l.scale, ar=im.width/im.height||1;
+    const im=await load(src), base=190*l.scale, ar=im.width/im.height||1;
     let w=base,h=base;if(ar>1)h=base/ar;else w=base*ar;
     l.w=w;l.h=h;ctx.save();ctx.globalAlpha=.95;ctx.drawImage(im,l.x,l.y,w,h);
     if(density==='rich'&&crowd()==='low'&&pool.length>1){const im2=await load(pool[(stickerIndex+1)%pool.length]);const s=base*.48,ar2=im2.width/im2.height||1;ctx.globalAlpha=.62;ctx.drawImage(im2,l.x-50,l.y+h+10,ar2>1?s:s*ar2,ar2>1?s/ar2:s);}
@@ -705,7 +720,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=17.0.0';
+    im.src=src+'?v=17.5.0';
   });
 }
 async function listCustomCombos(){
@@ -719,13 +734,11 @@ async function listCustomCombos(){
 async function loadPreferredCustomCombo(){
   const arr=await listCustomCombos();
   if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
-  const key='popshotLastCombo_'+course;
-  const last=localStorage.getItem(key);
-  let idx=arr.findIndex(x=>x.src===last);
-  idx=(idx+1)%arr.length;
-  const pick=arr[idx<0?0:idx];
+  // 默认搭配必须固定：每个课程一键生成永远先用人工放入文件夹的 _01 成品组合。
+  // “换一版”才在同课程的其它固定成品组合间轮换。
+  const pick=arr[0];
   customComboSrc=pick.src;customComboImage=pick.im;comboMode='finished';
-  localStorage.setItem(key,pick.src);
+  localStorage.setItem('popshotLastCombo_'+course,pick.src);
   return true;
 }
 async function nextCustomCombo(){
@@ -991,6 +1004,7 @@ $('#courseGrid').onclick=e=>{
 };
 $$('[data-preset]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.preset;beauty=beautyPreset==='original'?0:55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();});
 $$('[data-style]').forEach(b=>b.onclick=()=>{
+  if(comboMode!=='custom'){toast('一键换风格仅用于「自定义搭配」');return;}
   push();visualStyle=b.dataset.style;localStorage.popshotStyle=visualStyle;stickerIndex=0;syncUI();render();saveDraft();
 });
 $$('[data-density]').forEach(b=>b.onclick=()=>{
@@ -1051,6 +1065,10 @@ function syncComboQuickUI(){
   const f=$('#finishedQuickBtn'),c=$('#customQuickBtn');
   if(f)f.classList.toggle('on',comboMode!=='custom');
   if(c)c.classList.toggle('on',comboMode==='custom');
+  const styleRow=document.querySelector('.style-row');
+  if(styleRow)styleRow.style.display=comboMode==='custom'?'block':'none';
+  const comp=document.getElementById('compositionMode');
+  if(comp)comp.style.display=comboMode==='custom'?'flex':'none';
 }
 async function activateFinishedQuick(){
   comboMode='finished';
@@ -1184,7 +1202,7 @@ function showStickerPicker(){
   if(STICKER_CATEGORIES[stickerCategory]?.holiday&&!active)stickerCategory='recommended';
   drawerBody.innerHTML=`${active?`<div class="holiday-badge">✦ ${STICKER_CATEGORIES[active].label}已开启</div>`:''}<div class="sticker-tabs">${cats.map(k=>`<button data-sc="${k}" class="${k===stickerCategory?'on':''}">${STICKER_CATEGORIES[k].label}</button>`).join('')}</div><div class="sticker-grid" id="stickerPicker"></div>`;
   const stickerName=(src,i)=>{const f=(src.split('/').pop()||'').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');return f?f.replace(/\b\w/g,c=>c.toUpperCase()):`贴纸 ${i+1}`};
-  const build=()=>{const wrap=$('#stickerPicker'),pool=stickerPool();wrap.innerHTML='';pool.forEach((s,i)=>{const b=document.createElement('button');b.className='sticker-option'+(i===stickerIndex?' on':'');const name=stickerName(s,i);b.innerHTML=`<img src="${s}" alt=""><span class="sticker-name">${name}</span>`;const im=b.querySelector('img');im.onerror=()=>{im.remove();b.classList.add('text-only')};b.onclick=()=>{push();stickerIndex=i;layers.sticker.visible=true;drawer.classList.remove('show');render();saveDraft();toast(`已选择：${name}`)};wrap.appendChild(b)});if(!pool.length)wrap.innerHTML='<div class="adjust-tip">当前分类暂无贴纸</div>';};
+  const build=()=>{const wrap=$('#stickerPicker'),pool=stickerPool();wrap.innerHTML='';pool.forEach((s,i)=>{const b=document.createElement('button');b.className='sticker-option'+(i===stickerIndex?' on':'');const name=stickerName(s,i);b.innerHTML=`<img src="${s}" alt=""><span class="sticker-name">${name}</span>`;const im=b.querySelector('img');im.onerror=()=>{ if(s.includes('/sticker-library/')) b.remove(); else {im.remove();b.classList.add('text-only')} };b.onclick=()=>{push();stickerIndex=i;layers.sticker.visible=true;layers.sticker.scale=Math.max(1.15,layers.sticker.scale||1);selected='sticker';drawer.classList.remove('show');render();saveDraft();syncScaleUI();toast(`已添加：${name}，可直接在图片上拖动`)};wrap.appendChild(b)});if(!pool.length)wrap.innerHTML='<div class="adjust-tip">当前分类暂无贴纸</div>';};
   $$('[data-sc]').forEach(b=>b.onclick=()=>{stickerCategory=b.dataset.sc;stickerIndex=0;$$('[data-sc]').forEach(x=>x.classList.toggle('on',x===b));build();});
   build();drawer.classList.add('show');
 }
