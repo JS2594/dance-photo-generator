@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.9",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -123,7 +123,7 @@
     ],
     "principle": "When no decorative layout is safe, hide Q character/stickers before covering real people."
   },
-  "hotfix": "1.0.8a",
+  "hotfix": "target3-hd",
   "forceVisualHotfix": {
     "title": "mandatory",
     "character": "mandatory",
@@ -381,5 +381,11 @@
     "effect": "version.json and service-worker.js activate V1.0.8 and purge older PopShot caches."
   },
   "updateLogic": "Only prompt when remote version is strictly newer than current runtime version.",
-  "refreshGuard": "One-shot session guard prevents repeated forced refresh loops."
+  "refreshGuard": "One-shot session guard prevents repeated forced refresh loops.",
+  "target3HD": {
+    "clarity": "source-resolution render; PNG lossless; no blur/glow in Natural",
+    "skin": "about 3% brighter/cleaner; red/orange restrained",
+    "color": "colored clothing/background vividness preserved",
+    "crop": "subject visually lower; less empty floor at bottom"
+  }
 }

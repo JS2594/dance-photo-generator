@@ -1,7 +1,6 @@
 {
-  "version": "1.0.8",
-  "hotfix": "1.0.8a",
-  "build": 1787074501,
+  "version": "1.0.9",
+  "build": 1787076498,
   "atomicPublish": true,
-  "notes": "update-loop-hotfix"
+  "notes": "Target-3 HD: source-resolution PNG export, stronger micro-detail, skin ~3% brighter/cleaner, vivid colored clothing/background preserved, crop shifted to reduce bottom empty space."
 }

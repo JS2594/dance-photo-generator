@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.0.8';
+const POPSHOT_VERSION='1.0.9';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.0.8';
+const W = 2525, H = 1894, VERSION = '1.0.9';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -69,7 +69,7 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'鲜活自然',ex:.015,ct:.115,sa:.175,temp:-1,hi:-.035,sh:.015,tint:null},
+  natural:{label:'鲜活自然',ex:.025,ct:.120,sa:.175,temp:-2,hi:-.035,sh:.018,tint:null},
   texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
@@ -246,7 +246,7 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.0.8：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
+  // V1.0.9：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
   try{ add(await Promise.race([detectWithPico(img),new Promise(r=>setTimeout(()=>r([]),1800))])); }catch(e){}
   // 支持原生 FaceDetector 的浏览器做快速补充。
   if(boxesDetected.length<3 && 'FaceDetector' in window){
@@ -264,7 +264,7 @@ function smartCrop(){
   if(boxesDetected.length<2){
     const z=(Number(photoZoom)||1)===1 ? 1.28 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.090-photoDY*ih/H;
+    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.115-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -318,8 +318,8 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.0.8：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
-  let sy=(y1+y2)/2-sh*.385-photoDY*ih/H;
+  // V1.0.9：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
+  let sy=(y1+y2)/2-sh*.405-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -453,7 +453,7 @@ function drawPhoto(){
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.0.8：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
+  // V1.0.9：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
   const br=Math.max(.65,(1+b*(isNatural?.025:.12)+ex)*gr.br);
   const con=Math.max(.6,(1+b*(isNatural?.035:.02)+ct)*gr.ct);
   const sat=Math.max(.2,(1+b*(isNatural?.075:.05)+sa)*gr.sa);
@@ -462,7 +462,7 @@ function drawPhoto(){
   ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
   // 高清细节叠加：原图直接二次轻刷，不经过低清中间图。
-  if(!dragging){ctx.save();ctx.globalAlpha=isNatural?.20:.14;ctx.filter=isNatural?'contrast(1.085) saturate(1.045)':'contrast(1.055) saturate(1.025)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
+  if(!dragging){ctx.save();ctx.globalAlpha=isNatural?.22:.14;ctx.filter=isNatural?'contrast(1.095) saturate(1.045)':'contrast(1.055) saturate(1.025)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
   if(b>0&&!dragging&&beautyPreset!=='texture'&&!isNatural){ctx.save();ctx.globalAlpha=Math.min(.10,(.035*b+.008)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(10px) brightness(1.02)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
   // 默认 A 禁止粉/紫全局雾层；其他风格保持原逻辑。
   if(beautyPreset!=='texture'&&!isNatural){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
@@ -1406,7 +1406,7 @@ function updateCheck(){
 
 
 function popshotV108FinalColorPass(ctx,w,h){
-  // V1.0.8: remove haze, enhance colored clothing/background, protect skin.
+  // V1.0.9: remove haze, enhance colored clothing/background, protect skin.
   try{
     const img=ctx.getImageData(0,0,w,h), d=img.data;
     for(let i=0;i<d.length;i+=4){
