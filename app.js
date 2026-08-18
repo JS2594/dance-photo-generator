@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.6.0';
+const W = 2525, H = 1894, VERSION = '15.7.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -1266,50 +1266,17 @@ function reloadLatestOnce(){
   location.replace(u.toString());
 }
 async function setupPwaAutoUpdate(){
-  if(!('serviceWorker'in navigator))return;
+  // V15.7 DEBUG: prevent stale PWA code while upload debugging.
   try{
-    const reg=await navigator.serviceWorker.register(`./service-worker.js?v=${VERSION}`,{updateViaCache:'none'});
-    try{await reg.update()}catch{}
-
-    if(reg.waiting){
-      await activateWaitingWorker(reg);
-      reloadLatestOnce();
-      return;
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
     }
-
-    reg.addEventListener('updatefound',()=>{
-      const w=reg.installing;
-      if(!w)return;
-      w.addEventListener('statechange',async()=>{
-        if(w.state==='installed'&&navigator.serviceWorker.controller){
-          await activateWaitingWorker(reg);
-          reloadLatestOnce();
-        }
-      });
-    });
-
-    // 第二层：version.json 每次打开都 no-store 检查。
-    const live=await fetchLiveVersion();
-    if(live&&live!==VERSION){
-      try{await reg.update()}catch{}
-      if(reg.waiting)await activateWaitingWorker(reg);
-      reloadLatestOnce();
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
     }
-
-    // 应用保持打开时，每 15 分钟轻量检查一次。
-    setInterval(async()=>{
-      try{
-        const live=await fetchLiveVersion();
-        if(live&&live!==VERSION){
-          await reg.update();
-          if(reg.waiting)await activateWaitingWorker(reg);
-          reloadLatestOnce();
-        }
-      }catch{}
-    },15*60*1000);
-  }catch(e){
-    console.warn('PWA auto update failed',e);
-  }
+  }catch(err){console.warn('debug cache cleanup',err)}
 }
 window.addEventListener('load',()=>{
   const v=document.getElementById('versionBadge');
@@ -1364,3 +1331,7 @@ function openMyAssetsDB(){return new Promise((resolve,reject)=>{const r=indexedD
 async function saveMyAsset(file,type='combo'){const db=await openMyAssetsDB(),id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());return new Promise((res,rej)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').put({id,name:file.name,type,blob:file,created:Date.now()});tx.oncomplete=()=>res(id);tx.onerror=()=>rej(tx.error)})}
 async function getMyAssets(){const db=await openMyAssetsDB();return new Promise((res,rej)=>{const r=db.transaction('assets').objectStore('assets').getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
 async function deleteMyAsset(id){const db=await openMyAssetsDB();return new Promise((res,rej)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').delete(id);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+
+document.addEventListener('DOMContentLoaded',()=>{
+ const b=document.getElementById('versionBadge'); if(b) b.textContent='v15.7.0 · DEBUG 032101';
+});

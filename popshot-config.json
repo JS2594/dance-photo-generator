@@ -1,5 +1,5 @@
 {
-  "version": "15.6.0",
+  "version": "15.7.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -338,5 +338,10 @@
     "firstFrameBeforeAutoPlace": true,
     "directCanvasFallback": true,
     "backgroundEnhancements": true
+  },
+  "debugCacheMode": {
+    "serviceWorkerDisabled": true,
+    "clearCachesOnBoot": true,
+    "build": "1787032101"
   }
 }

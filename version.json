@@ -1,5 +1,5 @@
 {
-  "version": "15.6.0",
-  "build": 1787031364,
-  "stage": "mobile-upload-rewrite"
+  "version": "15.7.0",
+  "build": 1787032101,
+  "stage": "github-cache-debug"
 }
