@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.1.0';
+const W = 2525, H = 1894, VERSION = '15.2.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -43,7 +43,7 @@ const styles = {
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
   natural:{label:'自然',ex:.04,ct:.04,sa:.05,temp:1,hi:-.01,sh:.03,tint:null},
-  texture:{label:'质感',ex:-.015,ct:.20,sa:.18,temp:1,hi:-.12,sh:.045,tint:'rgba(255,235,225,.008)'}, 
+  texture:{label:'质感',ex:0,ct:.24,sa:.26,temp:1,hi:-.10,sh:.025,tint:null}, 
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
   clear:{label:'清透',ex:.10,ct:.05,sa:-.03,temp:-3,hi:.06,sh:.07,tint:'rgba(210,235,255,.035)'},
@@ -437,20 +437,39 @@ function autoPlace(){
 }
 
 function drawPhoto(){
-  const c=smartCrop(), b=beauty/100, gr=styles[visualStyle].g;
+  const c=smartCrop(), b=beauty/100;
+  const isTexture=beautyPreset==='texture';
+  const gr=isTexture?{br:1,ct:1,sa:1,hue:0,tint:'rgba(0,0,0,0)',glow:0}:styles[visualStyle].g;
   const bp=BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural;
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
-  const br=Math.max(.65,(1+b*.12+ex)*gr.br), con=Math.max(.6,(1+b*.02+ct)*gr.ct), sat=Math.max(.2,(1+b*.05+sa)*gr.sa);
-  ctx.save();ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
-  ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
-  if(b>0&&!dragging){ctx.save();ctx.globalAlpha=Math.min(.34,(.10*b+.035)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(26px) brightness(1.10)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
-  ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();
+
+  // “质感”独立于装饰风格：不再被 Cute/Clean/Fair 等风格二次漂白。
+  const br=isTexture?Math.max(.70,1+ex):Math.max(.65,(1+b*.12+ex)*gr.br);
+  const con=isTexture?Math.max(.65,1+ct):Math.max(.6,(1+b*.02+ct)*gr.ct);
+  const sat=isTexture?Math.max(.2,1+sa):Math.max(.2,(1+b*.05+sa)*gr.sa);
+
+  ctx.save();
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
+  ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
+  ctx.restore();
+
+  // 旧版“美颜柔光”是画面发糊、发白的主要来源；质感/鲜艳类彻底禁用模糊叠层。
+  const softPreset=!['texture','contrast','colorful','vivid'].includes(beautyPreset);
+  if(b>0&&!dragging&&softPreset){
+    ctx.save();ctx.globalAlpha=Math.min(.12,(.04*b+.012)*gr.glow);
+    ctx.globalCompositeOperation='screen';ctx.filter='blur(10px) brightness(1.04)';
+    ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
+  }
+
+  if(gr.tint&&gr.tint!=='rgba(0,0,0,0)'){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
   if(bp.tint){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=bp.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`:`rgba(90,165,255,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.20,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#8b8791';ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.18,Math.abs(sh));ctx.fillStyle=sh>0?'#a6a0b2':'#4b4753';ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(b>0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.20*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.12,Math.abs(temp)/150).toFixed(3)})`:`rgba(90,165,255,${Math.min(.12,Math.abs(temp)/150).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.14,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#77757c';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.10,Math.abs(sh));ctx.fillStyle=sh>0?'#918c9b':'#46434b';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(b>0&&softPreset){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.06*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
 }
 function drawFrame(){
   if(!frameIndex) return;
@@ -712,7 +731,7 @@ function selectBox(b,n){
 }
 
 
-const CUSTOM_ASSET_VERSION=localStorage.popshotAssetVersion||'1';
+const CUSTOM_ASSET_VERSION=localStorage.popshotAssetVersion||'2';
 // V15 P1 custom combo: complete image, never split internal character/text.
 let customComboSrc=null,customComboImage=null,customComboScale=1;
 const CUSTOM_COMBO_MAX=20;

@@ -1,5 +1,6 @@
 {
-  "version": "15.1.0",
-  "build": 1787028432,
-  "stage": "github-web-debug"
+  "version": "15.2.0",
+  "build": 1787029003,
+  "stage": "github-web-debug",
+  "p1InstalledCount": 20
 }
