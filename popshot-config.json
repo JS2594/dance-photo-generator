@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -275,7 +275,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "REAL Target-3 pipeline, not reference-image-only tuning",
+  "releaseFocus": "Actual exported PNG vs Target 3",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -397,5 +397,12 @@
     "crop": "subject slightly lower, less empty floor",
     "cache": "all code/asset cache-busters aligned to v1.1.0",
     "speed": "known course combos preload in background"
+  },
+  "actualExportTuning": {
+    "clarity": "stronger thresholded final-resolution unsharp + microcontrast",
+    "tone": "stronger dehaze and midtone separation",
+    "color": "higher selective vibrance on non-skin regions",
+    "skin": "brighter/cleaner, less red, protected from strong vibrance",
+    "crop": "slightly tighter with less empty floor"
   }
 }

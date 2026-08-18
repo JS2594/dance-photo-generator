@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "build": 1787077292,
+  "version": "1.1.1",
+  "build": 1787077979,
   "atomicPublish": true,
-  "notes": "Real Target-3 pipeline: exact export-only skin-aware color pass + unsharp mask before overlays; removed natural double-photo overlay; cache bust fixed; combo preload improved."
+  "notes": "Target3 actual-export tuning: stronger dehaze/black-white separation, protected brighter skin, stronger non-skin vibrance, final-resolution sharpen + microcontrast, slightly tighter crop."
 }

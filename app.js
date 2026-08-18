@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.1.0';
+const POPSHOT_VERSION='1.1.1';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.1.0';
+const W = 2525, H = 1894, VERSION = '1.1.1';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -193,7 +193,7 @@ function load(path){
     const inlineSvg=INLINE_STICKER_SVGS[path];
     im.src=inlineSvg
       ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
-      : (path.includes('?')?path:path+'?v=1.1.0');
+      : (path.includes('?')?path:path+'?v=1.1.1');
   });
   return loaded[path];
 }
@@ -246,7 +246,7 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.1.0：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
+  // V1.1.1：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
   try{ add(await Promise.race([detectWithPico(img),new Promise(r=>setTimeout(()=>r([]),1800))])); }catch(e){}
   // 支持原生 FaceDetector 的浏览器做快速补充。
   if(boxesDetected.length<3 && 'FaceDetector' in window){
@@ -264,7 +264,7 @@ function smartCrop(){
   if(boxesDetected.length<2){
     const z=(Number(photoZoom)||1)===1 ? 1.28 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.135-photoDY*ih/H;
+    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.148-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -318,8 +318,8 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.1.0：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
-  let sy=(y1+y2)/2-sh*.425-photoDY*ih/H;
+  // V1.1.1：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
+  let sy=(y1+y2)/2-sh*.438-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -472,7 +472,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
       const skin=target3SkinPixel(r,g,b);
 
       // Remove gray veil: raise midtone + increase useful contrast.
-      let ny=(y-128)*1.095+136; // ~ +8 luminance around mid tones
+      let ny=(y-128)*1.135+139; // ~ +8 luminance around mid tones
       ny=Math.max(0,Math.min(255,ny));
       const gain=y>1?ny/y:1;
       r*=gain; g*=gain; b*=gain;
@@ -482,18 +482,18 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
 
       if(skin){
         // Skin: about +3–5% brighter/cleaner, reduce excess red/orange, no white glow.
-        const lift=7.0;
-        r = r*.982 + lift;
-        g = g*1.006 + lift;
-        b = b*1.018 + lift;
+        const lift=9.0;
+        r = r*.970 + lift;
+        g = g*1.010 + lift;
+        b = b*1.026 + lift;
         const sg=.299*r+.587*g+.114*b;
-        const skinSat=.94;
+        const skinSat=.91;
         r=sg+(r-sg)*skinSat;
         g=sg+(g-sg)*skinSat;
         b=sg+(b-sg)*skinSat;
       }else if(chroma>10){
         // Vibrance: stronger on dull colors, restrained on colors already saturated.
-        const vib=1 + Math.max(.07, Math.min(.22, .22*(1-Math.min(1,chroma/150))));
+        const vib=1 + Math.max(.10, Math.min(.30, .30*(1-Math.min(1,chroma/165))));
         r=gray+(r-gray)*vib;
         g=gray+(g-gray)*vib;
         b=gray+(b-gray)*vib;
@@ -515,13 +515,13 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
     const blur=document.createElement('canvas');
     blur.width=w; blur.height=h;
     const bg=blur.getContext('2d',{alpha:false,willReadFrequently:true});
-    bg.filter='blur(0.75px)';
+    bg.filter='blur(0.95px)';
     bg.drawImage(tmp,0,0);
     bg.filter='none';
     const bd=bg.getImageData(0,0,w,h).data;
     const sd=src.data;
 
-    const amount=.62, threshold=2.2, maxHP=18;
+    const amount=.88, threshold=2.8, maxHP=20;
     for(let i=0;i<sd.length;i+=4){
       for(let c=0;c<3;c++){
         let hp=sd[i+c]-bd[i+c];
@@ -531,6 +531,25 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
       }
     }
     targetCtx.putImageData(src,0,0);
+
+    // 3) Export-only micro-contrast: restore local separation lost by crop scaling.
+    const fin=targetCtx.getImageData(0,0,w,h);
+    const fd=fin.data;
+    const microBlur=document.createElement('canvas');
+    microBlur.width=w; microBlur.height=h;
+    const mg=microBlur.getContext('2d',{alpha:false,willReadFrequently:true});
+    mg.filter='blur(2.2px)';
+    mg.drawImage(targetCtx.canvas,0,0);
+    mg.filter='none';
+    const md=mg.getImageData(0,0,w,h).data;
+    for(let i=0;i<fd.length;i+=4){
+      for(let c=0;c<3;c++){
+        let hp=fd[i+c]-md[i+c];
+        hp=Math.max(-11,Math.min(11,hp));
+        fd[i+c]=Math.max(0,Math.min(255,fd[i+c]+hp*.22));
+      }
+    }
+    targetCtx.putImageData(fin,0,0);
   }catch(e){
     console.warn('Target3 exact pass skipped',e);
   }
@@ -542,7 +561,7 @@ function drawPhoto(){
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.1.0：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
+  // V1.1.1：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
   const br=Math.max(.65,(1+b*(isNatural?.025:.12)+ex)*gr.br);
   const con=Math.max(.6,(1+b*(isNatural?.035:.02)+ct)*gr.ct);
   const sat=Math.max(.2,(1+b*(isNatural?.075:.05)+sa)*gr.sa);
@@ -550,7 +569,7 @@ function drawPhoto(){
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
-  // V1.1.0：自然模式不再二次覆盖一层原图。
+  // V1.1.1：自然模式不再二次覆盖一层原图。
   // 旧做法会把前面的亮度/对比/色彩重新冲淡，同时在放大裁剪时进一步造成视觉发软。
   if(!dragging && !isNatural){
     ctx.save();ctx.globalAlpha=.14;ctx.filter='contrast(1.055) saturate(1.025)';
@@ -846,7 +865,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.1.0';
+    im.src=src+'?v=1.1.1';
   });
 }
 const DEFAULT_COMBO_FILE={
@@ -1913,10 +1932,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.1.0',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.1.0',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.1.0',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.1.0'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.1.1',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.1.1',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.1.1',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.1.1'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
