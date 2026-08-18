@@ -164,3 +164,15 @@ button,.quick-actions button,.tool-btn,#shuffleBtn,#finishedComboBtn,#customComb
 @media(max-width:520px){
   .quick-actions button{min-height:58px}
 }
+
+.beauty-presets,#beautyPresetRow,.preset-row{display:flex!important;flex-wrap:nowrap!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.beauty-presets::-webkit-scrollbar,#beautyPresetRow::-webkit-scrollbar,.preset-row::-webkit-scrollbar{display:none}
+.beauty-presets button,#beautyPresetRow button,.preset-row button{flex:0 0 auto!important;min-width:72px!important;white-space:nowrap!important}
+
+#comboHubBtn2{display:none!important}
+
+#changeCharacterBtn,#changeTagBtn,#customComboBtn2,#finishedComboBtn{display:none!important}
+.combo-mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.combo-mode-tabs button{min-height:48px;border-radius:14px;border:1px solid #e7e3f0;background:#f7f5fb;font-weight:700}
+.combo-mode-tabs button.on{background:linear-gradient(135deg,#7a52ff,#e6419d);color:#fff;border-color:transparent}
+#comboModeContent .wide-btn{width:100%;min-height:50px;margin:8px 0;border-radius:14px}

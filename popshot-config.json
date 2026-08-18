@@ -1,5 +1,5 @@
 {
-  "version": "16.0.0",
+  "version": "16.1.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -252,18 +252,22 @@
     "priority": "after-first-frame"
   },
   "comboUX": {
-    "default": "finished",
+    "singleEntry": "组合",
+    "modes": [
+      "成品组合",
+      "自定义组合"
+    ],
+    "defaultMode": "成品组合",
     "finishedControls": [
-      "change style",
+      "select finished combo",
       "overall scale"
     ],
     "customControls": [
       "Q character",
       "course wordmark",
-      "independent scale",
+      "independent size",
       "independent position"
-    ],
-    "nonRepeatingDefault": true
+    ]
   },
   "touchUX": {
     "minButtonHeight": 56,
@@ -275,7 +279,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "interaction-composition-only",
+  "releaseFocus": "combo-ux-and-layout-fix",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -293,5 +297,9 @@
       "independent scale",
       "independent position"
     ]
+  },
+  "beautyUI": {
+    "mobileNoWrap": true,
+    "horizontalScroll": true
   }
 }

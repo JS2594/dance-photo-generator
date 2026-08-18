@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '16.0.0';
+const W = 2525, H = 1894, VERSION = '16.1.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -778,7 +778,7 @@ async function render(){
 
   const boxes={};
   if(customComboImage){
-    layers.title.visible=false;layers.character.visible=false;
+    comboMode='finished';layers.title.visible=false;layers.character.visible=false;
     boxes.customCombo=drawCustomCombo();
   }else{
     layers.title.visible=true;layers.character.visible=true;
@@ -980,6 +980,46 @@ function applyFinishedComboScale(v){
   customComboScale=finishedComboScale;
   render();saveDraft();
 }
+
+function showComboHub(){
+  $('#drawerTitle').textContent='组合';
+  drawerBody.innerHTML=`
+    <div class="combo-mode-tabs">
+      <button id="comboTabFinished" class="on">成品组合</button>
+      <button id="comboTabCustom">自定义组合</button>
+    </div>
+    <div id="comboModeContent"></div>`;
+  drawer.classList.add('show');
+  $('#comboTabFinished').onclick=()=>renderComboMode('finished');
+  $('#comboTabCustom').onclick=()=>renderComboMode('custom');
+  renderComboMode(customComboImage?'finished':'custom');
+}
+async function renderComboMode(mode){
+  const a=$('#comboTabFinished'),b=$('#comboTabCustom'),wrap=$('#comboModeContent');
+  a.classList.toggle('on',mode==='finished');b.classList.toggle('on',mode==='custom');
+  if(mode==='finished'){
+    comboMode='finished';
+    wrap.innerHTML=`
+      <div class="adjust-tip">推荐：直接使用已经搭配好的 Q版人物 + 课程字样。</div>
+      <div class="asset-picker" id="finishedComboPicker"><span>正在读取成品组合…</span></div>
+      <label class="slider-row"><span>整体大小</span><input id="finishedScale" type="range" min="65" max="145" value="${Math.round((customComboScale||1)*100)}"><b>${Math.round((customComboScale||1)*100)}%</b></label>`;
+    const arr=await listCustomCombos(),picker=$('#finishedComboPicker');picker.innerHTML='';
+    if(!arr.length){picker.innerHTML='<div class="adjust-tip">当前课程暂无成品组合。</div>'}
+    else arr.forEach(({src,im})=>{const btn=document.createElement('button');btn.className='asset-option'+(src===customComboSrc?' on':'');btn.innerHTML=`<img src="${src}" alt="">`;btn.onclick=()=>{customComboSrc=src;customComboImage=im;comboMode='finished';render();saveDraft();renderComboMode('finished')};picker.appendChild(btn)});
+    const r=$('#finishedScale'),v=r.nextElementSibling;
+    r.oninput=()=>{customComboScale=Math.max(.65,Math.min(1.45,Number(r.value)/100));v.textContent=r.value+'%';render();saveDraft()};
+  }else{
+    comboMode='custom';customComboSrc=null;customComboImage=null;layers.title.visible=true;layers.character.visible=true;render();saveDraft();
+    wrap.innerHTML=`
+      <div class="adjust-tip">自己搭配 Q版人物 + 课程字样，可分别调整大小和位置。</div>
+      <button class="wide-btn" id="pickCustomChar">选择Q版人物</button>
+      <button class="wide-btn" id="pickCustomLogo">选择课程字样</button>
+      <div class="adjust-tip">选择后可在成图上拖动位置，并用大小控制调整尺寸。</div>`;
+    $('#pickCustomChar').onclick=showCharacterPicker;
+    $('#pickCustomLogo').onclick=showTitlePicker;
+  }
+}
+
 function showFinishedComboControls(){
   $('#drawerTitle').textContent='成品组合（推荐）';
   drawerBody.innerHTML=`
@@ -1062,8 +1102,8 @@ function showStickerPicker(){
   $$('[data-sc]').forEach(b=>b.onclick=()=>{stickerCategory=b.dataset.sc;stickerIndex=0;$$('[data-sc]').forEach(x=>x.classList.toggle('on',x===b));build();});
   build();drawer.classList.add('show');
 }
-$('#customComboBtn').onclick=showCustomComboControls;
-$('#finishedComboBtn').onclick=showFinishedComboControls;
+
+
 
 $('#changeStickerBtn').onclick=showStickerPicker;
 $('#changeFrameBtn').onclick=()=>{push();frameIndex=(frameIndex+1)%12;render()};
@@ -1405,3 +1445,9 @@ function clampTopComboLayout(box, canvasW, canvasH, occupiedTopRects=[]){
 document.addEventListener('dblclick',e=>{
   if(e.target.closest('button,.quick-actions,.bottom-bar')) e.preventDefault();
 },{passive:false});
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const a=$('#comboHubBtn'),b=$('#comboHubBtn2');
+  if(a)a.onclick=showComboHub;
+  if(b)b.onclick=showComboHub;
+});
