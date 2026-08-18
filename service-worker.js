@@ -1,4 +1,4 @@
-const CACHE='popshot-v17.3.0-quality';
+const CACHE='popshot-v17.4.0-quality';
 const CODE=['.html','.js','.css','.webmanifest','.json'];
 self.addEventListener('install',e=>e.waitUntil(self.skipWaiting()));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

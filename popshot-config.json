@@ -1,5 +1,5 @@
 {
-  "version": "17.3.0",
+  "version": "17.4.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -279,7 +279,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "combo-ux-and-layout-fix",
+  "releaseFocus": "clarity-lock-and-course-response",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -322,6 +322,17 @@
     "previewSeparatedFromExport": true,
     "exportFormat": "PNG",
     "lossyCompression": false,
-    "noFakeUpscale": true
+    "noFakeUpscale": true,
+    "maxNative43CropByDefault": true,
+    "faceDetectionDoesNotShrinkCrop": true,
+    "defaultPhotoZoom": 1,
+    "colorParametersChanged": false
+  },
+  "courseSwitch": {
+    "immediateSelectedState": true,
+    "asyncComboLoad": true,
+    "raceProtection": true,
+    "prewarmFirstCombo": true,
+    "subtitlesHidden": true
   }
 }

@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '17.3.0';
+const W = 2525, H = 1894, VERSION = '17.4.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -265,50 +265,32 @@ async function detectPeople(img){
 }
 
 function smartCrop(){
-  const iw=photo.width, ih=photo.height, tr=W/H;
-  let sw,sh,baseSx,baseSy;
+  // V17.4 清晰度锁定：
+  // 默认裁剪永远从原始照片中取“最大可用 4:3 区域”，不再根据人脸框自动缩成小裁剪区。
+  // 人脸识别只用于移动这块最大裁剪窗的位置，不用于缩小它。
+  const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height, tr=W/H;
+  let sw,sh;
+  if(iw/ih>tr){ sh=ih; sw=ih*tr; }
+  else{ sw=iw; sh=iw/tr; }
 
+  // 只有用户主动放大照片时才缩小取样区域；默认绝不自动放大。
+  const z=Math.max(1,Number(photoZoom)||1);
+  sw/=z; sh/=z;
+
+  let cx=iw/2, cy=ih/2;
   if(boxesDetected.length){
-    const avgH=boxesDetected.reduce((s,b)=>s+b.h,0)/boxesDetected.length;
-    const fx1=Math.min(...boxesDetected.map(b=>b.x));
-    const fx2=Math.max(...boxesDetected.map(b=>b.x+b.w));
-    const fy1=Math.min(...boxesDetected.map(b=>b.y));
-    const fy2=Math.max(...boxesDetected.map(b=>b.y+b.h));
-    const faceCX=(fx1+fx2)/2;
-
-    // 必须保留的区域：收紧边距，让真人尽量占满画面（参考海报式构图）。
-    const keepL=Math.max(0,fx1-avgH*0.95);
-    const keepR=Math.min(iw,fx2+avgH*0.95);
-    const keepT=Math.max(0,fy1-avgH*0.9);
-    const keepB=Math.min(ih,fy2+avgH*4.4);
-
-    // 先按必留区域算尺寸，再统一按 4:3 修正 —— 宽高始终成比例，不会拉伸。
-    sh=keepB-keepT; sw=sh*tr;
-    if(sw<keepR-keepL){ sw=keepR-keepL; sh=sw/tr; }
-    if(sw>iw){ sw=iw; sh=sw/tr; }
-    if(sh>ih){ sh=ih; sw=sh*tr; }
-
-    const z=Math.max(.72,photoZoom);
-    sw/=z; sh/=z;
-
-    // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~27% 处开始，上方留出标题带。
-    baseSx=faceCX-sw/2;
-    baseSy=fy1-sh*.26;
-    // 若这样会切到脚，则下移裁剪窗，但头顶至少保留画面 13% 的标题空间。
-    if(baseSy+sh<keepB) baseSy=Math.min(keepB-sh, fy1-Math.max(avgH*.55, sh*.13));
-  }else{
-    // 未识别到人脸：合照里人几乎总在中下部（上方是天花板/镜子），
-    // 默认放大 1.22 倍并把裁剪窗对准画面 58% 高度的中心。
-    if(iw/ih>tr){ sh=ih; sw=ih*tr; }
-    else{ sw=iw; sh=iw/tr; }
-    const z=Math.max(.72,photoZoom)*1.35;
-    sw/=z; sh/=z;
-    baseSx=(iw-sw)/2;
-    baseSy=ih*.58-sh*.5;
+    const x1=Math.min(...boxesDetected.map(b=>b.x));
+    const x2=Math.max(...boxesDetected.map(b=>b.x+b.w));
+    const y1=Math.min(...boxesDetected.map(b=>b.y));
+    const y2=Math.max(...boxesDetected.map(b=>b.y+b.h));
+    cx=(x1+x2)/2;
+    // 人群通常位于画面中下部：只做轻微垂直跟随，避免切脚/切头。
+    const faceCenter=(y1+y2)/2;
+    cy=Math.max(sh/2,Math.min(ih-sh/2,faceCenter+sh*.18));
   }
 
-  let sx=baseSx-photoDX*iw/W;
-  let sy=baseSy-photoDY*ih/H;
+  let sx=cx-sw/2-photoDX*iw/W;
+  let sy=cy-sh/2-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -838,7 +820,19 @@ function syncUI(){
   $$('[data-course]').forEach(b=>b.classList.toggle('active',b.dataset.course===course));
     $$('[data-style]').forEach(b=>b.classList.toggle('on',b.dataset.style===visualStyle));
   $$('[data-density]').forEach(b=>b.classList.toggle('on',b.dataset.density===density));
-  $('#beautyText').textContent=(BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural).label;$$('[data-preset]').forEach(b=>b.classList.toggle('on',b.dataset.preset===beautyPreset));
+  $('#beautyText').textContent=(BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural).label;
+function warmCourseFirstCombos(){
+  const current=course;
+  const jobs=['lelepop','buttscaler','zumba','zumba-camp'].map(c=>{
+    const names=CUSTOM_COMBO_ACTIVE[c]||[];
+    return names[0]?loadComboImage(comboPath(c,names[0])):Promise.resolve(null);
+  });
+  Promise.allSettled(jobs).finally(()=>{course=current});
+}
+if('requestIdleCallback' in window) requestIdleCallback(warmCourseFirstCombos,{timeout:1800});
+else setTimeout(warmCourseFirstCombos,900);
+
+$$('[data-preset]').forEach(b=>b.classList.toggle('on',b.dataset.preset===beautyPreset));
 }
 
 function point(e){
@@ -935,7 +929,7 @@ input.onchange=e=>{
   const f=e.target.files?.[0];if(!f)return;
   const u=URL.createObjectURL(f),im=new Image();
   im.onload=()=>{
-    photo=im;URL.revokeObjectURL(u);photoZoom=.90;photoDX=photoDY=0;boxesDetected=[];
+    photo=im;URL.revokeObjectURL(u);photoZoom=1;photoDX=photoDY=0;boxesDetected=[];
     const sourceW=im.naturalWidth||im.width, sourceH=im.naturalHeight||im.height;
     $('#detectStatus').textContent=`原图 ${sourceW}×${sourceH} · 已保留原始像素`;
     customComboSrc=null;customComboImage=null;
@@ -956,14 +950,44 @@ input.onchange=e=>{
   input.value='';
 };
 
-$('#courseGrid').onclick=async e=>{
+let courseSwitchSeq=0;
+$('#courseGrid').onclick=e=>{
   const b=e.target.closest('[data-course]');if(!b)return;
-  push();course=b.dataset.course;localStorage.popshotLastCourse=course;
-  customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();
-  await loadPreferredCustomCombo();
-  if(customComboImage){comboMode='finished';layers.title.visible=false;layers.character.visible=false;}
-  else{comboMode='custom';layers.title.visible=true;layers.character.visible=true;}
-  syncUI();render();saveDraft();
+  const nextCourse=b.dataset.course;
+  if(nextCourse===course && !b.classList.contains('is-switching')) return;
+
+  push();
+  const seq=++courseSwitchSeq;
+  course=nextCourse;
+  localStorage.popshotLastCourse=course;
+
+  // 第一帧立即反馈：选中态、课程名、照片先变，不等待大 PNG 素材。
+  customComboSrc=null;customComboImage=null;
+  comboMode='finished';
+  pickCombo();resetLayers();autoPlace();
+  layers.title.visible=false;layers.character.visible=false;
+  syncUI();render();
+  b.classList.add('is-switching');
+  $('#detectStatus').textContent='正在切换 '+(courseNames[course]||course)+'…';
+
+  // 素材后台加载；快速连续点课程时，旧请求不允许覆盖最后一次选择。
+  Promise.resolve(loadPreferredCustomCombo()).then(ok=>{
+    if(seq!==courseSwitchSeq)return;
+    if(ok&&customComboImage){
+      comboMode='finished';layers.title.visible=false;layers.character.visible=false;
+    }else{
+      comboMode='custom';layers.title.visible=true;layers.character.visible=true;
+    }
+    document.querySelectorAll('[data-course]').forEach(x=>x.classList.remove('is-switching'));
+    syncUI();render();saveDraft();updateCheck();
+  }).catch(err=>{
+    console.warn('course switch asset load',err);
+    if(seq!==courseSwitchSeq)return;
+    document.querySelectorAll('[data-course]').forEach(x=>x.classList.remove('is-switching'));
+    comboMode='custom';layers.title.visible=true;layers.character.visible=true;
+    syncUI();render();saveDraft();
+    toast('课程已切换，默认搭配素材稍后再试');
+  });
 };
 $$('[data-preset]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.preset;beauty=beautyPreset==='original'?0:55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();});
 $$('[data-style]').forEach(b=>b.onclick=()=>{
@@ -973,16 +997,44 @@ $$('[data-density]').forEach(b=>b.onclick=()=>{
   push();density=b.dataset.density;autoPlace();syncUI();render();saveDraft();
 });
 
+let generateBusy=false;
 $('#generateBtn').onclick=async()=>{
   if(!photo)return alert('请先上传照片');
-  push();pickCombo();resetLayers();autoPlace();selected=null;
-  customComboSrc=null;customComboImage=null;
-  const ok=await loadPreferredCustomCombo();
-  if(ok){comboMode='finished';layers.title.visible=false;layers.character.visible=false;}
-  else{comboMode='custom';layers.title.visible=true;layers.character.visible=true;}
-  render();saveDraft();
+  if(generateBusy)return;
+  generateBusy=true;
+  const btn=$('#generateBtn'),old=btn.textContent;
+  btn.disabled=true;btn.textContent='正在生成…';
+  try{
+    push();pickCombo();resetLayers();autoPlace();selected=null;
+    customComboSrc=null;customComboImage=null;
+    const ok=await loadPreferredCustomCombo();
+    if(ok){comboMode='finished';layers.title.visible=false;layers.character.visible=false;}
+    else{comboMode='custom';layers.title.visible=true;layers.character.visible=true;}
+    render();saveDraft();updateCheck();
+  }finally{
+    generateBusy=false;btn.disabled=false;btn.textContent=old||'✦ 一键生成';
+  }
 };
-$('#shuffleBtn').onclick=async()=>{if(!photo)return;push();const ok=await nextCustomCombo();if(!ok){customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;}selected=null;render();saveDraft()};
+let shuffleBusy=false;
+$('#shuffleBtn').onclick=async()=>{
+  if(!photo||shuffleBusy)return;
+  shuffleBusy=true;
+  const btn=$('#shuffleBtn'),old=btn.textContent;
+  btn.disabled=true;btn.textContent='切换中…';
+  try{
+    push();
+    const ok=await nextCustomCombo();
+    if(!ok){
+      customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();
+      comboMode='custom';layers.title.visible=true;layers.character.visible=true;
+    }else{
+      comboMode='finished';layers.title.visible=false;layers.character.visible=false;
+    }
+    selected=null;syncComboQuickUI();render();saveDraft();updateCheck();
+  }finally{
+    shuffleBusy=false;btn.disabled=false;btn.textContent=old||'↻ 换一版';
+  }
+};
 
 
 
@@ -1204,21 +1256,24 @@ $('#adjustPhotoBtn').onclick=()=>{
 function getLosslessExportSize(){
   if(!photo)return {w:W,h:H,crop:null,scale:1};
   const c=smartCrop();
-  // 输出像素直接跟随当前实际使用的原图裁剪区域，避免把较小裁剪区强行放大成“假高清”。
   let w=Math.max(4,Math.floor(c.sw));
   let h=Math.max(3,Math.floor(c.sh));
-  // smartCrop 本身是 4:3；这里只消除浮点/取整误差。
+  // 保持严格 4:3，且绝不超过当前原图裁剪区域的有效像素。
   if(w/h>4/3) w=Math.floor(h*4/3);
   else h=Math.floor(w*3/4);
-  w=Math.max(4,w-(w%4));
-  h=Math.max(3,Math.round(w*3/4));
+  w=w-(w%4);
+  h=Math.round(w*3/4);
   return {w,h,crop:c,scale:w/W};
 }
+
 function updateCheck(){
   if(!photo)return;
-  const h=activeHolidayCategory(), q=getLosslessExportSize();
+  const q=getLosslessExportSize();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
-  $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → 导出 ${q.w}×${q.h} · 4:3 · PNG无损 · 不做有损压缩`;
+  const max4w=iw/ih>4/3?Math.floor(ih*4/3):iw;
+  const ratio=q.w/max4w;
+  const msg=ratio<.82?' · ⚠ 当前照片放大较多，会减少有效像素':'';
+  $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → 导出 ${q.w}×${q.h} · 4:3 · PNG无损${msg}`;
   $('#exportCheck').classList.add('ok');
 }
 async function renderLosslessExport(){

@@ -55,3 +55,10 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 
 .combo-quick{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.combo-quick-btn{min-height:66px;border:1px solid #e8e2f2;border-radius:17px;background:#fff;color:#4e4858;padding:8px 6px;touch-action:manipulation}.combo-quick-btn b{display:block;font-size:14px}.combo-quick-btn small{display:block;margin-top:4px;font-size:10px;color:#9b93a5}.combo-quick-btn.on{border:1.5px solid #8059ee;background:linear-gradient(135deg,#f6f1ff,#fff4fb);box-shadow:0 4px 13px rgba(111,82,223,.10)}.combo-quick-btn.on b{color:#6f52df}.tools.main-tools.four-tools{grid-template-columns:repeat(4,1fr)}
 @media(max-width:520px){.combo-quick-btn{min-height:72px}.combo-quick-btn b{font-size:15px}.combo-quick-btn small{font-size:10px}}
+
+/* V17.4 课程卡片：只保留课程名，增大可点击区域 */
+.course-card{touch-action:manipulation;min-height:96px}
+.course-card .course-copy{justify-content:center}
+.course-card .course-copy strong{font-size:15px}
+.course-card .course-copy small{display:none!important}
+.course-card.is-switching{opacity:.78}
