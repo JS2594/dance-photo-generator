@@ -1,5 +1,5 @@
 {
-  "version": "15.9.0",
+  "version": "16.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -266,12 +266,32 @@
     "nonRepeatingDefault": true
   },
   "touchUX": {
-    "minButtonHeight": 52,
-    "shuffleMinHeight": 56,
-    "touchAction": "manipulation"
+    "minButtonHeight": 56,
+    "shuffleMinHeight": 60,
+    "touchAction": "manipulation",
+    "doubleTapRiskReduced": true
   },
   "composition": {
-    "targetSideBreathingRoom": "approximately one-person standing width",
+    "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
+  },
+  "releaseFocus": "interaction-composition-only",
+  "colorAndSharpnessChanged": false,
+  "finishedCombo": {
+    "default": true,
+    "controls": [
+      "change style",
+      "overall scale"
+    ],
+    "position": "top-center",
+    "preload": true
+  },
+  "customCombo": {
+    "controls": [
+      "Q character selection",
+      "course wordmark selection",
+      "independent scale",
+      "independent position"
+    ]
   }
 }

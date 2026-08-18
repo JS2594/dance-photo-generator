@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.9.0';
+const W = 2525, H = 1894, VERSION = '16.0.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -935,7 +935,7 @@ input.onchange=e=>{
   const f=e.target.files?.[0];if(!f)return;
   const u=URL.createObjectURL(f),im=new Image();
   im.onload=()=>{
-    photo=im;URL.revokeObjectURL(u);photoZoom=1;photoDX=photoDY=0;boxesDetected=[];
+    photo=im;URL.revokeObjectURL(u);photoZoom=.90;photoDX=photoDY=0;boxesDetected=[];
     customComboSrc=null;customComboImage=null;
     pickCombo();resetLayers();autoPlace();
 
@@ -983,11 +983,11 @@ function applyFinishedComboScale(v){
 function showFinishedComboControls(){
   $('#drawerTitle').textContent='成品组合（推荐）';
   drawerBody.innerHTML=`
-    <div class="adjust-tip">人物和课程字样已经搭配好。你只需要换款式或调整整体大小。</div>
+    <div class="adjust-tip">人物和课程字样已经搭配好，直接使用即可。可以换款式，也可以只调整整体大小。</div>
     <button class="wide-btn" id="nextFinishedCombo">换一个成品组合</button>
     <label class="slider-row"><span>整体大小</span><input id="finishedComboScale" type="range" min="65" max="145" value="${Math.round(finishedComboScale*100)}"><b>${Math.round(finishedComboScale*100)}%</b></label>`;
   drawer.classList.add('show');
-  $('#nextFinishedCombo').onclick=async()=>{await nextCustomCombo();comboMode='finished';render();saveDraft()};
+  $('#nextFinishedCombo').onclick=async()=>{const ok=await nextCustomCombo();comboMode='finished';if(ok){render();toast('已更换成品组合')}saveDraft()};
   const r=$('#finishedComboScale'),b=r.nextElementSibling;
   r.oninput=()=>{b.textContent=r.value+'%';applyFinishedComboScale(r.value/100)};
 }
@@ -997,7 +997,7 @@ function showCustomComboControls(){
   layers.title.visible=true;layers.character.visible=true;
   $('#drawerTitle').textContent='自定义组合';
   drawerBody.innerHTML=`
-    <div class="adjust-tip">自己搭配Q版人物和课程字样；可以分别调整大小和位置。</div>
+    <div class="adjust-tip">想自己搭配时使用：分别选择Q版人物和课程字样，并可调整各自大小和位置。</div>
     <button class="wide-btn" id="customCharPick">选择Q版人物</button>
     <button class="wide-btn" id="customLogoPick">选择课程字样</button>
     <div class="adjust-tip">选中画布上的人物或字样后，可直接拖动位置；使用原有大小调整控制修改尺寸。</div>`;
@@ -1005,6 +1005,11 @@ function showCustomComboControls(){
   $('#customCharPick').onclick=showCharacterPicker;
   $('#customLogoPick').onclick=showTitlePicker;
   render();saveDraft();
+}
+
+
+function warmFinishedCombos(){
+  listCustomCombos().catch(()=>{});
 }
 
 async function showComboPicker(){
@@ -1016,7 +1021,7 @@ async function showComboPicker(){
   arr.forEach(({src,im})=>{
     const b=document.createElement('button');b.className='asset-option';
     b.innerHTML=`<img src="${src}" alt="">`;
-    b.onclick=()=>{customComboSrc=src;customComboImage=im;drawer.classList.remove('show');render();saveDraft();};
+    b.onclick=()=>{customComboSrc=src;customComboImage=im;comboMode='finished';drawer.classList.remove('show');render();toast('已更换成品组合');saveDraft();};
     wrap.appendChild(b);
   });
 }

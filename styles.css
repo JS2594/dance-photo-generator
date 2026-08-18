@@ -153,3 +153,14 @@ canvas#canvas{
 }
 #shuffleBtn{min-height:56px;padding:10px 16px}
 button{touch-action:manipulation}
+
+/* V16 mobile-first touch targets */
+button,.quick-actions button,.tool-btn,#shuffleBtn,#finishedComboBtn,#customComboBtn{
+  min-height:56px;min-width:72px;padding:10px 14px;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+#shuffleBtn{min-height:60px;min-width:104px;font-size:15px}
+.quick-actions{gap:10px}
+@media(max-width:520px){
+  .quick-actions button{min-height:58px}
+}
