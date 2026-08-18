@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.3.0';
+const W = 2525, H = 1894, VERSION = '15.4.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -842,16 +842,35 @@ $('#backBtn').onclick=()=>{if(!selected)return;push();zOrder=[selected,...zOrder
 $('#resetLayerBtn').onclick=()=>{if(!selected)return;push();const n=selected;const old={...layers};resetLayers();old[n]=layers[n];layers=old;render();syncScaleUI()};
 $('#resetAllBtn').onclick=()=>{push();resetLayers();autoPlace();selected=null;render();syncScaleUI()};
 
-input.onchange=e=>{
-  const f=e.target.files?.[0];if(!f)return;
+function setUploadLoading(on,title='正在读取原图…',sub='高清照片可能需要几秒，请稍候'){
+  const el=$('#uploadLoading');if(!el)return;
+  $('#uploadLoadingTitle').textContent=title;$('#uploadLoadingSub').textContent=sub;
+  el.classList.toggle('show',!!on);el.setAttribute('aria-hidden',on?'false':'true');
+}
+function decodeUpload(f){return new Promise((resolve,reject)=>{
   const u=URL.createObjectURL(f),im=new Image();
-  im.onload=async()=>{
-    photo=im;URL.revokeObjectURL(u);photoZoom=1;photoDX=photoDY=0;
-    boxesDetected=[];pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();await saveImage(f);render();saveDraft();
-    // Recognition continues in background; do not block first result.
-    detectPeople(im).then(()=>{autoPlace();render();saveDraft()});
-  };
+  im.onload=()=>{URL.revokeObjectURL(u);resolve(im)};
+  im.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('decode failed'))};
   im.src=u;
+})}
+input.onchange=async e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  if(!/^image\//i.test(f.type||'')){alert('请选择图片文件');input.value='';return}
+  setUploadLoading(true,'正在读取原图…','不会压缩原图，高清照片可能需要几秒');
+  try{
+    await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+    const im=await decodeUpload(f);
+    setUploadLoading(true,'正在生成高清预览…','正在按原图质量处理');
+    photo=im;photoZoom=1;photoDX=photoDY=0;boxesDetected=[];pickCombo();
+    try{await loadPreferredCustomCombo()}catch(_){customComboSrc=null;customComboImage=null}
+    resetLayers();autoPlace();render();
+    setUploadLoading(false);
+    Promise.resolve(saveImage(f)).catch(()=>{});
+    Promise.resolve(saveDraft()).catch(()=>{});
+    detectPeople(im).then(()=>{autoPlace();render();saveDraft()}).catch(()=>{});
+  }catch(err){
+    console.error(err);setUploadLoading(false);alert('照片读取失败，请重新选择图片。');
+  }finally{setUploadLoading(false);input.value=''}
 };
 
 $('#courseGrid').onclick=async e=>{

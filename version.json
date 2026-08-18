@@ -1,5 +1,5 @@
 {
-  "version": "15.3.0",
-  "build": 1787029627,
-  "stage": "github-web-debug"
+  "version": "15.4.0",
+  "build": 1787029958,
+  "fix": "upload-loading"
 }
