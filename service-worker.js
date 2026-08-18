@@ -1,7 +1,7 @@
-const CACHE='popshot-v1.0.5-color';
+const CACHE='popshot-v1.0.6-color';
 const CORE=['./','./index.html','./app.js','./styles.css','./manifest.webmanifest','./version.json'];
 self.addEventListener('install',e=>e.waitUntil(
-  caches.open(CACHE).then(c=>Promise.allSettled(CORE.map(x=>c.add(x+'?v=1.0.5')))).then(()=>self.skipWaiting())
+  caches.open(CACHE).then(c=>Promise.allSettled(CORE.map(x=>c.add(x+'?v=1.0.6')))).then(()=>self.skipWaiting())
 ));
 self.addEventListener('activate',e=>e.waitUntil(
   caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())

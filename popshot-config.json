@@ -326,7 +326,10 @@
     "maxNative43CropByDefault": true,
     "faceDetectionDoesNotShrinkCrop": true,
     "defaultPhotoZoom": 1,
-    "colorParametersChanged": false
+    "colorParametersChanged": true,
+    "approvedColor": "vivid-background-natural-skin",
+    "composition": "subject-lower-5-percent",
+    "naturalPresetNoBlurGlow": true
   },
   "courseSwitch": {
     "immediateSelectedState": true,
@@ -343,7 +346,7 @@
     "exportNeverDownsizesFromSourceMax43": true,
     "courseSwitchStatusCompletes": true,
     "clarityPipelinePreserved": true,
-    "colorParametersChanged": false
+    "colorParametersChanged": true
   },
   "preservedFeatures": [
     "原图级4:3 PNG无损高清导出",
