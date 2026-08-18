@@ -1,5 +1,5 @@
 {
-  "version": "17.0.0",
+  "version": "17.3.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -313,5 +313,15 @@
       "更多"
     ],
     "beautyBar": "single-row-horizontal-scroll"
+  },
+  "qualityMode": {
+    "priority": "clarity-first",
+    "aspectRatio": "4:3",
+    "fixedOutputSize": false,
+    "sourceResolutionFirst": true,
+    "previewSeparatedFromExport": true,
+    "exportFormat": "PNG",
+    "lossyCompression": false,
+    "noFakeUpscale": true
   }
 }

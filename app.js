@@ -2,10 +2,10 @@ const INLINE_STICKER_SVGS={"./public/assets/stickers/cute/bow.svg":"<svg xmlns='
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const canvas = $('#canvas');
-const ctx = canvas.getContext('2d');
+let canvas = $('#canvas');
+let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '17.1.0';
+const W = 2525, H = 1894, VERSION = '17.3.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -936,12 +936,14 @@ input.onchange=e=>{
   const u=URL.createObjectURL(f),im=new Image();
   im.onload=()=>{
     photo=im;URL.revokeObjectURL(u);photoZoom=.90;photoDX=photoDY=0;boxesDetected=[];
+    const sourceW=im.naturalWidth||im.width, sourceH=im.naturalHeight||im.height;
+    $('#detectStatus').textContent=`原图 ${sourceW}×${sourceH} · 已保留原始像素`;
     customComboSrc=null;customComboImage=null;
     pickCombo();resetLayers();autoPlace();
 
     // Critical rule: show the photo NOW. No detection, no IndexedDB, no P1 wait.
     render();
-    $('#detectStatus').textContent='照片已显示 · 正在后台优化';
+    $('#detectStatus').textContent=`原图 ${sourceW}×${sourceH} · 已显示 · 正在后台优化`;
 
     // All optional work runs after first frame.
     setTimeout(()=>loadPreferredCustomCombo().then(ok=>{if(ok)render()}).catch(()=>{}),20);
@@ -1191,7 +1193,7 @@ $('#beautyBtn').onclick=()=>{
 $('#adjustPhotoBtn').onclick=()=>{
   photoAdjust=true;selected=null;$('.canvas-stage').classList.add('adjusting');
   $('#drawerTitle').textContent='调整原图';
-  drawerBody.innerHTML=`<div class="adjust-tip"><b>原图级调整</b> · 成图框固定为 2525×1894。直接拖动原始照片；手机可双指缩放。系统不会真正裁掉原图。</div><div class="range-row"><span>原图缩放</span><input id="zoomRange" type="range" min="72" max="220" value="${Math.round(photoZoom*100)}"><b>${Math.round(photoZoom*100)}%</b></div><div class="crop-actions"><button id="showFull" class="ghost">显示更多原图</button><button id="cropReset" class="ghost">智能构图</button><button id="cropDone" class="primary-mini">完成</button></div>`;
+  drawerBody.innerHTML=`<div class="adjust-tip"><b>原图级调整</b> · 成图保持 4:3；最终保存会按当前裁剪区域的原始有效像素重新渲染。直接拖动原始照片；手机可双指缩放。</div><div class="range-row"><span>原图缩放</span><input id="zoomRange" type="range" min="72" max="220" value="${Math.round(photoZoom*100)}"><b>${Math.round(photoZoom*100)}%</b></div><div class="crop-actions"><button id="showFull" class="ghost">显示更多原图</button><button id="cropReset" class="ghost">智能构图</button><button id="cropDone" class="primary-mini">完成</button></div>`;
   drawer.classList.add('show');
   $('#zoomRange').oninput=e=>{photoZoom=+e.target.value/100;e.target.nextElementSibling.textContent=e.target.value+'%';render();saveDraft()};
   $('#showFull').onclick=()=>{photoZoom=.78;photoDX=photoDY=0;render();saveDraft()};
@@ -1199,27 +1201,74 @@ $('#adjustPhotoBtn').onclick=()=>{
   $('#cropDone').onclick=()=>{photoAdjust=false;$('.canvas-stage').classList.remove('adjusting');drawer.classList.remove('show');saveDraft()};
 };
 
+function getLosslessExportSize(){
+  if(!photo)return {w:W,h:H,crop:null,scale:1};
+  const c=smartCrop();
+  // 输出像素直接跟随当前实际使用的原图裁剪区域，避免把较小裁剪区强行放大成“假高清”。
+  let w=Math.max(4,Math.floor(c.sw));
+  let h=Math.max(3,Math.floor(c.sh));
+  // smartCrop 本身是 4:3；这里只消除浮点/取整误差。
+  if(w/h>4/3) w=Math.floor(h*4/3);
+  else h=Math.floor(w*3/4);
+  w=Math.max(4,w-(w%4));
+  h=Math.max(3,Math.round(w*3/4));
+  return {w,h,crop:c,scale:w/W};
+}
 function updateCheck(){
   if(!photo)return;
-  const h=activeHolidayCategory();
-  $('#exportCheck').textContent=`✓ 2525×1894 · ${boxesDetected.length?'主体识别 '+boxesDetected.length+' 人':'保守智能裁剪'} · ${h?STICKER_CATEGORIES[h].label+'可用':'通用素材模式'}`;
+  const h=activeHolidayCategory(), q=getLosslessExportSize();
+  const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
+  $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → 导出 ${q.w}×${q.h} · 4:3 · PNG无损 · 不做有损压缩`;
   $('#exportCheck').classList.add('ok');
 }
+async function renderLosslessExport(){
+  const q=getLosslessExportSize();
+  const exportCanvas=document.createElement('canvas');
+  exportCanvas.width=q.w; exportCanvas.height=q.h;
+  const exportCtx=exportCanvas.getContext('2d',{alpha:false});
+  exportCtx.imageSmoothingEnabled=true;
+  exportCtx.imageSmoothingQuality='high';
+
+  // 画面中的所有位置仍使用稳定的 2525×1894 逻辑坐标；
+  // 这里只把逻辑坐标映射到原图有效像素级输出，绝不拿手机预览图二次放大。
+  const previewCanvas=canvas, previewCtx=ctx;
+  canvas=exportCanvas; ctx=exportCtx;
+  ctx.setTransform(q.w/W,0,0,q.h/H,0,0);
+  try{
+    await render();
+  }finally{
+    canvas=previewCanvas; ctx=previewCtx;
+  }
+  return {canvas:exportCanvas,w:q.w,h:q.h};
+}
+
 $('#exportBtn').onclick=async()=>{
   if(!photo)return alert('请先上传照片');
   const btn=$('#exportBtn'),old=btn.innerHTML;
   try{
-    btn.disabled=true;btn.innerHTML='正在保存…';selected=null;photoAdjust=false;$('.canvas-stage').classList.remove('adjusting');await render();
-    const blob=await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/png'));
-    const filename=`PopShot-${course}-${Date.now()}.png`,file=new File([blob],filename,{type:'image/png'});
+    btn.disabled=true;btn.innerHTML='正在按原图分辨率生成…';
+    selected=null;photoAdjust=false;$('.canvas-stage').classList.remove('adjusting');
+
+    const hi=await renderLosslessExport();
+    const blob=await new Promise((res,rej)=>hi.canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/png'));
+    const filename=`PopShot-${course}-${hi.w}x${hi.h}-${Date.now()}.png`;
+    const file=new File([blob],filename,{type:'image/png'});
     const ua=navigator.userAgent||'', isiOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), isAndroid=/Android/i.test(ua);
+
     if(isiOS&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
-      try{await navigator.share({files:[file],title:'保存 PopShot 图片'});showSaveToast('请选择“存储图像”保存到相册');return}catch(err){if(err?.name==='AbortError')return}
+      try{await navigator.share({files:[file],title:'保存 PopShot 原图级 PNG'});showSaveToast(`已生成 ${hi.w}×${hi.h} 无损PNG，请选择“存储图像”`);return}catch(err){if(err?.name==='AbortError')return}
     }
-    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
-    if(isAndroid){setTimeout(()=>showSaveFallback(blob,filename,true),650)}else{showSaveToast('高清图片已请求保存');setTimeout(()=>URL.revokeObjectURL(url),3000)}
-  }catch(err){console.error(err);const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));if(blob)showSaveFallback(blob,`PopShot-${course}-${Date.now()}.png`,true)}
-  finally{btn.disabled=false;btn.innerHTML=old||'↓ 保存到相册'}
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+    if(isAndroid){setTimeout(()=>showSaveFallback(blob,filename,true),650)}
+    else{showSaveToast(`已生成 ${hi.w}×${hi.h} 无损PNG`);setTimeout(()=>URL.revokeObjectURL(url),5000)}
+  }catch(err){
+    console.error(err);
+    alert('原图级导出失败，请不要关闭页面并重新保存一次。');
+  }finally{
+    btn.disabled=false;btn.innerHTML=old||'↓ 保存到相册';
+    render(); // 恢复手机预览
+  }
 };
 function showSaveToast(text){let t=document.getElementById('saveToast');if(!t){t=document.createElement('div');t.id='saveToast';t.className='save-toast';document.body.appendChild(t)}t.textContent=text;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),2600)}
 
