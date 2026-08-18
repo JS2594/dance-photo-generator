@@ -1,5 +1,5 @@
 {
-  "version": "15.5.0",
+  "version": "15.6.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -326,5 +326,17 @@
     "layoutCannotBlockUpload": true,
     "detectionCannotBlockUpload": true,
     "loadingStages": true
+  },
+  "uploadArchitecture": {
+    "primaryDecoder": "FileReader->HTMLImageElement",
+    "imageBitmapAsPrimary": false,
+    "listeners": [
+      "change",
+      "input",
+      "cancel"
+    ],
+    "firstFrameBeforeAutoPlace": true,
+    "directCanvasFallback": true,
+    "backgroundEnhancements": true
   }
 }

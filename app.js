@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.5.0';
+const W = 2525, H = 1894, VERSION = '15.6.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -878,48 +878,80 @@ async function decodeUpload(f){
     fr.readAsDataURL(f);
   });
 }
-input.onchange=async e=>{
-  const f=e.target.files?.[0];if(!f)return;
-  setUploadLoading(true,'正在读取原图…','保持原图质量，首次读取可能需要几秒');
+let uploadBusy=false;
+async function processSelectedPhoto(f){
+  if(!f||uploadBusy)return;
+  uploadBusy=true;
+  setUploadLoading(true,'正在读取照片…','照片读取成功后会立即显示');
   try{
-    await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
-    const im=await decodeUpload(f);
+    await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,16)));
 
-    // IMPORTANT: once decode succeeds, photo upload is considered successful.
-    // Never let P1 asset loading / layout / detection turn into a fake “photo read failed”.
-    photo=im;photoZoom=1;photoDX=photoDY=0;boxesDetected=[];
-    customComboSrc=null;customComboImage=null;
-    pickCombo();resetLayers();
+    // Mobile-safe primary path: FileReader -> HTMLImageElement.
+    // Avoid ImageBitmap as the main photo object because downstream code expects
+    // a normal image element and some mobile browsers behave differently here.
+    const dataURL=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve(reader.result);
+      reader.onerror=()=>reject(reader.error||new Error('FileReader failed'));
+      reader.readAsDataURL(f);
+    });
+    const im=await new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>resolve(img);
+      img.onerror=()=>reject(new Error('Image decode failed'));
+      img.src=dataURL;
+    });
 
-    setUploadLoading(true,'正在生成预览…','照片已读取成功');
-    try{autoPlace()}catch(err){console.warn('autoPlace skipped',err)}
-    try{await render()}catch(err){console.error('first render failed',err)}
+    photo=im; photoZoom=1; photoDX=0; photoDY=0; boxesDetected=[];
+    customComboSrc=null; customComboImage=null;
+    pickCombo(); resetLayers();
+
+    // Do not let automatic crop/detection block the first visible frame.
+    try{
+      render();
+    }catch(err){
+      console.warn('initial render fallback',err);
+      // fallback: draw photo directly to the canvas so the user always sees it
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+      const s=Math.max(W/im.width,H/im.height),dw=im.width*s,dh=im.height*s;
+      ctx.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);ctx.restore();
+    }
 
     setUploadLoading(false);
-    $('#detectStatus').textContent='照片已载入，正在后台优化构图…';
+    $('#detectStatus').textContent='照片已载入 · 正在后台优化';
 
-    // Everything below is optional/background work.
-    Promise.resolve(saveImage(f)).catch(err=>console.warn('saveImage skipped',err));
+    // Background-only enhancements.
+    Promise.resolve(saveImage(f)).catch(()=>{});
     Promise.resolve(saveDraft()).catch(()=>{});
-
-    loadPreferredCustomCombo()
-      .then(ok=>{if(ok){try{autoPlace()}catch(_){ } return render()}})
-      .catch(err=>console.warn('P1 combo skipped',err));
-
-    detectPeople(im)
-      .then(()=>{try{autoPlace()}catch(_){ } return render()})
-      .then(()=>saveDraft())
-      .catch(err=>console.warn('person detection skipped',err));
+    setTimeout(()=>{
+      loadPreferredCustomCombo().then(ok=>{
+        if(ok){try{autoPlace()}catch(_){};try{render()}catch(_){}}
+      }).catch(()=>{});
+    },50);
+    setTimeout(()=>{
+      detectPeople(im).then(()=>{
+        try{autoPlace()}catch(_){}
+        try{render()}catch(_){}
+        saveDraft();
+      }).catch(()=>{});
+    },120);
 
   }catch(err){
-    console.error('IMAGE_DECODE_FAILED',err);
+    console.error('photo upload failed',err);
     setUploadLoading(false);
-    alert('这张照片暂时无法读取。请尝试从相册重新选择，或先在手机相册中“另存为/编辑后保存”再上传。');
+    alert('照片没有成功载入，请重新选择一次。');
   }finally{
-    setUploadLoading(false);
+    uploadBusy=false;
     input.value='';
   }
-};
+}
+input.onchange=e=>processSelectedPhoto(e.target.files&&e.target.files[0]);
+input.addEventListener('input',e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(f&&!uploadBusy)processSelectedPhoto(f);
+});
+input.addEventListener('cancel',()=>setUploadLoading(false));
 
 $('#courseGrid').onclick=async e=>{
   const b=e.target.closest('[data-course]');if(!b)return;
