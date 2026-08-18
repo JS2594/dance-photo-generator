@@ -723,7 +723,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=15.8.0';
+    im.src=src+'?v=17.0.1';
   });
 }
 async function listCustomCombos(){
@@ -954,10 +954,14 @@ input.onchange=e=>{
   input.value='';
 };
 
-$('#courseGrid').onclick=e=>{
+$('#courseGrid').onclick=async e=>{
   const b=e.target.closest('[data-course]');if(!b)return;
   push();course=b.dataset.course;localStorage.popshotLastCourse=course;
-  pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;syncUI();render();saveDraft();
+  customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();
+  await loadPreferredCustomCombo();
+  if(customComboImage){comboMode='finished';layers.title.visible=false;layers.character.visible=false;}
+  else{comboMode='custom';layers.title.visible=true;layers.character.visible=true;}
+  syncUI();render();saveDraft();
 };
 $$('[data-preset]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.preset;beauty=beautyPreset==='original'?0:55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();});
 $$('[data-style]').forEach(b=>b.onclick=()=>{
@@ -967,7 +971,15 @@ $$('[data-density]').forEach(b=>b.onclick=()=>{
   push();density=b.dataset.density;autoPlace();syncUI();render();saveDraft();
 });
 
-$('#generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');push();pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;selected=null;render();saveDraft()};
+$('#generateBtn').onclick=async()=>{
+  if(!photo)return alert('请先上传照片');
+  push();pickCombo();resetLayers();autoPlace();selected=null;
+  customComboSrc=null;customComboImage=null;
+  const ok=await loadPreferredCustomCombo();
+  if(ok){comboMode='finished';layers.title.visible=false;layers.character.visible=false;}
+  else{comboMode='custom';layers.title.visible=true;layers.character.visible=true;}
+  render();saveDraft();
+};
 $('#shuffleBtn').onclick=async()=>{if(!photo)return;push();const ok=await nextCustomCombo();if(!ok){customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;}selected=null;render();saveDraft()};
 
 
@@ -1000,7 +1012,7 @@ async function renderComboMode(mode){
   if(mode==='finished'){
     comboMode='finished';
     wrap.innerHTML=`
-      <div class="adjust-tip">推荐：直接使用已经搭配好的 Q版人物 + 课程字样。</div>
+      <div class="adjust-tip">推荐：直接使用已经搭配好的完整组合；不会再叠加自定义Q版人物或课程文字。</div>
       <div class="asset-picker" id="finishedComboPicker"><span>正在读取成品组合…</span></div>
       <label class="slider-row"><span>整体大小</span><input id="finishedScale" type="range" min="65" max="145" value="${Math.round((customComboScale||1)*100)}"><b>${Math.round((customComboScale||1)*100)}%</b></label>`;
     const arr=await listCustomCombos(),picker=$('#finishedComboPicker');picker.innerHTML='';
@@ -1011,7 +1023,7 @@ async function renderComboMode(mode){
   }else{
     comboMode='custom';customComboSrc=null;customComboImage=null;layers.title.visible=true;layers.character.visible=true;render();saveDraft();
     wrap.innerHTML=`
-      <div class="adjust-tip">自己搭配 Q版人物 + 课程字样，可分别调整大小和位置。</div>
+      <div class="adjust-tip">自己搭配 Q版人物 + 课程字样，可分别选择、拖动和缩放。</div>
       <button class="wide-btn" id="pickCustomChar">选择Q版人物</button>
       <button class="wide-btn" id="pickCustomLogo">选择课程字样</button>
       <div class="adjust-tip">选择后可在成图上拖动位置，并用大小控制调整尺寸。</div>`;
@@ -1106,7 +1118,18 @@ function showStickerPicker(){
 
 
 $('#changeStickerBtn').onclick=showStickerPicker;
-$('#changeFrameBtn').onclick=()=>{push();frameIndex=(frameIndex+1)%12;render()};
+$('#changeFrameBtn').onclick=()=>{
+  $('#drawerTitle').textContent='选择相框';
+  drawerBody.innerHTML='<div class="adjust-tip">点击相框即可立即预览。大按钮和大缩略图更适合手机操作。</div><div class="frame-grid" id="frameGrid"></div>';
+  const wrap=$('#frameGrid');
+  for(let i=0;i<12;i++){
+    const b=document.createElement('button');b.className='frame-option'+(i===frameIndex?' on':'');
+    b.innerHTML=`<span class="frame-preview fp-${i}"></span><b>${i===0?'无边框':'相框 '+i}</b>`;
+    b.onclick=()=>{push();frameIndex=i;drawer.classList.remove('show');render();saveDraft();};
+    wrap.appendChild(b);
+  }
+  drawer.classList.add('show');
+};
 $('#layoutBtn').onclick=()=>{
   push();layoutIndex=(layoutIndex+1)%3;
   forcedSide = layoutIndex===0?'left' : layoutIndex===2?'right' : null;
