@@ -1,5 +1,7 @@
 {
   "version": "1.0.8",
-  "build": 1787073776,
-  "atomicPublish": true
+  "hotfix": "1.0.8a",
+  "build": 1787074501,
+  "atomicPublish": true,
+  "notes": "update-loop-hotfix"
 }

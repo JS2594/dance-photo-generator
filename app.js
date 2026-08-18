@@ -1,3 +1,16 @@
+const POPSHOT_VERSION='1.0.8';
+
+function comparePopShotVersion(a,b){
+  const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
+  const pb=String(b||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
+  const len=Math.max(pa.length,pb.length);
+  for(let i=0;i<len;i++){
+    const av=pa[i]||0,bv=pb[i]||0;
+    if(av>bv)return 1;
+    if(av<bv)return -1;
+  }
+  return 0;
+}
 
 function compareVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -1844,16 +1857,39 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 
+const POPSHOT_REFRESH_ONCE='popshot_refresh_once_'+POPSHOT_VERSION;
 async function forcePopShotUpdate(){
   try{
-    if('caches' in window){const ks=await caches.keys();await Promise.all(ks.filter(k=>/popshot/i.test(k)).map(k=>caches.delete(k)));}
-    if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){try{await r.update()}catch(e){}}}
-  }catch(e){}
-  location.replace(location.pathname+'?force='+Date.now());
-}
-async function checkPopShotUpdate(){
-  try{const r=await fetch('./version.json?t='+Date.now(),{cache:'no-store'});const v=await r.json();if(v.version&&v.version!==VERSION){if(confirm(`发现新版本 V${v.version}，立即更新？`))await forcePopShotUpdate();}}
-  catch(e){}
+    if(sessionStorage.getItem(POPSHOT_REFRESH_ONCE)==='1'){
+      sessionStorage.removeItem(POPSHOT_REFRESH_ONCE);
+      return;
+    }
+    sessionStorage.setItem(POPSHOT_REFRESH_ONCE,'1');
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const reg of regs){ try{ await reg.update(); }catch(e){} }
+    }
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.filter(k=>/popshot/i.test(k)).map(k=>caches.delete(k)));
+    }
+  }catch(e){console.warn('force update',e)}
+  location.replace(location.pathname+'?v='+Date.now());
 }
 window.forcePopShotUpdate=forcePopShotUpdate;
 setTimeout(checkPopShotUpdate,900);
+
+async function checkForPopShotUpdate(){
+  try{
+    const res=await fetch('./version.json?t='+Date.now(),{cache:'no-store'});
+    const remote=await res.json();
+    const rv=String(remote.version||'');
+    if(rv && comparePopShotVersion(rv,POPSHOT_VERSION)>0){
+      if(confirm(`发现新版本 V${rv}，立即更新？`)){
+        await forcePopShotUpdate();
+      }
+      return true;
+    }
+  }catch(e){console.warn('update check',e)}
+  return false;
+}

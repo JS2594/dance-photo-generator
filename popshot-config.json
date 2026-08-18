@@ -123,11 +123,7 @@
     ],
     "principle": "When no decorative layout is safe, hide Q character/stickers before covering real people."
   },
-  "hotfix": {
-    "titleCharacterNeverDisappear": true,
-    "oldDraftLayerStateMigration": "incompatible drafts are cleared",
-    "extremeMode": "hide sticker first; keep and reposition title + Q character"
-  },
+  "hotfix": "1.0.8a",
   "forceVisualHotfix": {
     "title": "mandatory",
     "character": "mandatory",
@@ -383,5 +379,7 @@
     ],
     "rule": "PUBLISH_LAST must be uploaded only after all four content packages are committed.",
     "effect": "version.json and service-worker.js activate V1.0.8 and purge older PopShot caches."
-  }
+  },
+  "updateLogic": "Only prompt when remote version is strictly newer than current runtime version.",
+  "refreshGuard": "One-shot session guard prevents repeated forced refresh loops."
 }
