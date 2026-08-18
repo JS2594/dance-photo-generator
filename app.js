@@ -18,7 +18,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.0.3';
+const W = 2525, H = 1894, VERSION = '1.0.4';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -56,7 +56,7 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'自然',ex:.03,ct:.04,sa:.05,temp:1,hi:-.01,sh:.03,tint:null},
+  natural:{label:'鲜活自然',ex:.045,ct:.055,sa:.075,temp:1,hi:-.015,sh:.045,tint:null},
   texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
@@ -70,8 +70,12 @@ const BEAUTY_PRESETS={
   desat:{label:'低饱和',ex:.05,ct:.02,sa:-.26,temp:0,hi:.03,sh:.05,tint:'rgba(210,215,210,.03)'},
   colorful:{label:'鲜艳',ex:.06,ct:.06,sa:.27,temp:1,hi:.02,sh:.01,tint:null}
 };
-let beautyPreset=localStorage.popshotBeautyPreset||'texture';
+let beautyPreset=localStorage.popshotBeautyPreset||'natural';
 let manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};
+try{
+  const saved=JSON.parse(localStorage.popshotMyColor||'null');
+  if(saved&&saved.manualColor){beautyPreset=saved.beautyPreset||'natural';manualColor={...manualColor,...saved.manualColor};}
+}catch(e){}
 let stickerCategory='recommended';
 const STICKER_CATEGORIES={
   recommended:{label:'推荐',files:[]},
@@ -116,6 +120,10 @@ function recommendedStickerFiles(){
 }
 
 let photo = null;
+if(!localStorage.popshotColorA104){
+  if(!localStorage.popshotMyColor){beautyPreset='natural';manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset='natural';}
+  localStorage.popshotColorA104='1';
+}
 let course = localStorage.popshotLastCourse || 'zumba';
 let beauty = +(localStorage.popshotLastBeauty || 55);
 // 一次性迁移：老用户的默认 38 提升到 55，上来就有美颜打光。
@@ -763,7 +771,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.0.3';
+    im.src=src+'?v=1.0.4';
   });
 }
 async function listCustomCombos(){
@@ -1371,11 +1379,12 @@ $('#drawerClose').onclick=()=>drawer.classList.remove('show');
 $('#beautyBtn').onclick=()=>{
   $('#drawerTitle').textContent='美化与调色';
   const keys=['natural','bright','vivid','clear','warm','coolwhite','softpink','creamtone','retro','contrast','desat','colorful'];
-  drawerBody.innerHTML=`<div class="adjust-tip">所有预设都会真实作用于照片渲染和最终导出；不会改变脸型和五官。</div><div class="beauty-preset-grid">${keys.map(k=>`<button data-bp="${k}" class="${beautyPreset===k?'on':''}">${BEAUTY_PRESETS[k].label}</button>`).join('')}</div><div class="adjust-grid">${[['ex','亮度'],['ct','对比'],['sa','饱和'],['temp','色温'],['hi','高光'],['sh','阴影']].map(([k,n])=>`<div class="range-row"><span>${n}</span><input data-color="${k}" type="range" min="-50" max="50" value="${manualColor[k]||0}"><b>${manualColor[k]||0}</b></div>`).join('')}</div><button id="colorReset" class="ghost">恢复当前预设</button>`;
+  drawerBody.innerHTML=`<div class="adjust-tip">首次默认使用「鲜活自然」：轻提气色与主色，不做重饱和。所有调节都会作用于最终高清导出。</div><div class="beauty-preset-grid">${keys.map(k=>`<button data-bp="${k}" class="${beautyPreset===k?'on':''}">${BEAUTY_PRESETS[k].label}</button>`).join('')}</div><div class="adjust-grid">${[['ex','亮度'],['ct','对比'],['sa','饱和'],['temp','色温'],['hi','高光'],['sh','阴影']].map(([k,n])=>`<div class="range-row"><span>${n}</span><input data-color="${k}" type="range" min="-50" max="50" value="${manualColor[k]||0}"><b>${manualColor[k]||0}</b></div>`).join('')}</div><div class="saved-color-actions"><button id="saveMyColor" class="primary-mini">保存为我的常用</button><button id="useDefaultA" class="ghost">恢复默认 A</button></div><div class="adjust-tip" id="myColorStatus">${localStorage.popshotMyColor?'✓ 已保存个人常用配置，下次会优先使用':'尚未保存个人配置'}</div>`;
   drawer.classList.add('show');
   $$('[data-bp]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.bp;beauty=55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;$('#beautyText').textContent=BEAUTY_PRESETS[beautyPreset].label;$('#beautyBtn').click();render();saveDraft();});
   $$('[data-color]').forEach(r=>r.oninput=e=>{manualColor[e.target.dataset.color]=+e.target.value;e.target.nextElementSibling.textContent=e.target.value;render();saveDraft();});
-  $('#colorReset').onclick=()=>{manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};$('#beautyBtn').click();render();saveDraft();};
+  $('#saveMyColor').onclick=()=>{localStorage.popshotMyColor=JSON.stringify({beautyPreset,manualColor});localStorage.popshotBeautyPreset=beautyPreset;$('#myColorStatus').textContent='✓ 已保存为我的常用，下次进入优先使用';saveDraft();};
+  $('#useDefaultA').onclick=()=>{beautyPreset='natural';beauty=55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.removeItem('popshotMyColor');localStorage.popshotBeautyPreset='natural';localStorage.popshotLastBeauty=beauty;$('#beautyText').textContent=BEAUTY_PRESETS.natural.label;$('#beautyBtn').click();render();saveDraft();};
 };
 $('#adjustPhotoBtn').onclick=()=>{
   photoAdjust=true;selected=null;$('.canvas-stage').classList.add('adjusting');
@@ -1809,10 +1818,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.3',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.3',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.3',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.3'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.4',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.4',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.4',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.4'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
