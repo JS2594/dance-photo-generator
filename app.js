@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.0.0';
+const W = 2525, H = 1894, VERSION = '15.1.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -43,7 +43,7 @@ const styles = {
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
   natural:{label:'自然',ex:.04,ct:.04,sa:.05,temp:1,hi:-.01,sh:.03,tint:null},
-  texture:{label:'质感',ex:.01,ct:.13,sa:.11,temp:1,hi:-.08,sh:.035,tint:'rgba(255,235,225,.012)'}, 
+  texture:{label:'质感',ex:-.015,ct:.20,sa:.18,temp:1,hi:-.12,sh:.045,tint:'rgba(255,235,225,.008)'}, 
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
   clear:{label:'清透',ex:.10,ct:.05,sa:-.03,temp:-3,hi:.06,sh:.07,tint:'rgba(210,235,255,.035)'},
@@ -712,11 +712,12 @@ function selectBox(b,n){
 }
 
 
+const CUSTOM_ASSET_VERSION=localStorage.popshotAssetVersion||'1';
 // V15 P1 custom combo: complete image, never split internal character/text.
 let customComboSrc=null,customComboImage=null,customComboScale=1;
 const CUSTOM_COMBO_MAX=20;
 function comboPath(c,i){return `./public/custom-combos/${c}/${c}_${String(i).padStart(2,'0')}.png`}
-function imageExists(src){return new Promise(resolve=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>resolve(null);im.src=src+'?v='+VERSION})}
+function imageExists(src){return new Promise(resolve=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>resolve(null);im.src=src+'?v='+VERSION+'-'+CUSTOM_ASSET_VERSION})}
 async function loadPreferredCustomCombo(){
   customComboSrc=null;customComboImage=null;
   for(let i=1;i<=CUSTOM_COMBO_MAX;i++){const src=comboPath(course,i),im=await imageExists(src);if(im){customComboSrc=src;customComboImage=im;return true}}
@@ -727,7 +728,7 @@ async function listCustomCombos(){
 }
 async function drawCustomCombo(){
   if(!customComboImage)return null;
-  const im=customComboImage,ar=im.width/im.height||1,maxW=W*.70,maxH=H*.23;
+  const im=customComboImage,ar=im.width/im.height||1,maxW=W*.64,maxH=H*.22;
   let w=Math.min(maxW,maxH*ar)*customComboScale,h=w/ar;
   if(h>maxH){h=maxH;w=h*ar} if(w>maxW){w=maxW;h=w/ar}
   const zones=faceZones(),minTop=zones.length?Math.min(...zones.map(z=>z.y)):H*.30,safeBottom=Math.max(H*.14,minTop-H*.025);
@@ -1028,6 +1029,8 @@ function updateCheck(){
   $('#exportCheck').classList.add('ok');
 }
 $('#exportBtn').onclick=async()=>{
+  /* V15_1_EXPORT_RERENDER */
+  canvas.width=W;canvas.height=H;await render();
   if(!photo)return alert('请先上传照片');
   const btn=$('#exportBtn'),old=btn.innerHTML;
   try{
@@ -1310,3 +1313,9 @@ function clampTopComboLayout(box, canvasW, canvasH, occupiedTopRects=[]){
   return {x,y,w,h,scale,sideSafe};
 }
 
+
+// V15.1 local-only user assets.
+function openMyAssetsDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open('PopShotMyAssets',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('assets'))r.result.createObjectStore('assets',{keyPath:'id'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function saveMyAsset(file,type='combo'){const db=await openMyAssetsDB(),id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());return new Promise((res,rej)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').put({id,name:file.name,type,blob:file,created:Date.now()});tx.oncomplete=()=>res(id);tx.onerror=()=>rej(tx.error)})}
+async function getMyAssets(){const db=await openMyAssetsDB();return new Promise((res,rej)=>{const r=db.transaction('assets').objectStore('assets').getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+async function deleteMyAsset(id){const db=await openMyAssetsDB();return new Promise((res,rej)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').delete(id);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}

@@ -1,5 +1,5 @@
 {
-  "version": "15.0.0",
+  "version": "15.1.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -238,16 +238,28 @@
     "width": 2525,
     "height": 1894,
     "format": "PNG",
-    "lossless": true
+    "lossless": true,
+    "rerenderBeforeSave": true
   },
   "customCombos": {
     "path": "public/custom-combos",
     "priority": "P1",
     "slotsPerCourse": 20,
-    "preserveInternalLayout": true
+    "preserveInternalLayout": true,
+    "assetVersion": "1"
   },
   "androidGallery": {
     "nativeBridge": "PopShotAndroid.saveToGallery",
     "githubPwaDirectGalleryGuaranteed": false
+  },
+  "layout": {
+    "customComboMaxWidthRatio": 0.64,
+    "sideSafetyRatio": 0.18,
+    "placement": "top-center",
+    "collisionBehavior": "scale-down-only"
+  },
+  "myAssets": {
+    "storage": "IndexedDB",
+    "scope": "device-local"
   }
 }
