@@ -1,5 +1,4 @@
 {
-  "version": "14.1.0",
-  "build": 1786968210,
-  "notes": "Larger top logo+character composition with half-character side margins and safety fallback"
+  "version": "15.0.0",
+  "build": 1787025412
 }

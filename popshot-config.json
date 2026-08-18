@@ -1,5 +1,5 @@
 {
-  "version": "14.1.0",
+  "version": "15.0.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -232,5 +232,22 @@
     "neverCoverPeople": true,
     "autoScaleDownWhenCrowded": true,
     "manualResizeStillAvailable": true
+  },
+  "defaultBeautyPreset": "texture",
+  "export": {
+    "width": 2525,
+    "height": 1894,
+    "format": "PNG",
+    "lossless": true
+  },
+  "customCombos": {
+    "path": "public/custom-combos",
+    "priority": "P1",
+    "slotsPerCourse": 20,
+    "preserveInternalLayout": true
+  },
+  "androidGallery": {
+    "nativeBridge": "PopShotAndroid.saveToGallery",
+    "githubPwaDirectGalleryGuaranteed": false
   }
 }

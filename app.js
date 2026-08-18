@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '14.1.0';
+const W = 2525, H = 1894, VERSION = '15.0.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -42,7 +42,8 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'自然',ex:.05,ct:.02,sa:.04,temp:2,hi:.03,sh:.05,tint:'rgba(255,240,235,.025)'},
+  natural:{label:'自然',ex:.04,ct:.04,sa:.05,temp:1,hi:-.01,sh:.03,tint:null},
+  texture:{label:'质感',ex:.01,ct:.13,sa:.11,temp:1,hi:-.08,sh:.035,tint:'rgba(255,235,225,.012)'}, 
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
   clear:{label:'清透',ex:.10,ct:.05,sa:-.03,temp:-3,hi:.06,sh:.07,tint:'rgba(210,235,255,.035)'},
@@ -55,7 +56,7 @@ const BEAUTY_PRESETS={
   desat:{label:'低饱和',ex:.05,ct:.02,sa:-.26,temp:0,hi:.03,sh:.05,tint:'rgba(210,215,210,.03)'},
   colorful:{label:'鲜艳',ex:.06,ct:.06,sa:.27,temp:1,hi:.02,sh:.01,tint:null}
 };
-let beautyPreset=localStorage.popshotBeautyPreset||'natural';
+let beautyPreset=localStorage.popshotBeautyPreset||'texture';
 let manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};
 let stickerCategory='recommended';
 const STICKER_CATEGORIES={
@@ -710,6 +711,31 @@ function selectBox(b,n){
   ctx.strokeRect(b.x-8,b.y-8,b.w+16,b.h+16);ctx.restore();
 }
 
+
+// V15 P1 custom combo: complete image, never split internal character/text.
+let customComboSrc=null,customComboImage=null,customComboScale=1;
+const CUSTOM_COMBO_MAX=20;
+function comboPath(c,i){return `./public/custom-combos/${c}/${c}_${String(i).padStart(2,'0')}.png`}
+function imageExists(src){return new Promise(resolve=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>resolve(null);im.src=src+'?v='+VERSION})}
+async function loadPreferredCustomCombo(){
+  customComboSrc=null;customComboImage=null;
+  for(let i=1;i<=CUSTOM_COMBO_MAX;i++){const src=comboPath(course,i),im=await imageExists(src);if(im){customComboSrc=src;customComboImage=im;return true}}
+  return false;
+}
+async function listCustomCombos(){
+  const a=[];for(let i=1;i<=CUSTOM_COMBO_MAX;i++){const src=comboPath(course,i),im=await imageExists(src);if(im)a.push({src,im})}return a;
+}
+async function drawCustomCombo(){
+  if(!customComboImage)return null;
+  const im=customComboImage,ar=im.width/im.height||1,maxW=W*.70,maxH=H*.23;
+  let w=Math.min(maxW,maxH*ar)*customComboScale,h=w/ar;
+  if(h>maxH){h=maxH;w=h*ar} if(w>maxW){w=maxW;h=w/ar}
+  const zones=faceZones(),minTop=zones.length?Math.min(...zones.map(z=>z.y)):H*.30,safeBottom=Math.max(H*.14,minTop-H*.025);
+  if(h>safeBottom-28){h=Math.max(110,safeBottom-28);w=h*ar}
+  if(w>maxW){w=maxW;h=w/ar}
+  const x=(W-w)/2,y=24;ctx.save();ctx.drawImage(im,x,y,w,h);ctx.restore();return{x,y,w,h};
+}
+
 async function render(){
   ctx.clearRect(0,0,W,H);
   if(!photo) return;
@@ -722,12 +748,9 @@ async function render(){
   drawFrame();
   drawGraffiti();
 
-  // Mandatory visual layers: title + one Q character must never disappear.
-  layers.title.visible=true;
-  layers.character.visible=true;
   const boxes={};
-  boxes.title=drawTitle();
-  boxes.character=await drawCharacter();
+  if(customComboImage){layers.title.visible=false;layers.character.visible=false;boxes.customCombo=await drawCustomCombo();}
+  else{layers.title.visible=true;layers.character.visible=true;boxes.title=drawTitle();boxes.character=await drawCharacter();}
   if(layers.sticker.visible) boxes.sticker=await drawSticker();
   Object.entries(boxes).forEach(([n,b])=>selectBox(b,n));
   updateCheck();
@@ -879,15 +902,15 @@ input.onchange=e=>{
   const u=URL.createObjectURL(f),im=new Image();
   im.onload=async()=>{
     photo=im;URL.revokeObjectURL(u);photoZoom=1;photoDX=photoDY=0;
-    await detectPeople(im);pickCombo();resetLayers();autoPlace();await saveImage(f);render();saveDraft();
+    await detectPeople(im);pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();await saveImage(f);render();saveDraft();
   };
   im.src=u;
 };
 
-$('#courseGrid').onclick=e=>{
+$('#courseGrid').onclick=async e=>{
   const b=e.target.closest('[data-course]');if(!b)return;
   push();course=b.dataset.course;localStorage.popshotLastCourse=course;
-  pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;syncUI();render();saveDraft();
+  pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();syncUI();render();saveDraft();
 };
 $$('[data-preset]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.preset;beauty=beautyPreset==='original'?0:55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();});
 $$('[data-style]').forEach(b=>b.onclick=()=>{
@@ -897,8 +920,16 @@ $$('[data-density]').forEach(b=>b.onclick=()=>{
   push();density=b.dataset.density;autoPlace();syncUI();render();saveDraft();
 });
 
-$('#generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');push();pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;selected=null;render();saveDraft()};
-$('#shuffleBtn').onclick=()=>{if(!photo)return;push();pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;selected=null;render();saveDraft()};
+$('#generateBtn').onclick=async()=>{if(!photo)return alert('请先上传照片');push();pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();selected=null;render();saveDraft()};
+$('#shuffleBtn').onclick=async()=>{if(!photo)return;push();pickCombo();const a=await listCustomCombos();if(a.length){const p=a[Math.floor(Math.random()*a.length)];customComboSrc=p.src;customComboImage=p.im}else{customComboSrc=null;customComboImage=null}resetLayers();autoPlace();selected=null;render();saveDraft()};
+
+
+async function showComboPicker(){
+  $('#drawerTitle').textContent='我的成品组合';drawerBody.innerHTML='<div class="adjust-tip">优先读取 custom-combos；整张PNG只整体缩放/移动，不拆内部结构。</div><div class="asset-picker" id="comboPicker">正在读取…</div>';drawer.classList.add('show');
+  const a=await listCustomCombos(),w=$('#comboPicker');w.innerHTML='';
+  if(!a.length){w.innerHTML='<div class="adjust-tip">当前课程暂无自定义组合。把透明PNG放进 public/custom-combos 对应课程文件夹即可。</div>';return}
+  a.forEach(({src,im})=>{const b=document.createElement('button');b.className='asset-option'+(src===customComboSrc?' on':'');b.innerHTML=`<img src="${src}" alt="">`;b.onclick=()=>{customComboSrc=src;customComboImage=im;drawer.classList.remove('show');render();saveDraft()};w.appendChild(b)});
+}
 
 function showCharacterPicker(){
   $('#drawerTitle').textContent='选择人物';
@@ -937,6 +968,7 @@ function showStickerPicker(){
   build();drawer.classList.add('show');
 }
 $('#changeCharacterBtn').onclick=showCharacterPicker;
+$('#changeComboBtn').onclick=showComboPicker;
 $('#changeTagBtn').onclick=showTitlePicker;
 $('#changeStickerBtn').onclick=showStickerPicker;
 $('#changeFrameBtn').onclick=()=>{push();frameIndex=(frameIndex+1)%12;render()};
@@ -971,7 +1003,7 @@ $('#moreBtn').onclick=()=>{const p=$('#advancedPanel');p.classList.toggle('show'
 $('#drawerClose').onclick=()=>drawer.classList.remove('show');
 $('#beautyBtn').onclick=()=>{
   $('#drawerTitle').textContent='美化与调色';
-  const keys=['natural','bright','vivid','clear','warm','coolwhite','softpink','creamtone','retro','contrast','desat','colorful'];
+  const keys=['texture','natural','bright','vivid','clear','warm','coolwhite','softpink','creamtone','retro','contrast','desat','colorful'];
   drawerBody.innerHTML=`<div class="adjust-tip">所有预设都会真实作用于照片渲染和最终导出；不会改变脸型和五官。</div><div class="beauty-preset-grid">${keys.map(k=>`<button data-bp="${k}" class="${beautyPreset===k?'on':''}">${BEAUTY_PRESETS[k].label}</button>`).join('')}</div><div class="adjust-grid">${[['ex','亮度'],['ct','对比'],['sa','饱和'],['temp','色温'],['hi','高光'],['sh','阴影']].map(([k,n])=>`<div class="range-row"><span>${n}</span><input data-color="${k}" type="range" min="-50" max="50" value="${manualColor[k]||0}"><b>${manualColor[k]||0}</b></div>`).join('')}</div><button id="colorReset" class="ghost">恢复当前预设</button>`;
   drawer.classList.add('show');
   $$('[data-bp]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.bp;beauty=55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;$('#beautyText').textContent=BEAUTY_PRESETS[beautyPreset].label;$('#beautyBtn').click();render();saveDraft();});
@@ -1000,15 +1032,19 @@ $('#exportBtn').onclick=async()=>{
   const btn=$('#exportBtn'),old=btn.innerHTML;
   try{
     btn.disabled=true;btn.innerHTML='正在保存…';selected=null;photoAdjust=false;$('.canvas-stage').classList.remove('adjusting');await render();
-    const blob=await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/jpeg',.96));
-    const filename=`PopShot-${course}-${Date.now()}.jpg`,file=new File([blob],filename,{type:'image/jpeg'});
+    const blob=await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/png'));
+    const filename=`PopShot-${course}-${Date.now()}.png`,file=new File([blob],filename,{type:'image/png'});
     const ua=navigator.userAgent||'', isiOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), isAndroid=/Android/i.test(ua);
+    if(isAndroid&&window.PopShotAndroid?.saveToGallery){
+      const dataUrl=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(blob)});
+      await window.PopShotAndroid.saveToGallery(dataUrl,filename);showSaveToast('已保存到系统相册');return;
+    }
     if(isiOS&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
       try{await navigator.share({files:[file],title:'保存 PopShot 图片'});showSaveToast('请选择“存储图像”保存到相册');return}catch(err){if(err?.name==='AbortError')return}
     }
     const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
     if(isAndroid){setTimeout(()=>showSaveFallback(blob,filename,true),650)}else{showSaveToast('高清图片已请求保存');setTimeout(()=>URL.revokeObjectURL(url),3000)}
-  }catch(err){console.error(err);const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',.96));if(blob)showSaveFallback(blob,`PopShot-${course}-${Date.now()}.jpg`,true)}
+  }catch(err){console.error(err);const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));if(blob)showSaveFallback(blob,`PopShot-${course}-${Date.now()}.png`,true)}
   finally{btn.disabled=false;btn.innerHTML=old||'↓ 保存到相册'}
 };
 function showSaveToast(text){let t=document.getElementById('saveToast');if(!t){t=document.createElement('div');t.id='saveToast';t.className='save-toast';document.body.appendChild(t)}t.textContent=text;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),2600)}
@@ -1056,7 +1092,7 @@ function showSaveFallback(blob,filename,androidHint=false){
   const shareBtn=document.getElementById('saveFallbackShare');
   shareBtn.onclick=async()=>{
     try{
-      const file=new File([blob],filename,{type:'image/jpeg'});
+      const file=new File([blob],filename,{type:'image/png'});
       if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
         await navigator.share({files:[file],title:'PopShot 高清图片'});
       }else{
