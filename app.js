@@ -993,6 +993,24 @@ function applyFinishedComboScale(v){
   render();saveDraft();
 }
 
+function syncComboQuickUI(){
+  const f=$('#finishedQuickBtn'),c=$('#customQuickBtn');
+  if(f)f.classList.toggle('on',comboMode!=='custom');
+  if(c)c.classList.toggle('on',comboMode==='custom');
+}
+async function activateFinishedQuick(){
+  comboMode='finished';
+  layers.title.visible=false;layers.character.visible=false;
+  if(!customComboImage){await loadPreferredCustomCombo();}
+  if(!customComboImage){toast('当前课程暂无默认搭配');comboMode='custom';layers.title.visible=true;layers.character.visible=true;}
+  syncComboQuickUI();render();saveDraft();
+}
+function activateCustomQuick(){
+  comboMode='custom';customComboSrc=null;customComboImage=null;
+  layers.title.visible=true;layers.character.visible=true;
+  syncComboQuickUI();render();saveDraft();showCustomComboControls();
+}
+
 function showComboHub(){
   $('#drawerTitle').textContent='搭配';
   drawerBody.innerHTML=`
@@ -1004,11 +1022,12 @@ function showComboHub(){
   drawer.classList.add('show');
   $('#comboTabFinished').onclick=()=>renderComboMode('finished');
   $('#comboTabCustom').onclick=()=>renderComboMode('custom');
-  renderComboMode(customComboImage?'finished':'custom');
+  renderComboMode(comboMode==='custom'?'custom':'finished');
 }
 async function renderComboMode(mode){
   const a=$('#comboTabFinished'),b=$('#comboTabCustom'),wrap=$('#comboModeContent');
   a.classList.toggle('on',mode==='finished');b.classList.toggle('on',mode==='custom');
+  syncComboQuickUI();
   if(mode==='finished'){
     comboMode='finished';
     wrap.innerHTML=`
@@ -1473,7 +1492,10 @@ document.addEventListener('dblclick',e=>{
 },{passive:false});
 
 document.addEventListener('DOMContentLoaded',()=>{
-  const a=$('#comboHubBtn'),b=$('#comboHubBtn2');
+  const a=$('#comboHubBtn');
   if(a)a.onclick=showComboHub;
-  if(b)b.onclick=showComboHub;
+  const fq=$('#finishedQuickBtn'),cq=$('#customQuickBtn');
+  if(fq)fq.onclick=()=>{activateFinishedQuick();};
+  if(cq)cq.onclick=activateCustomQuick;
+  syncComboQuickUI();
 });

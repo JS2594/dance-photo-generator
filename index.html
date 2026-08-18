@@ -54,14 +54,17 @@
   <div class="result-head"><div><b>生成结果</b><small id="detectStatus">2525 × 1894 px · 高清导出</small></div><button class="ghost" id="shuffleBtn">↻ 换一版</button></div>
   <div class="canvas-stage"><canvas id="canvas" width="2525" height="1894"></canvas><div class="canvas-placeholder" id="placeholder">上传照片后，这里会显示成片</div></div>
 
-  <div class="tools main-tools">
-    <button id="comboHubBtn2" class="tool-main"><span>▦</span><b>搭配</b></button>
+  <div class="combo-quick" aria-label="搭配方式">
+    <button id="finishedQuickBtn" class="combo-quick-btn on"><b>默认搭配</b><small>推荐 · 一键成片</small></button>
+    <button id="customQuickBtn" class="combo-quick-btn"><b>自定义搭配</b><small>人物 + 课程字样</small></button>
+  </div>
+  <div class="tools main-tools four-tools">
     <button id="changeFrameBtn" class="tool-main"><span>▣</span><b>相框</b></button>
     <button id="changeStickerBtn" class="tool-main"><span>✦</span><b>贴纸</b></button>
     <button id="adjustPhotoBtn" class="tool-main"><span>↗</span><b>调整照片</b></button>
     <button id="moreBtn" class="tool-main"><span>•••</span><b>更多</b></button>
   </div>
-  <div class="result-tip">默认使用 <b>默认搭配</b>；想自己搭配时，点「搭配 → 自定义搭配」</div>
+  <div class="result-tip">默认使用 <b>默认搭配</b>；需要自由调整人物和课程字样时切换「自定义搭配」</div>
 
   <div class="advanced-panel" id="advancedPanel">
     <div class="advanced-title">更多功能</div>
