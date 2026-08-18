@@ -1,0 +1,8 @@
+PopShot V11.1 Logo QA
+- 16种 Logo 样式
+- 固定课程名：Lelepop / Buttscaler / ZUMBA / ZUMBA CAMP
+- 长标题自动缩放，不截字
+- 禁止大面积实心背景块
+- Logo 宽度受安全区限制
+- 课程名完整绘制
+- Logo picker 展示全部16种样式
