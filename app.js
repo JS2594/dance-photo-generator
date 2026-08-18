@@ -761,7 +761,7 @@ function selectBox(b,n){
 
 
 // V15.8 P1 user combos — NEVER block the first photo frame.
-const CUSTOM_COMBO_ACTIVE={"zumba":["zumba_01.png","zumba_02.png","zumba_03.png","zumba_04.png"],"lelepop":["lelepop_01.png","lelepop_02.png","lelepop_03.png","lelepop_04.png","lelepop_05.png"],"buttscaler":["buttscaler_01.png","buttscaler_02.png","buttscaler_03.png","buttscaler_04.png","buttscaler_05.png","buttscaler_06.png","buttscaler_07.png"],"zumba-camp":["zumba-camp_01.png","zumba-camp_02.png","zumba-camp_03.png","zumba-camp_04.png"]};
+const CUSTOM_COMBO_ACTIVE={"zumba":["zumba_01.png","zumba_02.png","zumba_03.png","zumba_04.png"],"lelepop":["lelepop_01.png","lelepop_02.png","lelepop_03.png","lelepop_04.png","lelepop_05.png"],"buttscaler":["buttscaler_01.png","buttscaler_02.png","buttscaler_03.jpg"],"zumba-camp":["zumba-camp_01.png","zumba-camp_02.png","zumba-camp_03.png","zumba-camp_04.png","zumba-camp_05.png"]};
 const comboImageCache=new Map();
 let customComboSrc=null,customComboImage=null,customComboScale=1;
 function comboPath(c,name){return `./public/custom-combos/${c}/${name}`;}
