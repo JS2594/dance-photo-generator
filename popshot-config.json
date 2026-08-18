@@ -1,5 +1,5 @@
 {
-  "version": "15.2.0",
+  "version": "15.3.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -293,15 +293,26 @@
     "scope": "device-local"
   },
   "textureReference": {
-    "contrast": 0.24,
-    "saturation": 0.26,
-    "highlights": -0.1,
-    "exposure": 0
+    "contrast": 0.28,
+    "saturation": 0.35,
+    "highlights": -0.08,
+    "exposure": -0.02
   },
   "qualityFixes": {
     "textureBlurOverlayDisabled": true,
     "textureStyleColorDecoupled": true,
     "highQualityCanvasResampling": true,
     "losslessPNG": true
+  },
+  "performance": {
+    "remoteFaceDetector": false,
+    "picoMaxSide": 1000,
+    "firstRenderBeforeDetection": true,
+    "customComboIndexed": true
+  },
+  "interactionFixes": {
+    "shuffleCyclesP1": true,
+    "changeLogoExitsP1": true,
+    "changeCharacterExitsP1": true
   }
 }

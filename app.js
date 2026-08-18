@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.2.0';
+const W = 2525, H = 1894, VERSION = '15.3.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -43,7 +43,7 @@ const styles = {
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
   natural:{label:'自然',ex:.04,ct:.04,sa:.05,temp:1,hi:-.01,sh:.03,tint:null},
-  texture:{label:'质感',ex:0,ct:.24,sa:.26,temp:1,hi:-.10,sh:.025,tint:null}, 
+  texture:{label:'质感',ex:-.02,ct:.28,sa:.35,temp:1,hi:-.08,sh:.015,tint:null}, 
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
   clear:{label:'清透',ex:.10,ct:.05,sa:-.03,temp:-3,hi:.06,sh:.07,tint:'rgba(210,235,255,.035)'},
@@ -183,7 +183,7 @@ function loadPico(){
 async function detectWithPico(img){
   try{
     const classify=await loadPico();
-    const maxSide=1600, sc=Math.min(1,maxSide/Math.max(img.width,img.height));
+    const maxSide=1000, sc=Math.min(1,maxSide/Math.max(img.width,img.height));
     const w=Math.round(img.width*sc), h=Math.round(img.height*sc);
     const c=document.createElement('canvas');c.width=w;c.height=h;
     const g=c.getContext('2d');
@@ -204,132 +204,30 @@ async function detectWithPico(img){
 }
 
 async function detectPeople(img){
-  boxesDetected = [];
-  $('#detectStatus').textContent = '正在识别合照主体…';
-
+  boxesDetected=[];
+  $('#detectStatus').textContent='正在快速识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
-  const add=bs=>{for(const b of bs){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+  const add=bs=>{for(const b of bs||[]){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
 
-  // 第一路：MediaPipe（国内网络可能加载不了，限时 4 秒，失败不阻塞）。
-  try{
-    await withTimeout((async()=>{
-      const mod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm');
-      const vision = await mod.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
-      const fd = await mod.FaceDetector.createFromOptions(vision,{
-        baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite'},
-        runningMode:'IMAGE', minDetectionConfidence:.25
-      });
-      const det=(src,ox,oy)=>(fd.detect(src).detections||[])
-        .map(d=>d.boundingBox)
-        .map(b=>({x:ox+b.originX,y:oy+b.originY,w:b.width,h:b.height}));
-      add(det(img,0,0));
-      if(boxesDetected.length<8){
-        const tw=Math.round(img.width*.55), th=Math.round(img.height*.55);
-        const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
-        const tg=tc.getContext('2d');
-        for(const [ox,oy] of [[0,0],[img.width-tw,0],[0,img.height-th],[img.width-tw,img.height-th]]){
-          tg.clearRect(0,0,tw,th);
-          tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
-          add(det(tc,ox,oy));
-        }
-      }
-      fd.close();
-    })(),4000);
-  }catch(e){/* 加载失败或超时，交给本地 pico */}
-
-  // 第二路：本地 pico.js（永远可用，随包部署，无外网依赖）。
-  if(boxesDetected.length<3){
-    add(await detectWithPico(img));
-  }
-
-  // 浏览器原生 FaceDetector 兜底（部分 Chrome 支持）。
-  if(!boxesDetected.length && 'FaceDetector' in window){
+  // First: native browser detector when available — local and fast.
+  if('FaceDetector' in window){
     try{
-      const f = await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
+      const f=await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
       add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})));
     }catch(_){}
   }
+  // Second: packaged pico.js only; no network/CDN waiting.
+  if(boxesDetected.length<3) add(await detectWithPico(img));
 
-  // 过滤离群误检：明显比中位脸大/小太多的框大概率是海报、倒影或误检。
   if(boxesDetected.length>2){
-    const hs=boxesDetected.map(b=>b.h).sort((a,b)=>a-b);
-    const med=hs[Math.floor(hs.length/2)];
+    const hs=boxesDetected.map(b=>b.h).sort((a,b)=>a-b),med=hs[Math.floor(hs.length/2)];
     boxesDetected=boxesDetected.filter(b=>b.h>med*.35&&b.h<med*3.2);
   }
-
-  $('#detectStatus').textContent = boxesDetected.length
-    ? `已识别 ${boxesDetected.length} 位主体 · 可手动调整裁剪`
-    : '未识别到人脸，已按下方主体估算裁剪 · 建议手动微调';
+  $('#detectStatus').textContent=boxesDetected.length
+    ? `已识别 ${boxesDetected.length} 位主体`
+    : '已启用保守构图';
   return boxesDetected;
 }
-
-function smartCrop(){
-  const iw=photo.width, ih=photo.height, tr=W/H;
-  let sw,sh,baseSx,baseSy;
-
-  if(boxesDetected.length){
-    const avgH=boxesDetected.reduce((s,b)=>s+b.h,0)/boxesDetected.length;
-    const fx1=Math.min(...boxesDetected.map(b=>b.x));
-    const fx2=Math.max(...boxesDetected.map(b=>b.x+b.w));
-    const fy1=Math.min(...boxesDetected.map(b=>b.y));
-    const fy2=Math.max(...boxesDetected.map(b=>b.y+b.h));
-    const faceCX=(fx1+fx2)/2;
-
-    // 必须保留的区域：收紧边距，让真人尽量占满画面（参考海报式构图）。
-    const keepL=Math.max(0,fx1-avgH*0.95);
-    const keepR=Math.min(iw,fx2+avgH*0.95);
-    const keepT=Math.max(0,fy1-avgH*0.9);
-    const keepB=Math.min(ih,fy2+avgH*4.4);
-
-    // 先按必留区域算尺寸，再统一按 4:3 修正 —— 宽高始终成比例，不会拉伸。
-    sh=keepB-keepT; sw=sh*tr;
-    if(sw<keepR-keepL){ sw=keepR-keepL; sh=sw/tr; }
-    if(sw>iw){ sw=iw; sh=sw/tr; }
-    if(sh>ih){ sh=ih; sw=sh*tr; }
-
-    const z=Math.max(.72,photoZoom);
-    sw/=z; sh/=z;
-
-    // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~27% 处开始，上方留出标题带。
-    baseSx=faceCX-sw/2;
-    baseSy=fy1-sh*.26;
-    // 若这样会切到脚，则下移裁剪窗，但头顶至少保留画面 13% 的标题空间。
-    if(baseSy+sh<keepB) baseSy=Math.min(keepB-sh, fy1-Math.max(avgH*.55, sh*.13));
-  }else{
-    // 未识别到人脸：合照里人几乎总在中下部（上方是天花板/镜子），
-    // 默认放大 1.22 倍并把裁剪窗对准画面 58% 高度的中心。
-    if(iw/ih>tr){ sh=ih; sw=ih*tr; }
-    else{ sw=iw; sh=iw/tr; }
-    const z=Math.max(.72,photoZoom)*1.35;
-    sw/=z; sh/=z;
-    baseSx=(iw-sw)/2;
-    baseSy=ih*.58-sh*.5;
-  }
-
-  let sx=baseSx-photoDX*iw/W;
-  let sy=baseSy-photoDY*ih/H;
-  sx=Math.max(0,Math.min(iw-sw,sx));
-  sy=Math.max(0,Math.min(ih-sh,sy));
-  return {sx,sy,sw,sh};
-}
-
-// ── 花体标题引擎：每个字母独立旋转/起伏/配色，参考手绘海报风 ──
-const LETTER_ROT=[-5,4,-3,5,-4,3,-6,4];       // 每个字母的固定旋转角（度）
-const LETTER_DY=[0,-.06,.045,-.045,.055,-.05,.035,-.03]; // 每个字母的基线起伏（字号比例）
-function measureWord(text,size){
-  ctx.save();
-  ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
-  const ws=[...text].map(ch=>ctx.measureText(ch).width);
-  ctx.restore();
-  const track=size*.045;
-  return {ws,track,total:ws.reduce((a,b)=>a+b,0)+track*(text.length-1)};
-}
-// 以 174px 基准字号测量当前课程主标题宽度（含字距与空格），用于自动排版。
-function titleTextWidth(px=174){
-  return measureWord(courseNames[course],px).total||600;
-}
-
 function faceZones(){
   if(!photo) return [];
   const c=smartCrop(), sx=W/c.sw, sy=H/c.sh;
@@ -732,18 +630,43 @@ function selectBox(b,n){
 
 
 const CUSTOM_ASSET_VERSION=localStorage.popshotAssetVersion||'2';
+const CUSTOM_COMBO_ACTIVE={"zumba":["zumba_01.png","zumba_02.png","zumba_03.png","zumba_04.png"],"lelepop":["lelepop_01.png","lelepop_02.png","lelepop_03.png","lelepop_04.png","lelepop_05.png"],"buttscaler":["buttscaler_01.png","buttscaler_02.png","buttscaler_03.png","buttscaler_04.png","buttscaler_05.png","buttscaler_06.png","buttscaler_07.png"],"zumba-camp":["zumba-camp_01.png","zumba-camp_02.png","zumba-camp_03.png","zumba-camp_04.png"]};
 // V15 P1 custom combo: complete image, never split internal character/text.
 let customComboSrc=null,customComboImage=null,customComboScale=1;
 const CUSTOM_COMBO_MAX=20;
-function comboPath(c,i){return `./public/custom-combos/${c}/${c}_${String(i).padStart(2,'0')}.png`}
-function imageExists(src){return new Promise(resolve=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>resolve(null);im.src=src+'?v='+VERSION+'-'+CUSTOM_ASSET_VERSION})}
-async function loadPreferredCustomCombo(){
-  customComboSrc=null;customComboImage=null;
-  for(let i=1;i<=CUSTOM_COMBO_MAX;i++){const src=comboPath(course,i),im=await imageExists(src);if(im){customComboSrc=src;customComboImage=im;return true}}
-  return false;
+const comboImageCache=new Map();
+function comboPath(c,iOrName){
+  const name=typeof iOrName==='string'?iOrName:`${c}_${String(iOrName).padStart(2,'0')}.png`;
+  return `./public/custom-combos/${c}/${name}`;
+}
+function imageExists(src){
+  if(comboImageCache.has(src))return Promise.resolve(comboImageCache.get(src));
+  return new Promise(resolve=>{
+    const im=new Image();
+    im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
+    im.onerror=()=>resolve(null);
+    im.src=src+'?v='+VERSION+'-'+CUSTOM_ASSET_VERSION;
+  });
 }
 async function listCustomCombos(){
-  const a=[];for(let i=1;i<=CUSTOM_COMBO_MAX;i++){const src=comboPath(course,i),im=await imageExists(src);if(im)a.push({src,im})}return a;
+  const names=CUSTOM_COMBO_ACTIVE[course]||[];
+  const rows=await Promise.all(names.map(async name=>{
+    const src=comboPath(course,name),im=await imageExists(src);
+    return im?{src,im,name}:null;
+  }));
+  return rows.filter(Boolean);
+}
+async function loadPreferredCustomCombo(){
+  const arr=await listCustomCombos();
+  if(!arr.length){customComboSrc=null;customComboImage=null;return false}
+  const pick=arr[0];customComboSrc=pick.src;customComboImage=pick.im;return true;
+}
+async function nextCustomCombo(){
+  const arr=await listCustomCombos();
+  if(!arr.length){customComboSrc=null;customComboImage=null;return false}
+  let idx=arr.findIndex(x=>x.src===customComboSrc);
+  idx=(idx+1)%arr.length;
+  customComboSrc=arr[idx].src;customComboImage=arr[idx].im;return true;
 }
 async function drawCustomCombo(){
   if(!customComboImage)return null;
@@ -761,10 +684,12 @@ async function render(){
   if(!photo) return;
   $('#placeholder').classList.add('hidden');
   drawPhoto();
-  const wash=ctx.createLinearGradient(0,0,W,H);
-  wash.addColorStop(0,'rgba(90,60,170,.022)');
-  wash.addColorStop(1,'rgba(255,70,145,.018)');
-  ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
+  if(beautyPreset!=='texture'){
+    const wash=ctx.createLinearGradient(0,0,W,H);
+    wash.addColorStop(0,'rgba(90,60,170,.015)');
+    wash.addColorStop(1,'rgba(255,70,145,.012)');
+    ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
+  }
   drawFrame();
   drawGraffiti();
 
@@ -922,7 +847,9 @@ input.onchange=e=>{
   const u=URL.createObjectURL(f),im=new Image();
   im.onload=async()=>{
     photo=im;URL.revokeObjectURL(u);photoZoom=1;photoDX=photoDY=0;
-    await detectPeople(im);pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();await saveImage(f);render();saveDraft();
+    boxesDetected=[];pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();await saveImage(f);render();saveDraft();
+    // Recognition continues in background; do not block first result.
+    detectPeople(im).then(()=>{autoPlace();render();saveDraft()});
   };
   im.src=u;
 };
@@ -941,7 +868,7 @@ $$('[data-density]').forEach(b=>b.onclick=()=>{
 });
 
 $('#generateBtn').onclick=async()=>{if(!photo)return alert('请先上传照片');push();pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();selected=null;render();saveDraft()};
-$('#shuffleBtn').onclick=async()=>{if(!photo)return;push();pickCombo();const a=await listCustomCombos();if(a.length){const p=a[Math.floor(Math.random()*a.length)];customComboSrc=p.src;customComboImage=p.im}else{customComboSrc=null;customComboImage=null}resetLayers();autoPlace();selected=null;render();saveDraft()};
+$('#shuffleBtn').onclick=async()=>{if(!photo)return;push();pickCombo();const changed=await nextCustomCombo();if(!changed){customComboSrc=null;customComboImage=null}resetLayers();autoPlace();selected=null;render();saveDraft()};
 
 
 async function showComboPicker(){
@@ -959,7 +886,7 @@ function showCharacterPicker(){
     const b=document.createElement('button');
     b.className='asset-option'+(i===charIndex?' on':'');
     b.innerHTML=`<img src="${asset(course,i)}" alt="">`;
-    b.onclick=()=>{push();charIndex=i;drawer.classList.remove('show');render();saveDraft()};
+    b.onclick=()=>{push();customComboSrc=null;customComboImage=null;charIndex=i;layers.title.visible=true;layers.character.visible=true;drawer.classList.remove('show');autoPlace();render();saveDraft()};
     wrap.appendChild(b);
   });
   drawer.classList.add('show');
@@ -972,7 +899,7 @@ function showTitlePicker(){
     const b=document.createElement('button');
     b.className='asset-option title-option'+(i===titleIndex?' on':'');
     b.textContent=name;
-    b.onclick=()=>{push();titleIndex=i;drawer.classList.remove('show');render();saveDraft()};
+    b.onclick=()=>{push();customComboSrc=null;customComboImage=null;titleIndex=i;layers.title.visible=true;layers.character.visible=true;drawer.classList.remove('show');autoPlace();render();saveDraft()};
     wrap.appendChild(b);
   });
   drawer.classList.add('show');
