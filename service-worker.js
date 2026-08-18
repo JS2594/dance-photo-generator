@@ -1,25 +1,48 @@
-const CACHE='popshot-v1.0.6-color';
-const CORE=['./','./index.html','./app.js','./styles.css','./manifest.webmanifest','./version.json'];
-self.addEventListener('install',e=>e.waitUntil(
-  caches.open(CACHE).then(c=>Promise.allSettled(CORE.map(x=>c.add(x+'?v=1.0.6')))).then(()=>self.skipWaiting())
-));
-self.addEventListener('activate',e=>e.waitUntil(
-  caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())
-));
-self.addEventListener('message',e=>{if(e.data?.type==='SKIP_WAITING')self.skipWaiting()});
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  const u=new URL(e.request.url);
-  const critical=e.request.mode==='navigate'||/\/public\/(custom-combos|assets\/characters)\//.test(u.pathname)||/\.(js|css|json|webmanifest)$/.test(u.pathname);
-  if(critical){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{
-      if(r&&r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));
-      return r;
-    }).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))));
+const CACHE_NAME='popshot-v1.0.8';
+const RELEASE='1.0.8';
+const CORE=['./','./index.html','./app.js','./styles.css','./manifest.webmanifest','./popshot-config.json'];
+
+self.addEventListener('install', event => {
+  self.skipWaiting();
+  event.waitUntil((async()=>{
+    const c=await caches.open(CACHE_NAME);
+    for(const u of CORE){
+      try{ const r=await fetch(u+'?v='+RELEASE,{cache:'reload'}); if(r.ok) await c.put(u,r.clone()); }catch(e){}
+    }
+  })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k!==CACHE_NAME && k.toLowerCase().includes('popshot')).map(k=>caches.delete(k)));
+    await self.clients.claim();
+    const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    clients.forEach(c=>c.postMessage({type:'POPSHOT_RELEASE_ACTIVE',version:RELEASE}));
+  })());
+});
+
+self.addEventListener('fetch', event => {
+  if(event.request.method!=='GET') return;
+  const url=new URL(event.request.url);
+  const core=/\/(index\.html|app\.js|styles\.css|popshot-config\.json|version\.json|manifest\.webmanifest)$/.test(url.pathname) || url.pathname.endsWith('/');
+  if(core){
+    event.respondWith((async()=>{
+      try{
+        const r=await fetch(event.request,{cache:'no-store'});
+        const c=await caches.open(CACHE_NAME); c.put(event.request,r.clone()).catch(()=>{});
+        return r;
+      }catch(e){ return (await caches.match(event.request)) || (await caches.match(url.pathname.split('/').pop())) || Response.error(); }
+    })());
   }else{
-    e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{
-      if(r&&r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));
-      return r;
-    })));
+    event.respondWith((async()=>{
+      const hit=await caches.match(event.request);
+      if(hit) return hit;
+      try{
+        const r=await fetch(event.request);
+        const c=await caches.open(CACHE_NAME); c.put(event.request,r.clone()).catch(()=>{});
+        return r;
+      }catch(e){ return Response.error(); }
+    })());
   }
 });
