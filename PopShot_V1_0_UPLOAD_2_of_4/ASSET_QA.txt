@@ -1,8 +1,0 @@
-PopShot V8.1 asset QA
-Checked all character PNG assets individually.
-- Transparent background verified
-- RGB residue in fully transparent pixels cleared
-- Original anti-aliased / semi-transparent edges preserved
-- 12px transparent safety padding added to every character
-- No filename labels are embedded in character PNGs
-- App icons checked separately as full-square icon assets
