@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.8.0';
+const W = 2525, H = 1894, VERSION = '15.9.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -737,13 +737,20 @@ async function listCustomCombos(){
 async function loadPreferredCustomCombo(){
   const arr=await listCustomCombos();
   if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
-  customComboSrc=arr[0].src;customComboImage=arr[0].im;return true;
+  const key='popshotLastCombo_'+course;
+  const last=localStorage.getItem(key);
+  let idx=arr.findIndex(x=>x.src===last);
+  idx=(idx+1)%arr.length;
+  const pick=arr[idx<0?0:idx];
+  customComboSrc=pick.src;customComboImage=pick.im;comboMode='finished';
+  localStorage.setItem(key,pick.src);
+  return true;
 }
 async function nextCustomCombo(){
   const arr=await listCustomCombos();
   if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
   let i=arr.findIndex(x=>x.src===customComboSrc);
-  i=(i+1)%arr.length;customComboSrc=arr[i].src;customComboImage=arr[i].im;return true;
+  i=(i+1)%arr.length;customComboSrc=arr[i].src;customComboImage=arr[i].im;comboMode='finished';localStorage.setItem('popshotLastCombo_'+course,customComboSrc);return true;
 }
 function drawCustomCombo(){
   if(!customComboImage)return null;
@@ -964,6 +971,42 @@ $('#generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');push
 $('#shuffleBtn').onclick=async()=>{if(!photo)return;push();const ok=await nextCustomCombo();if(!ok){customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;}selected=null;render();saveDraft()};
 
 
+
+let comboMode='finished';
+let finishedComboScale=1;
+
+function applyFinishedComboScale(v){
+  finishedComboScale=Math.max(.65,Math.min(1.45,Number(v)||1));
+  customComboScale=finishedComboScale;
+  render();saveDraft();
+}
+function showFinishedComboControls(){
+  $('#drawerTitle').textContent='成品组合（推荐）';
+  drawerBody.innerHTML=`
+    <div class="adjust-tip">人物和课程字样已经搭配好。你只需要换款式或调整整体大小。</div>
+    <button class="wide-btn" id="nextFinishedCombo">换一个成品组合</button>
+    <label class="slider-row"><span>整体大小</span><input id="finishedComboScale" type="range" min="65" max="145" value="${Math.round(finishedComboScale*100)}"><b>${Math.round(finishedComboScale*100)}%</b></label>`;
+  drawer.classList.add('show');
+  $('#nextFinishedCombo').onclick=async()=>{await nextCustomCombo();comboMode='finished';render();saveDraft()};
+  const r=$('#finishedComboScale'),b=r.nextElementSibling;
+  r.oninput=()=>{b.textContent=r.value+'%';applyFinishedComboScale(r.value/100)};
+}
+function showCustomComboControls(){
+  comboMode='custom';
+  customComboSrc=null;customComboImage=null;
+  layers.title.visible=true;layers.character.visible=true;
+  $('#drawerTitle').textContent='自定义组合';
+  drawerBody.innerHTML=`
+    <div class="adjust-tip">自己搭配Q版人物和课程字样；可以分别调整大小和位置。</div>
+    <button class="wide-btn" id="customCharPick">选择Q版人物</button>
+    <button class="wide-btn" id="customLogoPick">选择课程字样</button>
+    <div class="adjust-tip">选中画布上的人物或字样后，可直接拖动位置；使用原有大小调整控制修改尺寸。</div>`;
+  drawer.classList.add('show');
+  $('#customCharPick').onclick=showCharacterPicker;
+  $('#customLogoPick').onclick=showTitlePicker;
+  render();saveDraft();
+}
+
 async function showComboPicker(){
   $('#drawerTitle').textContent='成品组合';
   drawerBody.innerHTML='<div class="asset-picker" id="comboPicker"><span>读取中…</span></div>';
@@ -1014,9 +1057,9 @@ function showStickerPicker(){
   $$('[data-sc]').forEach(b=>b.onclick=()=>{stickerCategory=b.dataset.sc;stickerIndex=0;$$('[data-sc]').forEach(x=>x.classList.toggle('on',x===b));build();});
   build();drawer.classList.add('show');
 }
-$('#changeCharacterBtn').onclick=showCharacterPicker;
-$('#changeComboBtn').onclick=showComboPicker;
-$('#changeTagBtn').onclick=showTitlePicker;
+$('#customComboBtn').onclick=showCustomComboControls;
+$('#finishedComboBtn').onclick=showFinishedComboControls;
+
 $('#changeStickerBtn').onclick=showStickerPicker;
 $('#changeFrameBtn').onclick=()=>{push();frameIndex=(frameIndex+1)%12;render()};
 $('#layoutBtn').onclick=()=>{
@@ -1353,3 +1396,7 @@ function clampTopComboLayout(box, canvasW, canvasH, occupiedTopRects=[]){
   return {x,y,w,h,scale,sideSafe};
 }
 
+
+document.addEventListener('dblclick',e=>{
+  if(e.target.closest('button,.quick-actions,.bottom-bar')) e.preventDefault();
+},{passive:false});

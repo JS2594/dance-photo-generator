@@ -1,5 +1,5 @@
 {
-  "version": "15.8.0",
+  "version": "15.9.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -250,5 +250,28 @@
     "enabled": true,
     "count": 20,
     "priority": "after-first-frame"
+  },
+  "comboUX": {
+    "default": "finished",
+    "finishedControls": [
+      "change style",
+      "overall scale"
+    ],
+    "customControls": [
+      "Q character",
+      "course wordmark",
+      "independent scale",
+      "independent position"
+    ],
+    "nonRepeatingDefault": true
+  },
+  "touchUX": {
+    "minButtonHeight": 52,
+    "shuffleMinHeight": 56,
+    "touchAction": "manipulation"
+  },
+  "composition": {
+    "targetSideBreathingRoom": "approximately one-person standing width",
+    "priority": "comfortable group composition"
   }
 }
