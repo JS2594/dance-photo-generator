@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.1.1';
+const POPSHOT_VERSION='1.1.2';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.1.1';
+const W = 2525, H = 1894, VERSION = '1.1.2';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -193,7 +193,7 @@ function load(path){
     const inlineSvg=INLINE_STICKER_SVGS[path];
     im.src=inlineSvg
       ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
-      : (path.includes('?')?path:path+'?v=1.1.1');
+      : (path.includes('?')?path:path+'?v=1.1.2');
   });
   return loaded[path];
 }
@@ -246,7 +246,7 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.1.1：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
+  // V1.1.2：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
   try{ add(await Promise.race([detectWithPico(img),new Promise(r=>setTimeout(()=>r([]),1800))])); }catch(e){}
   // 支持原生 FaceDetector 的浏览器做快速补充。
   if(boxesDetected.length<3 && 'FaceDetector' in window){
@@ -262,7 +262,7 @@ function smartCrop(){
 
   // 没有可靠主体识别时，也默认适度推进，不再把整个场地都塞进画面。
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.28 : Math.max(.72,Number(photoZoom)||1);
+    const z=(Number(photoZoom)||1)===1 ? 1.18 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
     let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.148-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
@@ -318,7 +318,7 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.1.1：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
+  // V1.1.2：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
   let sy=(y1+y2)/2-sh*.438-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
@@ -472,7 +472,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
       const skin=target3SkinPixel(r,g,b);
 
       // Remove gray veil: raise midtone + increase useful contrast.
-      let ny=(y-128)*1.135+139; // ~ +8 luminance around mid tones
+      let ny=(y-128)*1.155+141; // ~ +8 luminance around mid tones
       ny=Math.max(0,Math.min(255,ny));
       const gain=y>1?ny/y:1;
       r*=gain; g*=gain; b*=gain;
@@ -482,18 +482,18 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
 
       if(skin){
         // Skin: about +3–5% brighter/cleaner, reduce excess red/orange, no white glow.
-        const lift=9.0;
-        r = r*.970 + lift;
-        g = g*1.010 + lift;
-        b = b*1.026 + lift;
+        const lift=10.0;
+        r = r*.965 + lift;
+        g = g*1.012 + lift;
+        b = b*1.030 + lift;
         const sg=.299*r+.587*g+.114*b;
-        const skinSat=.91;
+        const skinSat=.90;
         r=sg+(r-sg)*skinSat;
         g=sg+(g-sg)*skinSat;
         b=sg+(b-sg)*skinSat;
       }else if(chroma>10){
         // Vibrance: stronger on dull colors, restrained on colors already saturated.
-        const vib=1 + Math.max(.10, Math.min(.30, .30*(1-Math.min(1,chroma/165))));
+        const vib=1 + Math.max(.11, Math.min(.34, .34*(1-Math.min(1,chroma/175))));
         r=gray+(r-gray)*vib;
         g=gray+(g-gray)*vib;
         b=gray+(b-gray)*vib;
@@ -515,13 +515,13 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
     const blur=document.createElement('canvas');
     blur.width=w; blur.height=h;
     const bg=blur.getContext('2d',{alpha:false,willReadFrequently:true});
-    bg.filter='blur(0.95px)';
+    bg.filter='blur(0.85px)';
     bg.drawImage(tmp,0,0);
     bg.filter='none';
     const bd=bg.getImageData(0,0,w,h).data;
     const sd=src.data;
 
-    const amount=.88, threshold=2.8, maxHP=20;
+    const amount=1.02, threshold=3.0, maxHP=18;
     for(let i=0;i<sd.length;i+=4){
       for(let c=0;c<3;c++){
         let hp=sd[i+c]-bd[i+c];
@@ -550,6 +550,19 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
       }
     }
     targetCtx.putImageData(fin,0,0);
+
+    // 4) Final black/white separation: deeper blacks and cleaner whites, no haze overlay.
+    const bw=targetCtx.getImageData(0,0,w,h);
+    const px=bw.data;
+    for(let i=0;i<px.length;i+=4){
+      for(let c=0;c<3;c++){
+        let v=px[i+c]/255;
+        // gentle S curve
+        v = v<.5 ? 0.5*Math.pow(v*2,1.06) : 1-0.5*Math.pow((1-v)*2,1.06);
+        px[i+c]=Math.max(0,Math.min(255,Math.round(v*255)));
+      }
+    }
+    targetCtx.putImageData(bw,0,0);
   }catch(e){
     console.warn('Target3 exact pass skipped',e);
   }
@@ -561,7 +574,7 @@ function drawPhoto(){
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.1.1：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
+  // V1.1.2：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
   const br=Math.max(.65,(1+b*(isNatural?.025:.12)+ex)*gr.br);
   const con=Math.max(.6,(1+b*(isNatural?.035:.02)+ct)*gr.ct);
   const sat=Math.max(.2,(1+b*(isNatural?.075:.05)+sa)*gr.sa);
@@ -569,7 +582,7 @@ function drawPhoto(){
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
-  // V1.1.1：自然模式不再二次覆盖一层原图。
+  // V1.1.2：自然模式不再二次覆盖一层原图。
   // 旧做法会把前面的亮度/对比/色彩重新冲淡，同时在放大裁剪时进一步造成视觉发软。
   if(!dragging && !isNatural){
     ctx.save();ctx.globalAlpha=.14;ctx.filter='contrast(1.055) saturate(1.025)';
@@ -865,7 +878,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.1.1';
+    im.src=src+'?v=1.1.2';
   });
 }
 const DEFAULT_COMBO_FILE={
@@ -1528,11 +1541,22 @@ function getLosslessExportSize(){
   return {w,h,crop:c,scale:w/W};
 }
 
+
+function getExportIntegrityInfo(){
+  if(!photo)return null;
+  const c=smartCrop(), q=getLosslessExportSize();
+  const cropW=Math.max(1,Math.round(c.sw)), cropH=Math.max(1,Math.round(c.sh));
+  const upscale=Math.max(q.w/cropW,q.h/cropH);
+  return {cropW,cropH,outW:q.w,outH:q.h,upscale};
+}
+
 function updateCheck(){
   if(!photo)return;
   const q=getLosslessExportSize();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
-  $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → 高清导出 ${q.w}×${q.h} · 4:3 · PNG无损`;
+  const qi=getExportIntegrityInfo();
+  const scaleText=qi?` · 裁剪源 ${qi.cropW}×${qi.cropH} · 放大 ${Math.round(qi.upscale*100)}%`:'';
+  $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → PNG无损 ${q.w}×${q.h}${scaleText}`;
   $('#exportCheck').classList.add('ok');
 }
 
@@ -1569,17 +1593,30 @@ $('#exportBtn').onclick=async()=>{
 
     const hi=await renderLosslessExport();
     const blob=await new Promise((res,rej)=>hi.canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/png'));
+    const mb=(blob.size/1024/1024).toFixed(2);
     const filename=`PopShot-${course}-${hi.w}x${hi.h}-${Date.now()}.png`;
+    console.info(`[PopShot] lossless PNG ${hi.w}x${hi.h}, ${mb} MB`);
     const file=new File([blob],filename,{type:'image/png'});
+    
+    if(window.Android&&typeof window.Android.savePngBase64==='function'){
+      const reader=new FileReader();
+      const saved=await new Promise((resolve,reject)=>{
+        reader.onload=()=>{try{window.Android.savePngBase64(filename,String(reader.result));resolve(true)}catch(e){reject(e)}};
+        reader.onerror=reject;
+        reader.readAsDataURL(blob);
+      });
+      if(saved){showSaveToast(`安卓已保存 ${hi.w}×${hi.h} 无损PNG · ${mb}MB`);return}
+    }
+
     const ua=navigator.userAgent||'', isiOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), isAndroid=/Android/i.test(ua);
 
     if(isiOS&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
-      try{await navigator.share({files:[file],title:'保存 PopShot 原图级 PNG'});showSaveToast(`已生成 ${hi.w}×${hi.h} 无损PNG，请选择“存储图像”`);return}catch(err){if(err?.name==='AbortError')return}
+      try{await navigator.share({files:[file],title:'保存 PopShot 原图级 PNG'});showSaveToast(`已生成 ${hi.w}×${hi.h} 无损PNG · ${mb}MB，请选择“存储图像”`);return}catch(err){if(err?.name==='AbortError')return}
     }
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=filename;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
     if(isAndroid){setTimeout(()=>showSaveFallback(blob,filename,true),650)}
-    else{showSaveToast(`已生成 ${hi.w}×${hi.h} 无损PNG`);setTimeout(()=>URL.revokeObjectURL(url),5000)}
+    else{showSaveToast(`已生成 ${hi.w}×${hi.h} 无损PNG · ${mb}MB`);setTimeout(()=>URL.revokeObjectURL(url),5000)}
   }catch(err){
     console.error(err);
     alert('原图级导出失败，请不要关闭页面并重新保存一次。');
@@ -1932,10 +1969,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.1.1',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.1.1',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.1.1',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.1.1'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.1.2',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.1.2',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.1.2',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.1.2'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';

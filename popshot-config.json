@@ -1,5 +1,5 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -275,7 +275,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "Actual exported PNG vs Target 3",
+  "releaseFocus": "Target3 actual PNG quality first; color layered after source-quality render",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -404,5 +404,20 @@
     "color": "higher selective vibrance on non-skin regions",
     "skin": "brighter/cleaner, less red, protected from strong vibrance",
     "crop": "slightly tighter with less empty floor"
+  },
+  "qualityGuarantee": {
+    "format": "PNG only; no JPEG fallback",
+    "photoSource": "naturalWidth/naturalHeight original image decode",
+    "intermediatePreview": "not used for export",
+    "autoCropZoom": "reduced from 1.28 to 1.18 to preserve source detail",
+    "processingOrder": [
+      "source crop render",
+      "tone/color",
+      "skin protection",
+      "final-resolution detail",
+      "overlays",
+      "PNG encode"
+    ],
+    "android": "APK bridge saves the exact same PNG bytes; no Android-side recompression"
   }
 }

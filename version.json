@@ -1,6 +1,6 @@
 {
-  "version": "1.1.1",
-  "build": 1787077979,
+  "version": "1.1.2",
+  "build": 1787079100,
   "atomicPublish": true,
-  "notes": "Target3 actual-export tuning: stronger dehaze/black-white separation, protected brighter skin, stronger non-skin vibrance, final-resolution sharpen + microcontrast, slightly tighter crop."
+  "notes": "Target3 max-quality actual export: less auto crop enlargement, stronger export-only detail/color, skin protection, black/white separation, exact PNG bytes, Android bridge support."
 }
