@@ -18,7 +18,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.0.6';
+const W = 2525, H = 1894, VERSION = '1.0.8';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -56,7 +56,7 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'鲜活自然',ex:.020,ct:.075,sa:.115,temp:0,hi:-.045,sh:.025,tint:null},
+  natural:{label:'鲜活自然',ex:.015,ct:.115,sa:.175,temp:-1,hi:-.035,sh:.015,tint:null},
   texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
@@ -180,7 +180,7 @@ function load(path){
     const inlineSvg=INLINE_STICKER_SVGS[path];
     im.src=inlineSvg
       ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
-      : path;
+      : (path.includes('?')?path:path+'?v=1.0.8');
   });
   return loaded[path];
 }
@@ -229,66 +229,19 @@ async function detectWithPico(img){
 }
 
 async function detectPeople(img){
-  boxesDetected = [];
-  $('#detectStatus').textContent = '正在识别合照主体…';
-
+  boxesDetected=[];
+  $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
-  const add=bs=>{for(const b of bs){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
-
-  // 第一路：MediaPipe（国内网络可能加载不了，限时 4 秒，失败不阻塞）。
-  try{
-    await withTimeout((async()=>{
-      const mod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm');
-      const vision = await mod.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
-      const fd = await mod.FaceDetector.createFromOptions(vision,{
-        baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite'},
-        runningMode:'IMAGE', minDetectionConfidence:.25
-      });
-      const det=(src,ox,oy)=>(fd.detect(src).detections||[])
-        .map(d=>d.boundingBox)
-        .map(b=>({x:ox+b.originX,y:oy+b.originY,w:b.width,h:b.height}));
-      add(det(img,0,0));
-      if(boxesDetected.length<8){
-        const tw=Math.round(img.width*.55), th=Math.round(img.height*.55);
-        const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
-        const tg=tc.getContext('2d');
-        for(const [ox,oy] of [[0,0],[img.width-tw,0],[0,img.height-th],[img.width-tw,img.height-th]]){
-          tg.clearRect(0,0,tw,th);
-          tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
-          add(det(tc,ox,oy));
-        }
-      }
-      fd.close();
-    })(),4000);
-  }catch(e){/* 加载失败或超时，交给本地 pico */}
-
-  // 第二路：本地 pico.js（永远可用，随包部署，无外网依赖）。
-  if(boxesDetected.length<3){
-    add(await detectWithPico(img));
+  const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
+  // V1.0.8：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
+  try{ add(await Promise.race([detectWithPico(img),new Promise(r=>setTimeout(()=>r([]),1800))])); }catch(e){}
+  // 支持原生 FaceDetector 的浏览器做快速补充。
+  if(boxesDetected.length<3 && 'FaceDetector' in window){
+    try{const f=await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})))}catch(e){}
   }
-
-  // 浏览器原生 FaceDetector 兜底（部分 Chrome 支持）。
-  if(!boxesDetected.length && 'FaceDetector' in window){
-    try{
-      const f = await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
-      add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})));
-    }catch(_){}
-  }
-
-  // 过滤离群误检：明显比中位脸大/小太多的框大概率是海报、倒影或误检。
-  if(boxesDetected.length>2){
-    const hs=boxesDetected.map(b=>b.h).sort((a,b)=>a-b);
-    const med=hs[Math.floor(hs.length/2)];
-    boxesDetected=boxesDetected.filter(b=>b.h>med*.35&&b.h<med*3.2);
-  }
-
-  $('#detectStatus').textContent = boxesDetected.length
-    ? `已识别 ${boxesDetected.length} 位主体 · 可手动调整裁剪`
-    : '未识别到人脸，已按下方主体估算裁剪 · 建议手动微调';
+  $('#detectStatus').textContent=boxesDetected.length?`已识别 ${boxesDetected.length} 位主体`:'已使用群像安全构图';
   return boxesDetected;
 }
-
 function smartCrop(){
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height, tr=4/3;
   let maxSw,maxSh;
@@ -298,7 +251,7 @@ function smartCrop(){
   if(boxesDetected.length<2){
     const z=(Number(photoZoom)||1)===1 ? 1.28 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.055-photoDY*ih/H;
+    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.090-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -352,8 +305,8 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.0.6：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
-  let sy=(y1+y2)/2-sh*.335-photoDY*ih/H;
+  // V1.0.8：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
+  let sy=(y1+y2)/2-sh*.385-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -486,19 +439,26 @@ function drawPhoto(){
   const bp=BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural;
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
-  const br=Math.max(.65,(1+b*.12+ex)*gr.br), con=Math.max(.6,(1+b*.02+ct)*gr.ct), sat=Math.max(.2,(1+b*.05+sa)*gr.sa);
-  ctx.save();ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
+  const isNatural=beautyPreset==='natural';
+  // V1.0.8：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
+  const br=Math.max(.65,(1+b*(isNatural?.025:.12)+ex)*gr.br);
+  const con=Math.max(.6,(1+b*(isNatural?.035:.02)+ct)*gr.ct);
+  const sat=Math.max(.2,(1+b*(isNatural?.075:.05)+sa)*gr.sa);
+  ctx.save();
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
-  // V17.5 轻量高清叠加：直接基于原始照片再刷一层微弱细节对比，不插值生成新像素、不做AI重绘。
-  // 强度刻意很低，避免改变整体色彩观感或产生锐化白边。
-  if(!dragging){ctx.save();ctx.globalAlpha=.14;ctx.filter='contrast(1.055) saturate(1.025)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
-  if(b>0&&!dragging&&beautyPreset!=='texture'&&beautyPreset!=='natural'){ctx.save();ctx.globalAlpha=Math.min(.10,(.035*b+.008)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(10px) brightness(1.02)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
-  if(beautyPreset!=='texture'){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(bp.tint){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=bp.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`:`rgba(90,165,255,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.20,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#8b8791';ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.18,Math.abs(sh));ctx.fillStyle=sh>0?'#a6a0b2':'#4b4753';ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(b>0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.11*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  // 高清细节叠加：原图直接二次轻刷，不经过低清中间图。
+  if(!dragging){ctx.save();ctx.globalAlpha=isNatural?.20:.14;ctx.filter=isNatural?'contrast(1.085) saturate(1.045)':'contrast(1.055) saturate(1.025)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
+  if(b>0&&!dragging&&beautyPreset!=='texture'&&!isNatural){ctx.save();ctx.globalAlpha=Math.min(.10,(.035*b+.008)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(10px) brightness(1.02)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
+  // 默认 A 禁止粉/紫全局雾层；其他风格保持原逻辑。
+  if(beautyPreset!=='texture'&&!isNatural){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(bp.tint&&!isNatural){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=bp.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.12,Math.abs(temp)/150).toFixed(3)})`:`rgba(90,165,255,${Math.min(.10,Math.abs(temp)/170).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.12,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#8b8791';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.12,Math.abs(sh));ctx.fillStyle=sh>0?'#a6a0b2':'#4b4753';ctx.fillRect(0,0,W,H);ctx.restore();}
+  // 自然模式不再叠白；避免肤色“白光”和画面发雾。
+  if(b>0&&!isNatural){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.11*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
 }
 function drawFrame(){
   if(!frameIndex) return;
@@ -771,18 +731,9 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.0.6';
+    im.src=src+'?v=1.0.8';
   });
 }
-async function listCustomCombos(){
-  const names=CUSTOM_COMBO_ACTIVE[course]||[];
-  const arr=await Promise.all(names.map(async name=>{
-    const src=comboPath(course,name),im=await loadComboImage(src);
-    return im?{src,im,name}:null;
-  }));
-  return arr.filter(Boolean);
-}
-
 const DEFAULT_COMBO_FILE={
   'lelepop':'lelepop_01.png',
   'buttscaler':'buttscaler_01.png',
@@ -822,10 +773,23 @@ async function loadStrictDefaultCombo(targetCourse=course){
 }
 
 async function nextCustomCombo(){
-  const arr=await listCustomCombos(course);
-  if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
-  let i=arr.findIndex(x=>x.src===customComboSrc);
-  i=(i+1)%arr.length;customComboSrc=arr[i].src;customComboImage=arr[i].im;comboMode='finished';localStorage.setItem('popshotLastCombo_'+course,customComboSrc);return true;
+  const names=CUSTOM_COMBO_ACTIVE[course]||[];
+  if(!names.length){customComboSrc=null;customComboImage=null;return false;}
+  let cur=names.findIndex(n=>customComboSrc===comboPath(course,n));
+  let next=(cur+1+names.length)%names.length;
+  // 只加载“下一张”，不再每次 Promise.all 把整个课程素材池重新等一遍。
+  for(let tries=0;tries<names.length;tries++){
+    const name=names[(next+tries)%names.length],src=comboPath(course,name);
+    const im=await Promise.race([loadComboImage(src),new Promise(r=>setTimeout(()=>r(null),1600))]);
+    if(im){
+      customComboSrc=src;customComboImage=im;comboMode='finished';
+      localStorage.setItem('popshotLastCombo_'+course,customComboSrc);
+      // 后台预热再下一张，不阻塞当前切换。
+      const ni=(next+tries+1)%names.length;setTimeout(()=>loadComboImage(comboPath(course,names[ni])).catch(()=>{}),30);
+      return true;
+    }
+  }
+  return false;
 }
 function drawCustomCombo(){
   if(!customComboImage)return null;
@@ -844,10 +808,12 @@ async function render(){
   if(!photo) return;
   $('#placeholder').classList.add('hidden');
   drawPhoto();
-  const wash=ctx.createLinearGradient(0,0,W,H);
-  wash.addColorStop(0,'rgba(90,60,170,.022)');
-  wash.addColorStop(1,'rgba(255,70,145,.018)');
-  ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
+  if(beautyPreset!=='natural'){
+    const wash=ctx.createLinearGradient(0,0,W,H);
+    wash.addColorStop(0,'rgba(90,60,170,.022)');
+    wash.addColorStop(1,'rgba(255,70,145,.018)');
+    ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
+  }
   drawFrame();
   drawGraffiti();
 
@@ -900,7 +866,7 @@ function pickCombo(){
   localStorage.popshotGraffitiSeed=graffitiSeed;
   const now=Date.now(), h=hist().filter(x=>x.time>now-14*864e5), wd=new Date().getDay();
   for(let i=0;i<120;i++){
-    charIndex=Math.floor(Math.random()*6);
+    charIndex=Math.floor(Math.random()*Math.max(1,charFiles[course]?.length||1));
     titleIndex=Math.floor(Math.random()*24);
     frameIndex=Math.floor(Math.random()*12);
     stickerIndex=Math.floor(Math.random()*stickerPool().length);
@@ -1108,7 +1074,7 @@ $('#courseGrid').onclick=e=>{
 
   Promise.race([
     loadStrictDefaultCombo(course),
-    new Promise(resolve=>setTimeout(()=>resolve(false),5000))
+    new Promise(resolve=>setTimeout(()=>resolve(false),2200))
   ]).then(ok=>{
     if(seq!==courseSwitchSeq)return;
     document.querySelectorAll('[data-course]').forEach(x=>x.classList.remove('is-switching'));
@@ -1423,6 +1389,34 @@ function updateCheck(){
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
   $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → 高清导出 ${q.w}×${q.h} · 4:3 · PNG无损`;
   $('#exportCheck').classList.add('ok');
+}
+
+
+function popshotV108FinalColorPass(ctx,w,h){
+  // V1.0.8: remove haze, enhance colored clothing/background, protect skin.
+  try{
+    const img=ctx.getImageData(0,0,w,h), d=img.data;
+    for(let i=0;i<d.length;i+=4){
+      let r=d[i], g=d[i+1], b=d[i+2];
+      const skin = r>92 && g>42 && b>24 && r>g && g>b*0.72 &&
+                   (r-g)>8 && (r-b)>14 && (Math.max(r,g,b)-Math.min(r,g,b))<125;
+      const c=1.075; // micro-contrast / dehaze
+      r=(r-128)*c+128; g=(g-128)*c+128; b=(b-128)*c+128;
+      const gray=.299*r+.587*g+.114*b;
+      const chroma=Math.max(r,g,b)-Math.min(r,g,b);
+      if(skin){
+        // no white glow; slightly neutralize excess red/yellow
+        r = r*0.992; g = g*1.004; b = b*1.010;
+      }else if(chroma>15){
+        const s=1.13;
+        r=gray+(r-gray)*s; g=gray+(g-gray)*s; b=gray+(b-gray)*s;
+      }
+      d[i]=Math.max(0,Math.min(255,r));
+      d[i+1]=Math.max(0,Math.min(255,g));
+      d[i+2]=Math.max(0,Math.min(255,b));
+    }
+    ctx.putImageData(img,0,0);
+  }catch(e){ console.warn('V108 color pass skipped',e); }
 }
 
 async function renderLosslessExport(){
@@ -1818,10 +1812,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.6',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.6',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.6',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.6'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.8',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.8',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.8',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.8'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
@@ -1849,3 +1843,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 });
 
+
+async function forcePopShotUpdate(){
+  try{
+    if('caches' in window){const ks=await caches.keys();await Promise.all(ks.filter(k=>/popshot/i.test(k)).map(k=>caches.delete(k)));}
+    if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){try{await r.update()}catch(e){}}}
+  }catch(e){}
+  location.replace(location.pathname+'?force='+Date.now());
+}
+async function checkPopShotUpdate(){
+  try{const r=await fetch('./version.json?t='+Date.now(),{cache:'no-store'});const v=await r.json();if(v.version&&v.version!==VERSION){if(confirm(`发现新版本 V${v.version}，立即更新？`))await forcePopShotUpdate();}}
+  catch(e){}
+}
+window.forcePopShotUpdate=forcePopShotUpdate;
+setTimeout(checkPopShotUpdate,900);

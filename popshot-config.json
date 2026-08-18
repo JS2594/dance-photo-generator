@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.8",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -11,22 +11,22 @@
   },
   "courses": {
     "lelepop": {
-      "characters": 6,
+      "characters": 10,
       "label": "Lelepop",
       "subtitle": "DANCE"
     },
     "buttscaler": {
-      "characters": 6,
+      "characters": 11,
       "label": "Buttscaler",
       "subtitle": "GLUTE & LEG"
     },
     "zumba": {
-      "characters": 6,
+      "characters": 13,
       "label": "ZUMBA",
       "subtitle": "DANCE"
     },
     "zumba-camp": {
-      "characters": 6,
+      "characters": 9,
       "label": "ZUMBA CAMP",
       "subtitle": "BREAKDOWN CLASS"
     }
@@ -154,7 +154,7 @@
     "group-photo crop tightened with modest automatic zoom"
   ],
   "defaultDesignRules": {
-    "characterCount": 1,
+    "characterCount": 2,
     "defaultSticker": false,
     "headline": "only the four real course names",
     "composition": "4 curated editorial layouts; title and character treated as one visual family",
@@ -279,7 +279,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "function-regression-fix",
+  "releaseFocus": "visual-quality-crop-performance-and-atomic-publish",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -359,5 +359,29 @@
     "一键换风格仅作用自定义搭配",
     "草稿恢复",
     "PWA安装到桌面"
-  ]
+  ],
+  "characterPolicy": "Character files are recognized from the app charFiles list; V1.0.8 synced to actual folders. Adding files later requires updating the corresponding count/list unless using a future manifest generator.",
+  "speedFix": [
+    "local face detection first",
+    "no external MediaPipe wait",
+    "next combo loads one asset only",
+    "background preload next combo"
+  ],
+  "visualBaseline": {
+    "clarity": "render from original image into final high-resolution 4:3 canvas; PNG lossless; no preview-canvas re-export",
+    "color": "vivid colored clothing/background, restrained skin saturation and no whitening haze",
+    "crop": "subjects large; composition shifted lower; keep roughly one-person side breathing room",
+    "logo": "avoid covering people/faces"
+  },
+  "publishFlow": {
+    "uploadOrder": [
+      "UPLOAD_1_of_4",
+      "UPLOAD_2_of_4",
+      "UPLOAD_3_of_4",
+      "UPLOAD_4_of_4",
+      "PUBLISH_LAST"
+    ],
+    "rule": "PUBLISH_LAST must be uploaded only after all four content packages are committed.",
+    "effect": "version.json and service-worker.js activate V1.0.8 and purge older PopShot caches."
+  }
 }
