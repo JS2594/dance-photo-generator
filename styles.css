@@ -146,10 +146,3 @@ canvas#canvas{
 .sticker-grid .sticker-option img{width:54px;height:54px;object-fit:contain}.sticker-grid .sticker-option.on{border-color:#7d5cff;box-shadow:inset 0 0 0 1px #7d5cff;background:#f8f5ff}
 .holiday-badge{display:inline-flex;align-items:center;gap:5px;color:#ee4f91;background:#fff0f6;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:800;margin-bottom:8px}
 @media(max-width:640px){.beauty-quick{align-items:stretch!important;flex-direction:column;gap:8px}.beauty-seg{min-width:0;width:100%}.beauty-preset-grid{grid-template-columns:repeat(3,1fr)}.adjust-grid{grid-template-columns:1fr}.sticker-grid{grid-template-columns:repeat(4,1fr)}}
-
-canvas#canvas{image-rendering:auto;-webkit-font-smoothing:antialiased;}
-
-.upload-loading{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.68);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
-.upload-loading.show{display:flex}.upload-loading-card{min-width:220px;max-width:78vw;padding:24px 28px;border-radius:24px;background:rgba(255,255,255,.96);box-shadow:0 18px 55px rgba(70,50,120,.18);text-align:center}
-.upload-spinner{width:42px;height:42px;margin:0 auto 14px;border:4px solid rgba(120,82,255,.15);border-top-color:#7852ff;border-radius:50%;animation:popspin .8s linear infinite}
-.upload-loading-title{font-size:17px;font-weight:800;color:#25232b}.upload-loading-sub{margin-top:7px;font-size:13px;line-height:1.45;color:#7b7785}@keyframes popspin{to{transform:rotate(360deg)}}

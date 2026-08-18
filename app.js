@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.7.0';
+const W = 2525, H = 1894, VERSION = '15.8.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -42,8 +42,8 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'自然',ex:.04,ct:.04,sa:.05,temp:1,hi:-.01,sh:.03,tint:null},
-  texture:{label:'质感',ex:-.02,ct:.28,sa:.35,temp:1,hi:-.08,sh:.015,tint:null}, 
+  natural:{label:'自然',ex:.03,ct:.04,sa:.05,temp:1,hi:-.01,sh:.03,tint:null},
+  texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
   clear:{label:'清透',ex:.10,ct:.05,sa:-.03,temp:-3,hi:.06,sh:.07,tint:'rgba(210,235,255,.035)'},
@@ -183,7 +183,7 @@ function loadPico(){
 async function detectWithPico(img){
   try{
     const classify=await loadPico();
-    const maxSide=1000, sc=Math.min(1,maxSide/Math.max(img.width,img.height));
+    const maxSide=1600, sc=Math.min(1,maxSide/Math.max(img.width,img.height));
     const w=Math.round(img.width*sc), h=Math.round(img.height*sc);
     const c=document.createElement('canvas');c.width=w;c.height=h;
     const g=c.getContext('2d');
@@ -204,30 +204,132 @@ async function detectWithPico(img){
 }
 
 async function detectPeople(img){
-  boxesDetected=[];
-  $('#detectStatus').textContent='正在快速识别合照主体…';
-  const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
-  const add=bs=>{for(const b of bs||[]){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
+  boxesDetected = [];
+  $('#detectStatus').textContent = '正在识别合照主体…';
 
-  // First: native browser detector when available — local and fast.
-  if('FaceDetector' in window){
+  const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
+  const add=bs=>{for(const b of bs){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
+  const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+
+  // 第一路：MediaPipe（国内网络可能加载不了，限时 4 秒，失败不阻塞）。
+  try{
+    await withTimeout((async()=>{
+      const mod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm');
+      const vision = await mod.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+      const fd = await mod.FaceDetector.createFromOptions(vision,{
+        baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite'},
+        runningMode:'IMAGE', minDetectionConfidence:.25
+      });
+      const det=(src,ox,oy)=>(fd.detect(src).detections||[])
+        .map(d=>d.boundingBox)
+        .map(b=>({x:ox+b.originX,y:oy+b.originY,w:b.width,h:b.height}));
+      add(det(img,0,0));
+      if(boxesDetected.length<8){
+        const tw=Math.round(img.width*.55), th=Math.round(img.height*.55);
+        const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
+        const tg=tc.getContext('2d');
+        for(const [ox,oy] of [[0,0],[img.width-tw,0],[0,img.height-th],[img.width-tw,img.height-th]]){
+          tg.clearRect(0,0,tw,th);
+          tg.drawImage(img,ox,oy,tw,th,0,0,tw,th);
+          add(det(tc,ox,oy));
+        }
+      }
+      fd.close();
+    })(),4000);
+  }catch(e){/* 加载失败或超时，交给本地 pico */}
+
+  // 第二路：本地 pico.js（永远可用，随包部署，无外网依赖）。
+  if(boxesDetected.length<3){
+    add(await detectWithPico(img));
+  }
+
+  // 浏览器原生 FaceDetector 兜底（部分 Chrome 支持）。
+  if(!boxesDetected.length && 'FaceDetector' in window){
     try{
-      const f=await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
+      const f = await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);
       add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})));
     }catch(_){}
   }
-  // Second: packaged pico.js only; no network/CDN waiting.
-  if(boxesDetected.length<3) add(await detectWithPico(img));
 
+  // 过滤离群误检：明显比中位脸大/小太多的框大概率是海报、倒影或误检。
   if(boxesDetected.length>2){
-    const hs=boxesDetected.map(b=>b.h).sort((a,b)=>a-b),med=hs[Math.floor(hs.length/2)];
+    const hs=boxesDetected.map(b=>b.h).sort((a,b)=>a-b);
+    const med=hs[Math.floor(hs.length/2)];
     boxesDetected=boxesDetected.filter(b=>b.h>med*.35&&b.h<med*3.2);
   }
-  $('#detectStatus').textContent=boxesDetected.length
-    ? `已识别 ${boxesDetected.length} 位主体`
-    : '已启用保守构图';
+
+  $('#detectStatus').textContent = boxesDetected.length
+    ? `已识别 ${boxesDetected.length} 位主体 · 可手动调整裁剪`
+    : '未识别到人脸，已按下方主体估算裁剪 · 建议手动微调';
   return boxesDetected;
 }
+
+function smartCrop(){
+  const iw=photo.width, ih=photo.height, tr=W/H;
+  let sw,sh,baseSx,baseSy;
+
+  if(boxesDetected.length){
+    const avgH=boxesDetected.reduce((s,b)=>s+b.h,0)/boxesDetected.length;
+    const fx1=Math.min(...boxesDetected.map(b=>b.x));
+    const fx2=Math.max(...boxesDetected.map(b=>b.x+b.w));
+    const fy1=Math.min(...boxesDetected.map(b=>b.y));
+    const fy2=Math.max(...boxesDetected.map(b=>b.y+b.h));
+    const faceCX=(fx1+fx2)/2;
+
+    // 必须保留的区域：收紧边距，让真人尽量占满画面（参考海报式构图）。
+    const keepL=Math.max(0,fx1-avgH*0.95);
+    const keepR=Math.min(iw,fx2+avgH*0.95);
+    const keepT=Math.max(0,fy1-avgH*0.9);
+    const keepB=Math.min(ih,fy2+avgH*4.4);
+
+    // 先按必留区域算尺寸，再统一按 4:3 修正 —— 宽高始终成比例，不会拉伸。
+    sh=keepB-keepT; sw=sh*tr;
+    if(sw<keepR-keepL){ sw=keepR-keepL; sh=sw/tr; }
+    if(sw>iw){ sw=iw; sh=sw/tr; }
+    if(sh>ih){ sh=ih; sw=sh*tr; }
+
+    const z=Math.max(.72,photoZoom);
+    sw/=z; sh/=z;
+
+    // 水平：人群脸部中线居中。垂直：人脸顶从画面 ~27% 处开始，上方留出标题带。
+    baseSx=faceCX-sw/2;
+    baseSy=fy1-sh*.26;
+    // 若这样会切到脚，则下移裁剪窗，但头顶至少保留画面 13% 的标题空间。
+    if(baseSy+sh<keepB) baseSy=Math.min(keepB-sh, fy1-Math.max(avgH*.55, sh*.13));
+  }else{
+    // 未识别到人脸：合照里人几乎总在中下部（上方是天花板/镜子），
+    // 默认放大 1.22 倍并把裁剪窗对准画面 58% 高度的中心。
+    if(iw/ih>tr){ sh=ih; sw=ih*tr; }
+    else{ sw=iw; sh=iw/tr; }
+    const z=Math.max(.72,photoZoom)*1.35;
+    sw/=z; sh/=z;
+    baseSx=(iw-sw)/2;
+    baseSy=ih*.58-sh*.5;
+  }
+
+  let sx=baseSx-photoDX*iw/W;
+  let sy=baseSy-photoDY*ih/H;
+  sx=Math.max(0,Math.min(iw-sw,sx));
+  sy=Math.max(0,Math.min(ih-sh,sy));
+  return {sx,sy,sw,sh};
+}
+
+// ── 花体标题引擎：每个字母独立旋转/起伏/配色，参考手绘海报风 ──
+const LETTER_ROT=[-5,4,-3,5,-4,3,-6,4];       // 每个字母的固定旋转角（度）
+const LETTER_DY=[0,-.06,.045,-.045,.055,-.05,.035,-.03]; // 每个字母的基线起伏（字号比例）
+function measureWord(text,size){
+  ctx.save();
+  ctx.font=`900 ${size}px Arial Black,Impact,sans-serif`;
+  const ws=[...text].map(ch=>ctx.measureText(ch).width);
+  ctx.restore();
+  const track=size*.045;
+  return {ws,track,total:ws.reduce((a,b)=>a+b,0)+track*(text.length-1)};
+}
+// 以 174px 基准字号测量当前课程主标题宽度（含字距与空格），用于自动排版。
+function titleTextWidth(px=174){
+  return measureWord(courseNames[course],px).total||600;
+}
+
 function faceZones(){
   if(!photo) return [];
   const c=smartCrop(), sx=W/c.sw, sy=H/c.sh;
@@ -335,39 +437,20 @@ function autoPlace(){
 }
 
 function drawPhoto(){
-  const c=smartCrop(), b=beauty/100;
-  const isTexture=beautyPreset==='texture';
-  const gr=isTexture?{br:1,ct:1,sa:1,hue:0,tint:'rgba(0,0,0,0)',glow:0}:styles[visualStyle].g;
+  const c=smartCrop(), b=beauty/100, gr=styles[visualStyle].g;
   const bp=BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural;
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
-
-  // “质感”独立于装饰风格：不再被 Cute/Clean/Fair 等风格二次漂白。
-  const br=isTexture?Math.max(.70,1+ex):Math.max(.65,(1+b*.12+ex)*gr.br);
-  const con=isTexture?Math.max(.65,1+ct):Math.max(.6,(1+b*.02+ct)*gr.ct);
-  const sat=isTexture?Math.max(.2,1+sa):Math.max(.2,(1+b*.05+sa)*gr.sa);
-
-  ctx.save();
-  ctx.imageSmoothingEnabled=true;
-  ctx.imageSmoothingQuality='high';
-  ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
-  ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);
-  ctx.restore();
-
-  // 旧版“美颜柔光”是画面发糊、发白的主要来源；质感/鲜艳类彻底禁用模糊叠层。
-  const softPreset=!['texture','contrast','colorful','vivid'].includes(beautyPreset);
-  if(b>0&&!dragging&&softPreset){
-    ctx.save();ctx.globalAlpha=Math.min(.12,(.04*b+.012)*gr.glow);
-    ctx.globalCompositeOperation='screen';ctx.filter='blur(10px) brightness(1.04)';
-    ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
-  }
-
-  if(gr.tint&&gr.tint!=='rgba(0,0,0,0)'){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
+  const br=Math.max(.65,(1+b*.12+ex)*gr.br), con=Math.max(.6,(1+b*.02+ct)*gr.ct), sat=Math.max(.2,(1+b*.05+sa)*gr.sa);
+  ctx.save();ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
+  ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
+  if(b>0&&!dragging&&beautyPreset!=='texture'){ctx.save();ctx.globalAlpha=Math.min(.22,(.07*b+.02)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(18px) brightness(1.06)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
+  if(beautyPreset!=='texture'){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
   if(bp.tint){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=bp.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.12,Math.abs(temp)/150).toFixed(3)})`:`rgba(90,165,255,${Math.min(.12,Math.abs(temp)/150).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.14,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#77757c';ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.10,Math.abs(sh));ctx.fillStyle=sh>0?'#918c9b':'#46434b';ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(b>0&&softPreset){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.06*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`:`rgba(90,165,255,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.20,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#8b8791';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.18,Math.abs(sh));ctx.fillStyle=sh>0?'#a6a0b2':'#4b4753';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(b>0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.20*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
 }
 function drawFrame(){
   if(!frameIndex) return;
@@ -629,54 +712,49 @@ function selectBox(b,n){
 }
 
 
-const CUSTOM_ASSET_VERSION=localStorage.popshotAssetVersion||'2';
+// V15.8 P1 user combos — NEVER block the first photo frame.
 const CUSTOM_COMBO_ACTIVE={"zumba":["zumba_01.png","zumba_02.png","zumba_03.png","zumba_04.png"],"lelepop":["lelepop_01.png","lelepop_02.png","lelepop_03.png","lelepop_04.png","lelepop_05.png"],"buttscaler":["buttscaler_01.png","buttscaler_02.png","buttscaler_03.png","buttscaler_04.png","buttscaler_05.png","buttscaler_06.png","buttscaler_07.png"],"zumba-camp":["zumba-camp_01.png","zumba-camp_02.png","zumba-camp_03.png","zumba-camp_04.png"]};
-// V15 P1 custom combo: complete image, never split internal character/text.
-let customComboSrc=null,customComboImage=null,customComboScale=1;
-const CUSTOM_COMBO_MAX=20;
 const comboImageCache=new Map();
-function comboPath(c,iOrName){
-  const name=typeof iOrName==='string'?iOrName:`${c}_${String(iOrName).padStart(2,'0')}.png`;
-  return `./public/custom-combos/${c}/${name}`;
-}
-function imageExists(src){
-  if(comboImageCache.has(src))return Promise.resolve(comboImageCache.get(src));
+let customComboSrc=null,customComboImage=null,customComboScale=1;
+function comboPath(c,name){return `./public/custom-combos/${c}/${name}`;}
+function loadComboImage(src){
+  if(comboImageCache.has(src)) return Promise.resolve(comboImageCache.get(src));
   return new Promise(resolve=>{
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v='+VERSION+'-'+CUSTOM_ASSET_VERSION;
+    im.src=src+'?v=15.8.0';
   });
 }
 async function listCustomCombos(){
   const names=CUSTOM_COMBO_ACTIVE[course]||[];
-  const rows=await Promise.all(names.map(async name=>{
-    const src=comboPath(course,name),im=await imageExists(src);
+  const arr=await Promise.all(names.map(async name=>{
+    const src=comboPath(course,name),im=await loadComboImage(src);
     return im?{src,im,name}:null;
   }));
-  return rows.filter(Boolean);
+  return arr.filter(Boolean);
 }
 async function loadPreferredCustomCombo(){
   const arr=await listCustomCombos();
-  if(!arr.length){customComboSrc=null;customComboImage=null;return false}
-  const pick=arr[0];customComboSrc=pick.src;customComboImage=pick.im;return true;
+  if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
+  customComboSrc=arr[0].src;customComboImage=arr[0].im;return true;
 }
 async function nextCustomCombo(){
   const arr=await listCustomCombos();
-  if(!arr.length){customComboSrc=null;customComboImage=null;return false}
-  let idx=arr.findIndex(x=>x.src===customComboSrc);
-  idx=(idx+1)%arr.length;
-  customComboSrc=arr[idx].src;customComboImage=arr[idx].im;return true;
+  if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
+  let i=arr.findIndex(x=>x.src===customComboSrc);
+  i=(i+1)%arr.length;customComboSrc=arr[i].src;customComboImage=arr[i].im;return true;
 }
-async function drawCustomCombo(){
+function drawCustomCombo(){
   if(!customComboImage)return null;
-  const im=customComboImage,ar=im.width/im.height||1,maxW=W*.64,maxH=H*.22;
+  const im=customComboImage,ar=im.width/im.height||1;
+  const maxW=W*.64,maxH=H*.22;
   let w=Math.min(maxW,maxH*ar)*customComboScale,h=w/ar;
-  if(h>maxH){h=maxH;w=h*ar} if(w>maxW){w=maxW;h=w/ar}
-  const zones=faceZones(),minTop=zones.length?Math.min(...zones.map(z=>z.y)):H*.30,safeBottom=Math.max(H*.14,minTop-H*.025);
-  if(h>safeBottom-28){h=Math.max(110,safeBottom-28);w=h*ar}
-  if(w>maxW){w=maxW;h=w/ar}
-  const x=(W-w)/2,y=24;ctx.save();ctx.drawImage(im,x,y,w,h);ctx.restore();return{x,y,w,h};
+  if(h>maxH){h=maxH;w=h*ar;}
+  if(w>maxW){w=maxW;h=w/ar;}
+  const x=(W-w)/2,y=24;
+  ctx.drawImage(im,x,y,w,h);
+  return {x,y,w,h};
 }
 
 async function render(){
@@ -684,18 +762,22 @@ async function render(){
   if(!photo) return;
   $('#placeholder').classList.add('hidden');
   drawPhoto();
-  if(beautyPreset!=='texture'){
-    const wash=ctx.createLinearGradient(0,0,W,H);
-    wash.addColorStop(0,'rgba(90,60,170,.015)');
-    wash.addColorStop(1,'rgba(255,70,145,.012)');
-    ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
-  }
+  const wash=ctx.createLinearGradient(0,0,W,H);
+  wash.addColorStop(0,'rgba(90,60,170,.022)');
+  wash.addColorStop(1,'rgba(255,70,145,.018)');
+  ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
   drawFrame();
   drawGraffiti();
 
   const boxes={};
-  if(customComboImage){layers.title.visible=false;layers.character.visible=false;boxes.customCombo=await drawCustomCombo();}
-  else{layers.title.visible=true;layers.character.visible=true;boxes.title=drawTitle();boxes.character=await drawCharacter();}
+  if(customComboImage){
+    layers.title.visible=false;layers.character.visible=false;
+    boxes.customCombo=drawCustomCombo();
+  }else{
+    layers.title.visible=true;layers.character.visible=true;
+    boxes.title=drawTitle();
+    boxes.character=await drawCharacter();
+  }
   if(layers.sticker.visible) boxes.sticker=await drawSticker();
   Object.entries(boxes).forEach(([n,b])=>selectBox(b,n));
   updateCheck();
@@ -842,121 +924,33 @@ $('#backBtn').onclick=()=>{if(!selected)return;push();zOrder=[selected,...zOrder
 $('#resetLayerBtn').onclick=()=>{if(!selected)return;push();const n=selected;const old={...layers};resetLayers();old[n]=layers[n];layers=old;render();syncScaleUI()};
 $('#resetAllBtn').onclick=()=>{push();resetLayers();autoPlace();selected=null;render();syncScaleUI()};
 
-function setUploadLoading(on,title='正在读取原图…',sub='高清照片可能需要几秒，请稍候'){
-  const el=$('#uploadLoading');if(!el)return;
-  $('#uploadLoadingTitle').textContent=title;$('#uploadLoadingSub').textContent=sub;
-  el.classList.toggle('show',!!on);el.setAttribute('aria-hidden',on?'false':'true');
-}
-async function decodeUpload(f){
-  // Android/browser-safe decode chain:
-  // 1) createImageBitmap (fast, handles EXIF orientation in modern browsers)
-  // 2) Blob URL <img>
-  // 3) FileReader data URL fallback
-  if('createImageBitmap' in window){
-    try{
-      const bmp=await createImageBitmap(f,{imageOrientation:'from-image'});
-      if(bmp&&bmp.width&&bmp.height)return bmp;
-    }catch(_){}
-  }
-  try{
-    return await new Promise((resolve,reject)=>{
-      const u=URL.createObjectURL(f),im=new Image();
-      im.onload=()=>{URL.revokeObjectURL(u);resolve(im)};
-      im.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('blob-url-decode-failed'))};
-      im.src=u;
-    });
-  }catch(_){}
-  return await new Promise((resolve,reject)=>{
-    const fr=new FileReader();
-    fr.onerror=()=>reject(new Error('file-reader-failed'));
-    fr.onload=()=>{
-      const im=new Image();
-      im.onload=()=>resolve(im);
-      im.onerror=()=>reject(new Error('data-url-decode-failed'));
-      im.src=fr.result;
-    };
-    fr.readAsDataURL(f);
-  });
-}
-let uploadBusy=false;
-async function processSelectedPhoto(f){
-  if(!f||uploadBusy)return;
-  uploadBusy=true;
-  setUploadLoading(true,'正在读取照片…','照片读取成功后会立即显示');
-  try{
-    await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,16)));
+input.onchange=e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  const u=URL.createObjectURL(f),im=new Image();
+  im.onload=()=>{
+    photo=im;URL.revokeObjectURL(u);photoZoom=1;photoDX=photoDY=0;boxesDetected=[];
+    customComboSrc=null;customComboImage=null;
+    pickCombo();resetLayers();autoPlace();
 
-    // Mobile-safe primary path: FileReader -> HTMLImageElement.
-    // Avoid ImageBitmap as the main photo object because downstream code expects
-    // a normal image element and some mobile browsers behave differently here.
-    const dataURL=await new Promise((resolve,reject)=>{
-      const reader=new FileReader();
-      reader.onload=()=>resolve(reader.result);
-      reader.onerror=()=>reject(reader.error||new Error('FileReader failed'));
-      reader.readAsDataURL(f);
-    });
-    const im=await new Promise((resolve,reject)=>{
-      const img=new Image();
-      img.onload=()=>resolve(img);
-      img.onerror=()=>reject(new Error('Image decode failed'));
-      img.src=dataURL;
-    });
+    // Critical rule: show the photo NOW. No detection, no IndexedDB, no P1 wait.
+    render();
+    $('#detectStatus').textContent='照片已显示 · 正在后台优化';
 
-    photo=im; photoZoom=1; photoDX=0; photoDY=0; boxesDetected=[];
-    customComboSrc=null; customComboImage=null;
-    pickCombo(); resetLayers();
+    // All optional work runs after first frame.
+    setTimeout(()=>loadPreferredCustomCombo().then(ok=>{if(ok)render()}).catch(()=>{}),20);
+    setTimeout(()=>detectPeople(im).then(()=>{autoPlace();render();saveDraft()}).catch(()=>{}),60);
+    setTimeout(()=>Promise.resolve(saveImage(f)).catch(()=>{}),100);
+    setTimeout(()=>Promise.resolve(saveDraft()).catch(()=>{}),120);
+  };
+  im.onerror=()=>{URL.revokeObjectURL(u);alert('照片读取失败，请重新选择图片');};
+  im.src=u;
+  input.value='';
+};
 
-    // Do not let automatic crop/detection block the first visible frame.
-    try{
-      render();
-    }catch(err){
-      console.warn('initial render fallback',err);
-      // fallback: draw photo directly to the canvas so the user always sees it
-      ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
-      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-      const s=Math.max(W/im.width,H/im.height),dw=im.width*s,dh=im.height*s;
-      ctx.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);ctx.restore();
-    }
-
-    setUploadLoading(false);
-    $('#detectStatus').textContent='照片已载入 · 正在后台优化';
-
-    // Background-only enhancements.
-    Promise.resolve(saveImage(f)).catch(()=>{});
-    Promise.resolve(saveDraft()).catch(()=>{});
-    setTimeout(()=>{
-      loadPreferredCustomCombo().then(ok=>{
-        if(ok){try{autoPlace()}catch(_){};try{render()}catch(_){}}
-      }).catch(()=>{});
-    },50);
-    setTimeout(()=>{
-      detectPeople(im).then(()=>{
-        try{autoPlace()}catch(_){}
-        try{render()}catch(_){}
-        saveDraft();
-      }).catch(()=>{});
-    },120);
-
-  }catch(err){
-    console.error('photo upload failed',err);
-    setUploadLoading(false);
-    alert('照片没有成功载入，请重新选择一次。');
-  }finally{
-    uploadBusy=false;
-    input.value='';
-  }
-}
-input.onchange=e=>processSelectedPhoto(e.target.files&&e.target.files[0]);
-input.addEventListener('input',e=>{
-  const f=e.target.files&&e.target.files[0];
-  if(f&&!uploadBusy)processSelectedPhoto(f);
-});
-input.addEventListener('cancel',()=>setUploadLoading(false));
-
-$('#courseGrid').onclick=async e=>{
+$('#courseGrid').onclick=e=>{
   const b=e.target.closest('[data-course]');if(!b)return;
   push();course=b.dataset.course;localStorage.popshotLastCourse=course;
-  pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();syncUI();render();saveDraft();
+  pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;syncUI();render();saveDraft();
 };
 $$('[data-preset]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.preset;beauty=beautyPreset==='original'?0:55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();});
 $$('[data-style]').forEach(b=>b.onclick=()=>{
@@ -966,15 +960,22 @@ $$('[data-density]').forEach(b=>b.onclick=()=>{
   push();density=b.dataset.density;autoPlace();syncUI();render();saveDraft();
 });
 
-$('#generateBtn').onclick=async()=>{if(!photo)return alert('请先上传照片');push();pickCombo();await loadPreferredCustomCombo();resetLayers();autoPlace();selected=null;render();saveDraft()};
-$('#shuffleBtn').onclick=async()=>{if(!photo)return;push();pickCombo();const changed=await nextCustomCombo();if(!changed){customComboSrc=null;customComboImage=null}resetLayers();autoPlace();selected=null;render();saveDraft()};
+$('#generateBtn').onclick=()=>{if(!photo)return alert('请先上传照片');push();pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;selected=null;render();saveDraft()};
+$('#shuffleBtn').onclick=async()=>{if(!photo)return;push();const ok=await nextCustomCombo();if(!ok){customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();layers.title.visible=true;layers.character.visible=true;}selected=null;render();saveDraft()};
 
 
 async function showComboPicker(){
-  $('#drawerTitle').textContent='我的成品组合';drawerBody.innerHTML='<div class="adjust-tip">优先读取 custom-combos；整张PNG只整体缩放/移动，不拆内部结构。</div><div class="asset-picker" id="comboPicker">正在读取…</div>';drawer.classList.add('show');
-  const a=await listCustomCombos(),w=$('#comboPicker');w.innerHTML='';
-  if(!a.length){w.innerHTML='<div class="adjust-tip">当前课程暂无自定义组合。把透明PNG放进 public/custom-combos 对应课程文件夹即可。</div>';return}
-  a.forEach(({src,im})=>{const b=document.createElement('button');b.className='asset-option'+(src===customComboSrc?' on':'');b.innerHTML=`<img src="${src}" alt="">`;b.onclick=()=>{customComboSrc=src;customComboImage=im;drawer.classList.remove('show');render();saveDraft()};w.appendChild(b)});
+  $('#drawerTitle').textContent='成品组合';
+  drawerBody.innerHTML='<div class="asset-picker" id="comboPicker"><span>读取中…</span></div>';
+  drawer.classList.add('show');
+  const arr=await listCustomCombos(),wrap=$('#comboPicker');wrap.innerHTML='';
+  if(!arr.length){wrap.innerHTML='<div class="adjust-tip">当前课程暂无成品组合</div>';return;}
+  arr.forEach(({src,im})=>{
+    const b=document.createElement('button');b.className='asset-option';
+    b.innerHTML=`<img src="${src}" alt="">`;
+    b.onclick=()=>{customComboSrc=src;customComboImage=im;drawer.classList.remove('show');render();saveDraft();};
+    wrap.appendChild(b);
+  });
 }
 
 function showCharacterPicker(){
@@ -985,7 +986,7 @@ function showCharacterPicker(){
     const b=document.createElement('button');
     b.className='asset-option'+(i===charIndex?' on':'');
     b.innerHTML=`<img src="${asset(course,i)}" alt="">`;
-    b.onclick=()=>{push();customComboSrc=null;customComboImage=null;charIndex=i;layers.title.visible=true;layers.character.visible=true;drawer.classList.remove('show');autoPlace();render();saveDraft()};
+    b.onclick=()=>{push();customComboSrc=null;customComboImage=null;charIndex=i;drawer.classList.remove('show');render();saveDraft()};
     wrap.appendChild(b);
   });
   drawer.classList.add('show');
@@ -998,7 +999,7 @@ function showTitlePicker(){
     const b=document.createElement('button');
     b.className='asset-option title-option'+(i===titleIndex?' on':'');
     b.textContent=name;
-    b.onclick=()=>{push();customComboSrc=null;customComboImage=null;titleIndex=i;layers.title.visible=true;layers.character.visible=true;drawer.classList.remove('show');autoPlace();render();saveDraft()};
+    b.onclick=()=>{push();customComboSrc=null;customComboImage=null;titleIndex=i;drawer.classList.remove('show');render();saveDraft()};
     wrap.appendChild(b);
   });
   drawer.classList.add('show');
@@ -1049,7 +1050,7 @@ $('#moreBtn').onclick=()=>{const p=$('#advancedPanel');p.classList.toggle('show'
 $('#drawerClose').onclick=()=>drawer.classList.remove('show');
 $('#beautyBtn').onclick=()=>{
   $('#drawerTitle').textContent='美化与调色';
-  const keys=['texture','natural','bright','vivid','clear','warm','coolwhite','softpink','creamtone','retro','contrast','desat','colorful'];
+  const keys=['natural','bright','vivid','clear','warm','coolwhite','softpink','creamtone','retro','contrast','desat','colorful'];
   drawerBody.innerHTML=`<div class="adjust-tip">所有预设都会真实作用于照片渲染和最终导出；不会改变脸型和五官。</div><div class="beauty-preset-grid">${keys.map(k=>`<button data-bp="${k}" class="${beautyPreset===k?'on':''}">${BEAUTY_PRESETS[k].label}</button>`).join('')}</div><div class="adjust-grid">${[['ex','亮度'],['ct','对比'],['sa','饱和'],['temp','色温'],['hi','高光'],['sh','阴影']].map(([k,n])=>`<div class="range-row"><span>${n}</span><input data-color="${k}" type="range" min="-50" max="50" value="${manualColor[k]||0}"><b>${manualColor[k]||0}</b></div>`).join('')}</div><button id="colorReset" class="ghost">恢复当前预设</button>`;
   drawer.classList.add('show');
   $$('[data-bp]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.bp;beauty=55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;$('#beautyText').textContent=BEAUTY_PRESETS[beautyPreset].label;$('#beautyBtn').click();render();saveDraft();});
@@ -1074,8 +1075,6 @@ function updateCheck(){
   $('#exportCheck').classList.add('ok');
 }
 $('#exportBtn').onclick=async()=>{
-  /* V15_1_EXPORT_RERENDER */
-  canvas.width=W;canvas.height=H;await render();
   if(!photo)return alert('请先上传照片');
   const btn=$('#exportBtn'),old=btn.innerHTML;
   try{
@@ -1083,10 +1082,6 @@ $('#exportBtn').onclick=async()=>{
     const blob=await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/png'));
     const filename=`PopShot-${course}-${Date.now()}.png`,file=new File([blob],filename,{type:'image/png'});
     const ua=navigator.userAgent||'', isiOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), isAndroid=/Android/i.test(ua);
-    if(isAndroid&&window.PopShotAndroid?.saveToGallery){
-      const dataUrl=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(blob)});
-      await window.PopShotAndroid.saveToGallery(dataUrl,filename);showSaveToast('已保存到系统相册');return;
-    }
     if(isiOS&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
       try{await navigator.share({files:[file],title:'保存 PopShot 图片'});showSaveToast('请选择“存储图像”保存到相册');return}catch(err){if(err?.name==='AbortError')return}
     }
@@ -1266,17 +1261,50 @@ function reloadLatestOnce(){
   location.replace(u.toString());
 }
 async function setupPwaAutoUpdate(){
-  // V15.7 DEBUG: prevent stale PWA code while upload debugging.
+  if(!('serviceWorker'in navigator))return;
   try{
-    if('serviceWorker' in navigator){
-      const regs=await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r=>r.unregister()));
+    const reg=await navigator.serviceWorker.register(`./service-worker.js?v=${VERSION}`,{updateViaCache:'none'});
+    try{await reg.update()}catch{}
+
+    if(reg.waiting){
+      await activateWaitingWorker(reg);
+      reloadLatestOnce();
+      return;
     }
-    if('caches' in window){
-      const keys=await caches.keys();
-      await Promise.all(keys.map(k=>caches.delete(k)));
+
+    reg.addEventListener('updatefound',()=>{
+      const w=reg.installing;
+      if(!w)return;
+      w.addEventListener('statechange',async()=>{
+        if(w.state==='installed'&&navigator.serviceWorker.controller){
+          await activateWaitingWorker(reg);
+          reloadLatestOnce();
+        }
+      });
+    });
+
+    // 第二层：version.json 每次打开都 no-store 检查。
+    const live=await fetchLiveVersion();
+    if(live&&live!==VERSION){
+      try{await reg.update()}catch{}
+      if(reg.waiting)await activateWaitingWorker(reg);
+      reloadLatestOnce();
     }
-  }catch(err){console.warn('debug cache cleanup',err)}
+
+    // 应用保持打开时，每 15 分钟轻量检查一次。
+    setInterval(async()=>{
+      try{
+        const live=await fetchLiveVersion();
+        if(live&&live!==VERSION){
+          await reg.update();
+          if(reg.waiting)await activateWaitingWorker(reg);
+          reloadLatestOnce();
+        }
+      }catch{}
+    },15*60*1000);
+  }catch(e){
+    console.warn('PWA auto update failed',e);
+  }
 }
 window.addEventListener('load',()=>{
   const v=document.getElementById('versionBadge');
@@ -1325,13 +1353,3 @@ function clampTopComboLayout(box, canvasW, canvasH, occupiedTopRects=[]){
   return {x,y,w,h,scale,sideSafe};
 }
 
-
-// V15.1 local-only user assets.
-function openMyAssetsDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open('PopShotMyAssets',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('assets'))r.result.createObjectStore('assets',{keyPath:'id'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-async function saveMyAsset(file,type='combo'){const db=await openMyAssetsDB(),id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());return new Promise((res,rej)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').put({id,name:file.name,type,blob:file,created:Date.now()});tx.oncomplete=()=>res(id);tx.onerror=()=>rej(tx.error)})}
-async function getMyAssets(){const db=await openMyAssetsDB();return new Promise((res,rej)=>{const r=db.transaction('assets').objectStore('assets').getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
-async function deleteMyAsset(id){const db=await openMyAssetsDB();return new Promise((res,rej)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').delete(id);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
-
-document.addEventListener('DOMContentLoaded',()=>{
- const b=document.getElementById('versionBadge'); if(b) b.textContent='v15.7.0 · DEBUG 032101';
-});

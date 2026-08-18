@@ -1,5 +1,5 @@
 {
-  "version": "15.7.0",
+  "version": "15.8.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -233,115 +233,22 @@
     "autoScaleDownWhenCrowded": true,
     "manualResizeStillAvailable": true
   },
+  "architecture": "V14-stable-core + V15-nonblocking-features",
+  "firstFrame": {
+    "blocksOnDetection": false,
+    "blocksOnP1": false,
+    "blocksOnStorage": false
+  },
   "defaultBeautyPreset": "texture",
   "export": {
     "width": 2525,
     "height": 1894,
     "format": "PNG",
-    "lossless": true,
-    "rerenderBeforeSave": true
+    "lossless": true
   },
-  "customCombos": {
-    "path": "public/custom-combos",
-    "priority": "P1",
-    "slotsPerCourse": 20,
-    "preserveInternalLayout": true,
-    "assetVersion": "2",
-    "installed": {
-      "zumba": [
-        "zumba_01.png",
-        "zumba_02.png",
-        "zumba_03.png",
-        "zumba_04.png"
-      ],
-      "lelepop": [
-        "lelepop_01.png",
-        "lelepop_02.png",
-        "lelepop_03.png",
-        "lelepop_04.png",
-        "lelepop_05.png"
-      ],
-      "buttscaler": [
-        "buttscaler_01.png",
-        "buttscaler_02.png",
-        "buttscaler_03.png",
-        "buttscaler_04.png",
-        "buttscaler_05.png",
-        "buttscaler_06.png",
-        "buttscaler_07.png"
-      ],
-      "zumba-camp": [
-        "zumba-camp_01.png",
-        "zumba-camp_02.png",
-        "zumba-camp_03.png",
-        "zumba-camp_04.png"
-      ]
-    }
-  },
-  "androidGallery": {
-    "nativeBridge": "PopShotAndroid.saveToGallery",
-    "githubPwaDirectGalleryGuaranteed": false
-  },
-  "layout": {
-    "customComboMaxWidthRatio": 0.64,
-    "sideSafetyRatio": 0.18,
-    "placement": "top-center",
-    "collisionBehavior": "scale-down-only"
-  },
-  "myAssets": {
-    "storage": "IndexedDB",
-    "scope": "device-local"
-  },
-  "textureReference": {
-    "contrast": 0.28,
-    "saturation": 0.35,
-    "highlights": -0.08,
-    "exposure": -0.02
-  },
-  "qualityFixes": {
-    "textureBlurOverlayDisabled": true,
-    "textureStyleColorDecoupled": true,
-    "highQualityCanvasResampling": true,
-    "losslessPNG": true
-  },
-  "performance": {
-    "remoteFaceDetector": false,
-    "picoMaxSide": 1000,
-    "firstRenderBeforeDetection": true,
-    "customComboIndexed": true
-  },
-  "interactionFixes": {
-    "shuffleCyclesP1": true,
-    "changeLogoExitsP1": true,
-    "changeCharacterExitsP1": true
-  },
-  "uploadFixes": {
-    "multiDecoder": [
-      "createImageBitmap",
-      "BlobURLImage",
-      "FileReaderDataURL"
-    ],
-    "decodeSuccessIsUploadSuccess": true,
-    "p1CannotBlockUpload": true,
-    "layoutCannotBlockUpload": true,
-    "detectionCannotBlockUpload": true,
-    "loadingStages": true
-  },
-  "uploadArchitecture": {
-    "primaryDecoder": "FileReader->HTMLImageElement",
-    "imageBitmapAsPrimary": false,
-    "listeners": [
-      "change",
-      "input",
-      "cancel"
-    ],
-    "firstFrameBeforeAutoPlace": true,
-    "directCanvasFallback": true,
-    "backgroundEnhancements": true
-  },
-  "debugCacheMode": {
-    "serviceWorkerDisabled": true,
-    "clearCachesOnBoot": true,
-    "build": "1787032101"
+  "p1Combos": {
+    "enabled": true,
+    "count": 20,
+    "priority": "after-first-frame"
   }
 }
