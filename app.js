@@ -18,7 +18,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.0.4';
+const W = 2525, H = 1894, VERSION = '1.0.5';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -56,7 +56,7 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'鲜活自然',ex:.045,ct:.055,sa:.075,temp:1,hi:-.015,sh:.045,tint:null},
+  natural:{label:'鲜活自然',ex:.040,ct:.070,sa:.105,temp:0,hi:-.030,sh:.040,tint:null},
   texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
@@ -492,13 +492,13 @@ function drawPhoto(){
   // V17.5 轻量高清叠加：直接基于原始照片再刷一层微弱细节对比，不插值生成新像素、不做AI重绘。
   // 强度刻意很低，避免改变整体色彩观感或产生锐化白边。
   if(!dragging){ctx.save();ctx.globalAlpha=.10;ctx.filter='contrast(1.035)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
-  if(b>0&&!dragging&&beautyPreset!=='texture'){ctx.save();ctx.globalAlpha=Math.min(.22,(.07*b+.02)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(18px) brightness(1.06)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
+  if(b>0&&!dragging&&beautyPreset!=='texture'){ctx.save();ctx.globalAlpha=Math.min(.14,(.045*b+.012)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(14px) brightness(1.035)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
   if(beautyPreset!=='texture'){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
   if(bp.tint){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=bp.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
   if(temp!==0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=temp>0?`rgba(255,145,65,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`:`rgba(90,165,255,${Math.min(.18,Math.abs(temp)/120).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
   if(hi!==0){ctx.save();ctx.globalCompositeOperation=hi>0?'screen':'multiply';ctx.globalAlpha=Math.min(.20,Math.abs(hi));ctx.fillStyle=hi>0?'#fff':'#8b8791';ctx.fillRect(0,0,W,H);ctx.restore();}
   if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.18,Math.abs(sh));ctx.fillStyle=sh>0?'#a6a0b2':'#4b4753';ctx.fillRect(0,0,W,H);ctx.restore();}
-  if(b>0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.20*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(b>0){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.11*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
 }
 function drawFrame(){
   if(!frameIndex) return;
@@ -771,7 +771,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.0.4';
+    im.src=src+'?v=1.0.5';
   });
 }
 async function listCustomCombos(){
@@ -1818,10 +1818,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.4',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.4',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.4',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.4'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.5',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.5',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.5',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.5'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
