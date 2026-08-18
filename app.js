@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '15.4.0';
+const W = 2525, H = 1894, VERSION = '15.5.0';
 
 const charFiles = {
   lelepop: Array.from({length:10},(_,i)=>`lelepop_${String(i+1).padStart(2,'0')}.png`),
@@ -847,30 +847,78 @@ function setUploadLoading(on,title='正在读取原图…',sub='高清照片可�
   $('#uploadLoadingTitle').textContent=title;$('#uploadLoadingSub').textContent=sub;
   el.classList.toggle('show',!!on);el.setAttribute('aria-hidden',on?'false':'true');
 }
-function decodeUpload(f){return new Promise((resolve,reject)=>{
-  const u=URL.createObjectURL(f),im=new Image();
-  im.onload=()=>{URL.revokeObjectURL(u);resolve(im)};
-  im.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('decode failed'))};
-  im.src=u;
-})}
+async function decodeUpload(f){
+  // Android/browser-safe decode chain:
+  // 1) createImageBitmap (fast, handles EXIF orientation in modern browsers)
+  // 2) Blob URL <img>
+  // 3) FileReader data URL fallback
+  if('createImageBitmap' in window){
+    try{
+      const bmp=await createImageBitmap(f,{imageOrientation:'from-image'});
+      if(bmp&&bmp.width&&bmp.height)return bmp;
+    }catch(_){}
+  }
+  try{
+    return await new Promise((resolve,reject)=>{
+      const u=URL.createObjectURL(f),im=new Image();
+      im.onload=()=>{URL.revokeObjectURL(u);resolve(im)};
+      im.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('blob-url-decode-failed'))};
+      im.src=u;
+    });
+  }catch(_){}
+  return await new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>reject(new Error('file-reader-failed'));
+    fr.onload=()=>{
+      const im=new Image();
+      im.onload=()=>resolve(im);
+      im.onerror=()=>reject(new Error('data-url-decode-failed'));
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(f);
+  });
+}
 input.onchange=async e=>{
   const f=e.target.files?.[0];if(!f)return;
-  if(!/^image\//i.test(f.type||'')){alert('请选择图片文件');input.value='';return}
-  setUploadLoading(true,'正在读取原图…','不会压缩原图，高清照片可能需要几秒');
+  setUploadLoading(true,'正在读取原图…','保持原图质量，首次读取可能需要几秒');
   try{
     await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
     const im=await decodeUpload(f);
-    setUploadLoading(true,'正在生成高清预览…','正在按原图质量处理');
-    photo=im;photoZoom=1;photoDX=photoDY=0;boxesDetected=[];pickCombo();
-    try{await loadPreferredCustomCombo()}catch(_){customComboSrc=null;customComboImage=null}
-    resetLayers();autoPlace();render();
+
+    // IMPORTANT: once decode succeeds, photo upload is considered successful.
+    // Never let P1 asset loading / layout / detection turn into a fake “photo read failed”.
+    photo=im;photoZoom=1;photoDX=photoDY=0;boxesDetected=[];
+    customComboSrc=null;customComboImage=null;
+    pickCombo();resetLayers();
+
+    setUploadLoading(true,'正在生成预览…','照片已读取成功');
+    try{autoPlace()}catch(err){console.warn('autoPlace skipped',err)}
+    try{await render()}catch(err){console.error('first render failed',err)}
+
     setUploadLoading(false);
-    Promise.resolve(saveImage(f)).catch(()=>{});
+    $('#detectStatus').textContent='照片已载入，正在后台优化构图…';
+
+    // Everything below is optional/background work.
+    Promise.resolve(saveImage(f)).catch(err=>console.warn('saveImage skipped',err));
     Promise.resolve(saveDraft()).catch(()=>{});
-    detectPeople(im).then(()=>{autoPlace();render();saveDraft()}).catch(()=>{});
+
+    loadPreferredCustomCombo()
+      .then(ok=>{if(ok){try{autoPlace()}catch(_){ } return render()}})
+      .catch(err=>console.warn('P1 combo skipped',err));
+
+    detectPeople(im)
+      .then(()=>{try{autoPlace()}catch(_){ } return render()})
+      .then(()=>saveDraft())
+      .catch(err=>console.warn('person detection skipped',err));
+
   }catch(err){
-    console.error(err);setUploadLoading(false);alert('照片读取失败，请重新选择图片。');
-  }finally{setUploadLoading(false);input.value=''}
+    console.error('IMAGE_DECODE_FAILED',err);
+    setUploadLoading(false);
+    alert('这张照片暂时无法读取。请尝试从相册重新选择，或先在手机相册中“另存为/编辑后保存”再上传。');
+  }finally{
+    setUploadLoading(false);
+    input.value='';
+  }
 };
 
 $('#courseGrid').onclick=async e=>{

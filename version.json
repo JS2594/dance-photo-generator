@@ -1,5 +1,5 @@
 {
-  "version": "15.4.0",
-  "build": 1787029958,
-  "fix": "upload-loading"
+  "version": "15.5.0",
+  "build": 1787030321,
+  "fix": "android-upload-decode-isolation"
 }

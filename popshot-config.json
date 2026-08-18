@@ -1,5 +1,5 @@
 {
-  "version": "15.4.0",
+  "version": "15.5.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -316,9 +316,15 @@
     "changeCharacterExitsP1": true
   },
   "uploadFixes": {
-    "loading": true,
-    "nonBlockingPersistence": true,
-    "nonBlockingDetection": true,
-    "sameFileReselect": true
+    "multiDecoder": [
+      "createImageBitmap",
+      "BlobURLImage",
+      "FileReaderDataURL"
+    ],
+    "decodeSuccessIsUploadSuccess": true,
+    "p1CannotBlockUpload": true,
+    "layoutCannotBlockUpload": true,
+    "detectionCannotBlockUpload": true,
+    "loadingStages": true
   }
 }
