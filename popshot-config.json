@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -279,7 +279,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "ios-pwa-upload-fix",
+  "releaseFocus": "function-regression-fix",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -336,25 +336,25 @@
     "subtitlesHidden": true
   },
   "bugfixes": {
-    "uploadStall": true,
-    "pwaLelepopImage": true,
-    "strictFixedDefaultCombo": true,
-    "largerPeopleOnePersonMargins": true,
-    "colorChanged": false,
-    "uploadUndefinedStateVariables": true,
-    "iosPwaFilePickerHitArea": true,
-    "clarityPreserved": true,
-    "fixedDefaultComboPreserved": true,
-    "framingPreserved": true
+    "fixedDefaultComboExact01": true,
+    "noDefaultRandomComposition": true,
+    "largerSubjectFraming": true,
+    "onePersonSideMargins": true,
+    "exportNeverDownsizesFromSourceMax43": true,
+    "courseSwitchStatusCompletes": true,
+    "clarityPipelinePreserved": true,
+    "colorParametersChanged": false
   },
   "preservedFeatures": [
-    "original-resolution 4:3 lossless PNG export",
-    "default/custom combo modes",
-    "frames",
-    "stickers",
-    "photo adjustment",
-    "course switching",
-    "save/export",
-    "draft recovery"
+    "原图级4:3 PNG无损高清导出",
+    "默认搭配与自定义搭配",
+    "固定成品组合",
+    "相框",
+    "贴纸及拖动调整",
+    "照片调整",
+    "课程切换",
+    "一键换风格仅作用自定义搭配",
+    "草稿恢复",
+    "PWA安装到桌面"
   ]
 }

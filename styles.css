@@ -63,7 +63,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .course-card .course-copy small{display:none!important}
 .course-card.is-switching{opacity:.78}
 
-/* V1.0.2 草稿弹窗修复 */
+/* V1.0.3 草稿弹窗修复 */
 .resume-actions #discardResume,
 .resume-actions #continueResume,
 .resume-actions .resume-continue{
@@ -75,7 +75,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   color:#fff!important;background:linear-gradient(100deg,#7657ff,#ee4aa4)!important;border-color:transparent!important;
 }
 
-/* V1.0.2 iOS/PWA 上传修复：真实 file input 覆盖整个上传区，避免 display:none 在部分 WebApp 环境失效 */
+/* V1.0.3 iOS/PWA 上传修复：真实 file input 覆盖整个上传区，避免 display:none 在部分 WebApp 环境失效 */
 .dropzone{position:relative;cursor:pointer;touch-action:manipulation}
 .dropzone #photoInput{
   position:absolute!important;

@@ -18,7 +18,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.0.2';
+const W = 2525, H = 1894, VERSION = '1.0.3';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -283,60 +283,71 @@ async function detectPeople(img){
 
 function smartCrop(){
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height, tr=4/3;
+  let maxSw,maxSh;
+  if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
-  // 无识别结果：默认比整图更近，避免人物过小。
+  // 没有可靠主体识别时，也默认适度推进，不再把整个场地都塞进画面。
   if(boxesDetected.length<2){
-    let sw,sh;
-    if(iw/ih>tr){sh=ih;sw=ih*tr}else{sw=iw;sh=iw/tr}
-    const defaultZoom=1.18;
-    const z=(Number(photoZoom)||1)===1?defaultZoom:Math.max(.72,Number(photoZoom)||1);
-    sw/=z;sh/=z;
+    const z=(Number(photoZoom)||1)===1 ? 1.28 : Math.max(.72,Number(photoZoom)||1);
+    let sw=maxSw/z, sh=sw/tr;
     let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
 
   const faces=boxesDetected.slice();
-  const x1=Math.min(...faces.map(b=>b.x)), x2=Math.max(...faces.map(b=>b.x+b.w));
-  const y1=Math.min(...faces.map(b=>b.y)), y2=Math.max(...faces.map(b=>b.y+b.h));
-  const ws=faces.map(b=>b.w).sort((a,b)=>a-b), hs=faces.map(b=>b.h).sort((a,b)=>a-b);
-  const medW=ws[Math.floor(ws.length/2)]||iw*.04, medH=hs[Math.floor(hs.length/2)]||ih*.05;
+  const x1=Math.min(...faces.map(b=>b.x));
+  const x2=Math.max(...faces.map(b=>b.x+b.w));
+  const y1=Math.min(...faces.map(b=>b.y));
+  const y2=Math.max(...faces.map(b=>b.y+b.h));
+  const ws=faces.map(b=>b.w).sort((a,b)=>a-b);
+  const hs=faces.map(b=>b.h).sort((a,b)=>a-b);
+  const medW=ws[Math.floor(ws.length/2)]||iw*.04;
+  const medH=hs[Math.floor(hs.length/2)]||ih*.05;
 
-  // 用相邻人脸中心间距估算“一个人的站位”
-  const centers=faces.map(b=>b.x+b.w/2).sort((a,b)=>a-b), gaps=[];
-  for(let i=1;i<centers.length;i++){const g=centers[i]-centers[i-1];if(g>medW*.8)gaps.push(g)}
+  // 相邻主体中心距离 ≈ 一个人站位；左右各留一个站位。
+  const centers=faces.map(b=>b.x+b.w/2).sort((a,b)=>a-b);
+  const gaps=[];
+  for(let i=1;i<centers.length;i++){
+    const g=centers[i]-centers[i-1];
+    if(g>medW*.9 && g<iw*.25)gaps.push(g);
+  }
   gaps.sort((a,b)=>a-b);
-  const slot=gaps.length?gaps[Math.floor(gaps.length/2)]:medW*2.5;
-  const sideSlot=Math.max(slot,medW*2.2,iw*.055);
+  const onePerson=gaps.length?gaps[Math.floor(gaps.length/2)]:medW*2.25;
+  const sideMargin=Math.max(medW*1.75,onePerson*.92);
 
-  // 横向：人群 + 左右各约一个人位置
-  let desiredW=(x2-x1)+sideSlot*2;
+  const groupW=x2-x1;
+  let desiredW=groupW+sideMargin*2;
 
-  // 纵向：从脸部估计到脚，减少无效天花板/地面
-  const estTop=y1-medH*2.0;
-  const estBottom=y2+medH*7.4;
-  let desiredH=Math.max(medH*9.2,estBottom-estTop);
+  // 从人脸向上下估算全身；优先人物填充，同时避免切头/切脚。
+  const top=y1-medH*1.55;
+  const bottom=y2+medH*6.6;
+  let desiredH=Math.max(medH*8.4,bottom-top);
 
-  let sw=Math.max(desiredW,desiredH*tr), sh=sw/tr;
+  let sw=Math.max(desiredW,desiredH*tr);
+  let sh=sw/tr;
   if(sh<desiredH){sh=desiredH;sw=sh*tr}
 
-  let maxSw,maxSh;
-  if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
+  // 不能超过原图最大 4:3；也不要因为旧逻辑强行拉回近乎整图。
   sw=Math.min(sw,maxSw);sh=sw/tr;
 
-  // 默认最多约1.45x，兼顾两侧留白
-  sw=Math.max(sw,maxSw/1.45);sh=sw/tr;
+  // 防止误检导致裁得过狠：默认最大推进约 1.65 倍。
+  const minSw=maxSw/1.65;
+  sw=Math.max(sw,minSw);sh=sw/tr;
 
+  // 用户手动缩放继续生效。
   const userZoom=Number(photoZoom)||1;
   if(userZoom!==1){
     const factor=Math.max(.72,userZoom);
     sw=Math.min(maxSw,sw/factor);sh=sw/tr;
   }
 
-  let cx=(x1+x2)/2;
+  const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  let sy=(y1+y2)/2-sh*.30-photoDY*ih/H;
-  sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
+  // 群像构图稍向上，减少无意义天花板，但保留脚部。
+  let sy=(y1+y2)/2-sh*.285-photoDY*ih/H;
+  sx=Math.max(0,Math.min(iw-sw,sx));
+  sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
 }
 
@@ -752,7 +763,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.0.2';
+    im.src=src+'?v=1.0.3';
   });
 }
 async function listCustomCombos(){
@@ -770,37 +781,40 @@ const DEFAULT_COMBO_FILE={
   'zumba':'zumba_01.png',
   'zumba-camp':'zumba-camp_01.png'
 };
+
+async function listCustomCombos(targetCourse=course){
+  const names=CUSTOM_COMBO_ACTIVE[targetCourse]||[];
+  const arr=await Promise.all(names.map(async name=>{
+    const src=comboPath(targetCourse,name),im=await loadComboImage(src);
+    return im?{src,im,name}:null;
+  }));
+  return arr.filter(Boolean);
+}
+
+// 默认搭配：严格读取用户固定成品图 _01。
+// 不随机、不拼装独立 Q 版人物和课程文字，也不静默 fallback 到自定义搭配。
 async function loadStrictDefaultCombo(targetCourse=course){
   const filename=DEFAULT_COMBO_FILE[targetCourse];
   if(!filename)return false;
-  try{
-    const src=comboPath(targetCourse,filename);
-    const im=await loadComboImage(src);
-    if(!im)throw new Error('default combo missing');
-    customComboSrc=src;customComboImage=im;comboMode='finished';
+  const src=comboPath(targetCourse,filename);
+  const im=await loadComboImage(src);
+  if(!im){
+    customComboSrc=null;customComboImage=null;
+    comboMode='finished';
     layers.title.visible=false;layers.character.visible=false;
-    return true;
-  }catch(e){
-    console.warn('default combo missing',targetCourse,e);
-    customComboSrc=null;customComboImage=null;comboMode='finished';
-    layers.title.visible=false;layers.character.visible=false;
-    toast((courseNames[targetCourse]||targetCourse)+' 默认搭配素材未加载，请刷新素材');
     return false;
   }
-}
-
-async function loadStrictDefaultCombo(course){
-  const arr=await listCustomCombos();
-  if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
-  // 默认搭配必须固定：每个课程一键生成永远先用人工放入文件夹的 _01 成品组合。
-  // “换一版”才在同课程的其它固定成品组合间轮换。
-  const pick=arr[0];
-  customComboSrc=pick.src;customComboImage=pick.im;comboMode='finished';
-  localStorage.setItem('popshotLastCombo_'+course,pick.src);
+  customComboSrc=src;
+  customComboImage=im;
+  comboMode='finished';
+  layers.title.visible=false;
+  layers.character.visible=false;
+  localStorage.setItem('popshotLastCombo_'+targetCourse,src);
   return true;
 }
+
 async function nextCustomCombo(){
-  const arr=await listCustomCombos();
+  const arr=await listCustomCombos(course);
   if(!arr.length){customComboSrc=null;customComboImage=null;return false;}
   let i=arr.findIndex(x=>x.src===customComboSrc);
   i=(i+1)%arr.length;customComboSrc=arr[i].src;customComboImage=arr[i].im;comboMode='finished';localStorage.setItem('popshotLastCombo_'+course,customComboSrc);return true;
@@ -830,9 +844,9 @@ async function render(){
   drawGraffiti();
 
   const boxes={};
-  if(customComboImage){
-    comboMode='finished';layers.title.visible=false;layers.character.visible=false;
-    boxes.customCombo=drawCustomCombo();
+  if(comboMode==='finished'){
+    layers.title.visible=false;layers.character.visible=false;
+    if(customComboImage) boxes.customCombo=drawCustomCombo();
   }else{
     layers.title.visible=true;layers.character.visible=true;
     boxes.title=drawTitle();
@@ -859,10 +873,15 @@ function restore(raw){
   charIndex=s.charIndex||0;titleIndex=s.titleIndex||0;frameIndex=s.frameIndex??1;stickerIndex=s.stickerIndex||0;layoutIndex=s.layoutIndex||1;graffitiSeed=s.graffitiSeed??graffitiSeed;
   zOrder=(s.zOrder||['title','character','sticker']).filter(x=>['title','character','sticker'].includes(x));
   if(!layers.title||!layers.character||!layers.sticker) resetLayers();
-  layers.title.visible=true;
-  layers.character.visible=true;
-  if(!zOrder.includes('title'))zOrder.unshift('title');
-  if(!zOrder.includes('character'))zOrder.push('character');
+  if(comboMode==='finished'){
+    layers.title.visible=false;
+    layers.character.visible=false;
+  }else{
+    layers.title.visible=true;
+    layers.character.visible=true;
+    if(!zOrder.includes('title'))zOrder.unshift('title');
+    if(!zOrder.includes('character'))zOrder.push('character');
+  }
   syncUI();render();
 }
 
@@ -1064,39 +1083,40 @@ let courseSwitchSeq=0;
 $('#courseGrid').onclick=e=>{
   const b=e.target.closest('[data-course]');if(!b)return;
   const nextCourse=b.dataset.course;
-  if(nextCourse===course && !b.classList.contains('is-switching')) return;
+  if(nextCourse===course && !b.classList.contains('is-switching'))return;
 
   push();
   const seq=++courseSwitchSeq;
   course=nextCourse;
   localStorage.popshotLastCourse=course;
-
-  // 第一帧立即反馈：选中态、课程名、照片先变，不等待大 PNG 素材。
   customComboSrc=null;customComboImage=null;
   comboMode='finished';
-  pickCombo();resetLayers();autoPlace();
   layers.title.visible=false;layers.character.visible=false;
   syncUI();render();
+
+  document.querySelectorAll('[data-course]').forEach(x=>x.classList.remove('is-switching'));
   b.classList.add('is-switching');
   $('#detectStatus').textContent='正在切换 '+(courseNames[course]||course)+'…';
 
-  // 素材后台加载；快速连续点课程时，旧请求不允许覆盖最后一次选择。
-  Promise.resolve(loadStrictDefaultCombo(course)).then(ok=>{
+  Promise.race([
+    loadStrictDefaultCombo(course),
+    new Promise(resolve=>setTimeout(()=>resolve(false),5000))
+  ]).then(ok=>{
     if(seq!==courseSwitchSeq)return;
-    if(ok&&customComboImage){
-      comboMode='finished';layers.title.visible=false;layers.character.visible=false;
-    }else{
-      comboMode='custom';layers.title.visible=true;layers.character.visible=true;
-    }
     document.querySelectorAll('[data-course]').forEach(x=>x.classList.remove('is-switching'));
+    comboMode='finished';
+    layers.title.visible=false;layers.character.visible=false;
     syncUI();render();saveDraft();updateCheck();
+    $('#detectStatus').textContent=ok
+      ? `${courseNames[course]||course} · 默认搭配已加载`
+      : `${courseNames[course]||course} · 默认搭配素材未加载`;
+    if(!ok)toast((courseNames[course]||course)+' 默认搭配素材未加载，请刷新素材');
   }).catch(err=>{
-    console.warn('course switch asset load',err);
+    console.warn('course switch',err);
     if(seq!==courseSwitchSeq)return;
     document.querySelectorAll('[data-course]').forEach(x=>x.classList.remove('is-switching'));
-    comboMode='finished';layers.title.visible=false;layers.character.visible=false;
-    syncUI();render();saveDraft();
-    toast((courseNames[course]||course)+' 默认搭配素材未加载，请刷新素材');
+    $('#detectStatus').textContent=(courseNames[course]||course)+' · 切换失败，请重试';
+    toast('课程切换失败，请再点一次');
   });
 };
 $$('[data-preset]').forEach(b=>b.onclick=()=>{push();beautyPreset=b.dataset.preset;beauty=beautyPreset==='original'?0:55;manualColor={ex:0,ct:0,sa:0,temp:0,hi:0,sh:0};localStorage.popshotBeautyPreset=beautyPreset;localStorage.popshotLastBeauty=beauty;syncUI();render();saveDraft();});
@@ -1371,13 +1391,20 @@ $('#adjustPhotoBtn').onclick=()=>{
 function getLosslessExportSize(){
   if(!photo)return {w:W,h:H,crop:null,scale:1};
   const c=smartCrop();
-  let w=Math.max(4,Math.floor(c.sw));
-  let h=Math.max(3,Math.floor(c.sh));
-  // 保持严格 4:3，且绝不超过当前原图裁剪区域的有效像素。
-  if(w/h>4/3) w=Math.floor(h*4/3);
-  else h=Math.floor(w*3/4);
-  w=w-(w%4);
-  h=Math.round(w*3/4);
+  const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
+
+  // 最终像素规格取“原图能提供的最大 4:3 分辨率”，不再因为自动构图放大
+  // 就把成片从 1706×1279 主动降到 1444×1083。
+  let w,h;
+  if(iw/ih>=4/3){
+    h=Math.floor(ih);
+    w=Math.floor(h*4/3);
+  }else{
+    w=Math.floor(iw);
+    h=Math.floor(w*3/4);
+  }
+  w=Math.max(4,w-(w%4));
+  h=Math.max(3,Math.round(w*3/4));
   return {w,h,crop:c,scale:w/W};
 }
 
@@ -1385,17 +1412,15 @@ function updateCheck(){
   if(!photo)return;
   const q=getLosslessExportSize();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
-  const max4w=iw/ih>4/3?Math.floor(ih*4/3):iw;
-  const ratio=q.w/max4w;
-  const msg=ratio<.82?' · ⚠ 当前照片放大较多，会减少有效像素':'';
-  $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → 导出 ${q.w}×${q.h} · 4:3 · PNG无损${msg}`;
+  $('#exportCheck').textContent=`✓ 原图 ${iw}×${ih} → 高清导出 ${q.w}×${q.h} · 4:3 · PNG无损`;
   $('#exportCheck').classList.add('ok');
 }
+
 async function renderLosslessExport(){
   const q=getLosslessExportSize();
   const exportCanvas=document.createElement('canvas');
   exportCanvas.width=q.w; exportCanvas.height=q.h;
-  const exportCtx=exportCanvas.getContext('2d',{alpha:false});
+  const exportCtx=exportCanvas.getContext('2d',{alpha:false,willReadFrequently:false});
   exportCtx.imageSmoothingEnabled=true;
   exportCtx.imageSmoothingQuality='high';
 
@@ -1784,10 +1809,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.2',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.2',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.2',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.2'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.3',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.3',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.3',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.3'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';

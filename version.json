@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
-  "build": 1787061117,
-  "focus": "upload-fix"
+  "version": "1.0.3",
+  "build": 1787061790,
+  "focus": "function-regression-fix"
 }
