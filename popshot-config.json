@@ -1,5 +1,5 @@
 {
-  "version": "1.0.9",
+  "version": "1.1.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -275,7 +275,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "visual-quality-crop-performance-and-atomic-publish",
+  "releaseFocus": "REAL Target-3 pipeline, not reference-image-only tuning",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -387,5 +387,15 @@
     "skin": "about 3% brighter/cleaner; red/orange restrained",
     "color": "colored clothing/background vividness preserved",
     "crop": "subject visually lower; less empty floor at bottom"
+  },
+  "target3Pipeline": {
+    "criticalFix1": "old final color function existed but was never called; now exact export pass is actually executed",
+    "criticalFix2": "removed Natural mode second full-photo overlay that diluted color and softened enlarged crops",
+    "clarity": "real unsharp mask on exported photo only, before logo/frame/stickers",
+    "skin": "YCbCr skin protection; +3–5% cleaner/brighter, red/orange restrained",
+    "color": "midtone dehaze + vibrance for non-skin colored regions",
+    "crop": "subject slightly lower, less empty floor",
+    "cache": "all code/asset cache-busters aligned to v1.1.0",
+    "speed": "known course combos preload in background"
   }
 }

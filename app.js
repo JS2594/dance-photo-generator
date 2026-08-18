@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.0.9';
+const POPSHOT_VERSION='1.1.0';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.0.9';
+const W = 2525, H = 1894, VERSION = '1.1.0';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -69,7 +69,7 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'鲜活自然',ex:.025,ct:.120,sa:.175,temp:-2,hi:-.035,sh:.018,tint:null},
+  natural:{label:'鲜活自然',ex:.045,ct:.145,sa:.220,temp:-2,hi:-.025,sh:.030,tint:null},
   texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
@@ -193,7 +193,7 @@ function load(path){
     const inlineSvg=INLINE_STICKER_SVGS[path];
     im.src=inlineSvg
       ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
-      : (path.includes('?')?path:path+'?v=1.0.8');
+      : (path.includes('?')?path:path+'?v=1.1.0');
   });
   return loaded[path];
 }
@@ -246,7 +246,7 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.0.9：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
+  // V1.1.0：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
   try{ add(await Promise.race([detectWithPico(img),new Promise(r=>setTimeout(()=>r([]),1800))])); }catch(e){}
   // 支持原生 FaceDetector 的浏览器做快速补充。
   if(boxesDetected.length<3 && 'FaceDetector' in window){
@@ -264,7 +264,7 @@ function smartCrop(){
   if(boxesDetected.length<2){
     const z=(Number(photoZoom)||1)===1 ? 1.28 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.115-photoDY*ih/H;
+    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.135-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -318,8 +318,8 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.0.9：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
-  let sy=(y1+y2)/2-sh*.405-photoDY*ih/H;
+  // V1.1.0：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
+  let sy=(y1+y2)/2-sh*.425-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -447,13 +447,102 @@ function autoPlace(){
   layers.character.y=p.cy;
 }
 
+
+let POPSHOT_EXPORT_RENDERING=false;
+
+function target3SkinPixel(r,g,b){
+  // YCbCr skin range; more stable than only checking R>G>B.
+  const y=.299*r+.587*g+.114*b;
+  const cb=128-.168736*r-.331264*g+.5*b;
+  const cr=128+.5*r-.418688*g-.081312*b;
+  return y>45 && y<245 && cb>74 && cb<136 && cr>130 && cr<179;
+}
+
+function applyTarget3ExactPhotoPass(targetCtx,w,h){
+  // Runs only on the exported photo layer, before logo/frame/stickers.
+  // Goal: target-3 look = dehaze + vivid color + protected brighter skin + true detail sharpening.
+  try{
+    const img=targetCtx.getImageData(0,0,w,h);
+    const d=img.data;
+
+    // 1) Tone + vibrance + skin protection.
+    for(let i=0;i<d.length;i+=4){
+      let r=d[i], g=d[i+1], b=d[i+2];
+      let y=.299*r+.587*g+.114*b;
+      const skin=target3SkinPixel(r,g,b);
+
+      // Remove gray veil: raise midtone + increase useful contrast.
+      let ny=(y-128)*1.095+136; // ~ +8 luminance around mid tones
+      ny=Math.max(0,Math.min(255,ny));
+      const gain=y>1?ny/y:1;
+      r*=gain; g*=gain; b*=gain;
+
+      let max=Math.max(r,g,b), min=Math.min(r,g,b), chroma=max-min;
+      const gray=.299*r+.587*g+.114*b;
+
+      if(skin){
+        // Skin: about +3–5% brighter/cleaner, reduce excess red/orange, no white glow.
+        const lift=7.0;
+        r = r*.982 + lift;
+        g = g*1.006 + lift;
+        b = b*1.018 + lift;
+        const sg=.299*r+.587*g+.114*b;
+        const skinSat=.94;
+        r=sg+(r-sg)*skinSat;
+        g=sg+(g-sg)*skinSat;
+        b=sg+(b-sg)*skinSat;
+      }else if(chroma>10){
+        // Vibrance: stronger on dull colors, restrained on colors already saturated.
+        const vib=1 + Math.max(.07, Math.min(.22, .22*(1-Math.min(1,chroma/150))));
+        r=gray+(r-gray)*vib;
+        g=gray+(g-gray)*vib;
+        b=gray+(b-gray)*vib;
+      }
+
+      d[i]=Math.max(0,Math.min(255,r));
+      d[i+1]=Math.max(0,Math.min(255,g));
+      d[i+2]=Math.max(0,Math.min(255,b));
+    }
+    targetCtx.putImageData(img,0,0);
+
+    // 2) True unsharp mask. Do not soften/noise-reduce.
+    const src=targetCtx.getImageData(0,0,w,h);
+    const tmp=document.createElement('canvas');
+    tmp.width=w; tmp.height=h;
+    const tg=tmp.getContext('2d',{alpha:false,willReadFrequently:true});
+    tg.putImageData(src,0,0);
+
+    const blur=document.createElement('canvas');
+    blur.width=w; blur.height=h;
+    const bg=blur.getContext('2d',{alpha:false,willReadFrequently:true});
+    bg.filter='blur(0.75px)';
+    bg.drawImage(tmp,0,0);
+    bg.filter='none';
+    const bd=bg.getImageData(0,0,w,h).data;
+    const sd=src.data;
+
+    const amount=.62, threshold=2.2, maxHP=18;
+    for(let i=0;i<sd.length;i+=4){
+      for(let c=0;c<3;c++){
+        let hp=sd[i+c]-bd[i+c];
+        if(Math.abs(hp)<threshold) hp=0;
+        hp=Math.max(-maxHP,Math.min(maxHP,hp));
+        sd[i+c]=Math.max(0,Math.min(255,sd[i+c]+hp*amount));
+      }
+    }
+    targetCtx.putImageData(src,0,0);
+  }catch(e){
+    console.warn('Target3 exact pass skipped',e);
+  }
+}
+
 function drawPhoto(){
   const c=smartCrop(), b=beauty/100, gr=styles[visualStyle].g;
   const bp=BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural;
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.0.9：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
+  // V1.1.0：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
   const br=Math.max(.65,(1+b*(isNatural?.025:.12)+ex)*gr.br);
   const con=Math.max(.6,(1+b*(isNatural?.035:.02)+ct)*gr.ct);
   const sat=Math.max(.2,(1+b*(isNatural?.075:.05)+sa)*gr.sa);
@@ -461,8 +550,12 @@ function drawPhoto(){
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
-  // 高清细节叠加：原图直接二次轻刷，不经过低清中间图。
-  if(!dragging){ctx.save();ctx.globalAlpha=isNatural?.22:.14;ctx.filter=isNatural?'contrast(1.095) saturate(1.045)':'contrast(1.055) saturate(1.025)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
+  // V1.1.0：自然模式不再二次覆盖一层原图。
+  // 旧做法会把前面的亮度/对比/色彩重新冲淡，同时在放大裁剪时进一步造成视觉发软。
+  if(!dragging && !isNatural){
+    ctx.save();ctx.globalAlpha=.14;ctx.filter='contrast(1.055) saturate(1.025)';
+    ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
+  }
   if(b>0&&!dragging&&beautyPreset!=='texture'&&!isNatural){ctx.save();ctx.globalAlpha=Math.min(.10,(.035*b+.008)*gr.glow);ctx.globalCompositeOperation='screen';ctx.filter='blur(10px) brightness(1.02)';ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();}
   // 默认 A 禁止粉/紫全局雾层；其他风格保持原逻辑。
   if(beautyPreset!=='texture'&&!isNatural){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=gr.tint;ctx.fillRect(0,0,W,H);ctx.restore();}
@@ -472,6 +565,15 @@ function drawPhoto(){
   if(sh!==0){ctx.save();ctx.globalCompositeOperation=sh>0?'screen':'multiply';ctx.globalAlpha=Math.min(.12,Math.abs(sh));ctx.fillStyle=sh>0?'#a6a0b2':'#4b4753';ctx.fillRect(0,0,W,H);ctx.restore();}
   // 自然模式不再叠白；避免肤色“白光”和画面发雾。
   if(b>0&&!isNatural){ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,250,246,${(.11*b).toFixed(3)})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+
+  // 真正的 Target-3 精确处理只对高清导出照片生效，并发生在 Logo/相框/贴纸之前。
+  // 这样不会把课程文字和透明 PNG 一起锐化或改色。
+  if(isNatural && POPSHOT_EXPORT_RENDERING){
+    ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    applyTarget3ExactPhotoPass(ctx,canvas.width,canvas.height);
+    ctx.restore();
+  }
 }
 function drawFrame(){
   if(!frameIndex) return;
@@ -744,7 +846,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.0.8';
+    im.src=src+'?v=1.1.0';
   });
 }
 const DEFAULT_COMBO_FILE={
@@ -753,6 +855,15 @@ const DEFAULT_COMBO_FILE={
   'zumba':'zumba_01.png',
   'zumba-camp':'zumba-camp_01.png'
 };
+
+
+function preloadCourseCombos(c){
+  const names=CUSTOM_COMBO_ACTIVE[c]||[];
+  names.forEach((name,idx)=>{
+    const src=comboPath(c,name);
+    setTimeout(()=>loadComboImage(src).catch(()=>null),idx*45);
+  });
+}
 
 async function listCustomCombos(targetCourse=course){
   const names=CUSTOM_COMBO_ACTIVE[targetCourse]||[];
@@ -782,6 +893,7 @@ async function loadStrictDefaultCombo(targetCourse=course){
   layers.title.visible=false;
   layers.character.visible=false;
   localStorage.setItem('popshotLastCombo_'+targetCourse,src);
+  preloadCourseCombos(targetCourse);
   return true;
 }
 
@@ -1076,6 +1188,7 @@ $('#courseGrid').onclick=e=>{
   const seq=++courseSwitchSeq;
   course=nextCourse;
   localStorage.popshotLastCourse=course;
+  preloadCourseCombos(course);
   customComboSrc=null;customComboImage=null;
   comboMode='finished';
   layers.title.visible=false;layers.character.visible=false;
@@ -1405,33 +1518,6 @@ function updateCheck(){
 }
 
 
-function popshotV108FinalColorPass(ctx,w,h){
-  // V1.0.9: remove haze, enhance colored clothing/background, protect skin.
-  try{
-    const img=ctx.getImageData(0,0,w,h), d=img.data;
-    for(let i=0;i<d.length;i+=4){
-      let r=d[i], g=d[i+1], b=d[i+2];
-      const skin = r>92 && g>42 && b>24 && r>g && g>b*0.72 &&
-                   (r-g)>8 && (r-b)>14 && (Math.max(r,g,b)-Math.min(r,g,b))<125;
-      const c=1.075; // micro-contrast / dehaze
-      r=(r-128)*c+128; g=(g-128)*c+128; b=(b-128)*c+128;
-      const gray=.299*r+.587*g+.114*b;
-      const chroma=Math.max(r,g,b)-Math.min(r,g,b);
-      if(skin){
-        // no white glow; slightly neutralize excess red/yellow
-        r = r*0.992; g = g*1.004; b = b*1.010;
-      }else if(chroma>15){
-        const s=1.13;
-        r=gray+(r-gray)*s; g=gray+(g-gray)*s; b=gray+(b-gray)*s;
-      }
-      d[i]=Math.max(0,Math.min(255,r));
-      d[i+1]=Math.max(0,Math.min(255,g));
-      d[i+2]=Math.max(0,Math.min(255,b));
-    }
-    ctx.putImageData(img,0,0);
-  }catch(e){ console.warn('V108 color pass skipped',e); }
-}
-
 async function renderLosslessExport(){
   const q=getLosslessExportSize();
   const exportCanvas=document.createElement('canvas');
@@ -1444,10 +1530,12 @@ async function renderLosslessExport(){
   // 这里只把逻辑坐标映射到原图有效像素级输出，绝不拿手机预览图二次放大。
   const previewCanvas=canvas, previewCtx=ctx;
   canvas=exportCanvas; ctx=exportCtx;
+  POPSHOT_EXPORT_RENDERING=true;
   ctx.setTransform(q.w/W,0,0,q.h/H,0,0);
   try{
     await render();
   }finally{
+    POPSHOT_EXPORT_RENDERING=false;
     canvas=previewCanvas; ctx=previewCtx;
   }
   return {canvas:exportCanvas,w:q.w,h:q.h};
@@ -1825,10 +1913,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.0.8',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.8',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.0.8',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.8'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.1.0',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.1.0',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.1.0',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.1.0'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
