@@ -10,7 +10,7 @@ button{font:inherit;cursor:pointer;touch-action:manipulation}
 .brand{font-size:30px;font-weight:900;letter-spacing:-1px}.brand span{color:var(--pink);font-size:18px}.brand em{font-size:9px;color:#aaa;font-style:normal;margin-left:6px}
 .top-actions{display:flex;gap:8px}.icon-btn{position:relative;width:48px;height:48px;border:1px solid var(--line);background:#fff;border-radius:16px;font-size:20px}.icon-btn i{position:absolute;width:7px;height:7px;background:var(--pink);border-radius:50%;right:8px;top:8px}
 .hero-card,.result-card{background:#fff;border:1px solid #eeeaf6;border-radius:24px;padding:16px;box-shadow:0 12px 34px rgba(50,35,90,.07);margin-bottom:18px}
-.dropzone{border:1.5px dashed #cfc4f8;background:linear-gradient(135deg,#fcfaff,#fff5fa);border-radius:20px;min-height:116px;padding:18px;display:flex;align-items:center;gap:15px}.dropzone input{display:none}
+.dropzone{border:1.5px dashed #cfc4f8;background:linear-gradient(135deg,#fcfaff,#fff5fa);border-radius:20px;min-height:116px;padding:18px;display:flex;align-items:center;gap:15px}
 .upload-deco{width:58px;height:58px;display:grid;place-items:center;border-radius:20px;background:linear-gradient(135deg,#e9e2ff,#ffe5f1);font-size:30px;color:#4b3b73;flex:none}
 .upload-copy{display:flex;flex-direction:column;gap:4px}.upload-copy strong{font-size:18px}.upload-copy span{font-size:11px;color:#999}.upload-copy em{font-size:11px;color:var(--purple);font-style:normal;font-weight:800}
 .section-title{font-size:18px;font-weight:850;margin:20px 2px 10px}
@@ -63,7 +63,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .course-card .course-copy small{display:none!important}
 .course-card.is-switching{opacity:.78}
 
-/* V1.0.1 草稿弹窗修复 */
+/* V1.0.2 草稿弹窗修复 */
 .resume-actions #discardResume,
 .resume-actions #continueResume,
 .resume-actions .resume-continue{
@@ -74,3 +74,17 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .resume-actions .resume-continue{
   color:#fff!important;background:linear-gradient(100deg,#7657ff,#ee4aa4)!important;border-color:transparent!important;
 }
+
+/* V1.0.2 iOS/PWA 上传修复：真实 file input 覆盖整个上传区，避免 display:none 在部分 WebApp 环境失效 */
+.dropzone{position:relative;cursor:pointer;touch-action:manipulation}
+.dropzone #photoInput{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  opacity:0!important;
+  display:block!important;
+  cursor:pointer!important;
+  z-index:5!important;
+}
+.dropzone .upload-deco,.dropzone .upload-copy{pointer-events:none}

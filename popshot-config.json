@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -279,7 +279,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "stability-default-combo-framing",
+  "releaseFocus": "ios-pwa-upload-fix",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -340,7 +340,12 @@
     "pwaLelepopImage": true,
     "strictFixedDefaultCombo": true,
     "largerPeopleOnePersonMargins": true,
-    "colorChanged": false
+    "colorChanged": false,
+    "uploadUndefinedStateVariables": true,
+    "iosPwaFilePickerHitArea": true,
+    "clarityPreserved": true,
+    "fixedDefaultComboPreserved": true,
+    "framingPreserved": true
   },
   "preservedFeatures": [
     "original-resolution 4:3 lossless PNG export",
