@@ -1,5 +1,5 @@
 {
-  "version": "1.4.2-step02",
-  "build": 1787148220,
-  "notes": "Step02: reference-driven group crop; mode-bound shuffle; restore original fixed-combo PNG bytes for ZUMBA and ButtScaler."
+  "version": "1.4.3-step02-v14style",
+  "build": 1787149521,
+  "notes": "V14-style crop rollback: stable ~1.47x group-centered framing; simplified crop chain; fixed-combo cache-busted reload."
 }
