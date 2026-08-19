@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "build": 1787126053,
+  "version": "1.4.1-step01",
+  "build": 1787133797,
   "atomicPublish": true,
-  "notes": "FINAL WEB: fixed default composite loading, Target-3 horizontal crop calibration, restored iOS/Android PWA icon, disabled browser AI upscaling, original-pixel PNG export retained."
+  "notes": "Step01 crop patch version sync only. app.js already deployed; this file only aligns the online version marker."
 }
