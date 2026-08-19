@@ -1,0 +1,445 @@
+{
+  "version": "1.3.2",
+  "output": {
+    "width": 2525,
+    "height": 1894,
+    "ratio": "4:3",
+    "format": [
+      "PNG",
+      "JPG"
+    ]
+  },
+  "courses": {
+    "lelepop": {
+      "characters": 10,
+      "label": "Lelepop",
+      "subtitle": "DANCE"
+    },
+    "buttscaler": {
+      "characters": 11,
+      "label": "Buttscaler",
+      "subtitle": "GLUTE & LEG"
+    },
+    "zumba": {
+      "characters": 13,
+      "label": "ZUMBA",
+      "subtitle": "DANCE"
+    },
+    "zumba-camp": {
+      "characters": 9,
+      "label": "ZUMBA CAMP",
+      "subtitle": "BREAKDOWN CLASS"
+    }
+  },
+  "repeatProtection": {
+    "days": 14,
+    "avoidSameWeekday": true
+  },
+  "holidayPolicy": "holiday-only-on-date-window",
+  "layoutPolicy": {
+    "photoFirst": true,
+    "crop": "conservative subject-aware cover",
+    "preserveGroup": true,
+    "characterAndLogo": "top-only compact linked module by default; top-separated mode optional",
+    "decorationDensity": "low",
+    "adaptiveLayouts": 3
+  },
+  "manualEditing": {
+    "drag": [
+      "character",
+      "title",
+      "logo",
+      "sticker"
+    ],
+    "scale": [
+      "character",
+      "title",
+      "logo",
+      "sticker"
+    ],
+    "defaultAutoLayout": true
+  },
+  "signaturePolicy": "UI only; never rendered onto exported photo",
+  "logoDefaultSize": "110% visual target, adaptive to face-safe headroom",
+  "features_v6": [
+    "3 candidate layouts",
+    "undo/redo",
+    "layer lock",
+    "favorites",
+    "local draft autosave",
+    "density control",
+    "bottom usage tips",
+    "medium logo default"
+  ],
+  "features_v7": [
+    "face-aware smart crop when FaceDetector is available",
+    "face-safe automatic layout",
+    "high-density group photo auto simplification",
+    "IndexedDB draft photo persistence",
+    "resume unfinished work dialog",
+    "remember last course and beauty preference"
+  ],
+  "features_v7_1": [
+    "subject-priority crop based on detected group faces with estimated full-body bounds",
+    "manual photo pan and zoom",
+    "course cards with character thumbnails"
+  ],
+  "asset_audit": "24/24 character PNGs visually and alpha-component audited; extraction labels/fragments removed.",
+  "titlePolicy": "Only exact course names: Lelepop / Buttscaler / ZUMBA / ZUMBA CAMP. titleIndex selects visual style only.",
+  "logoPolicy": "No separate bottom capsule logo. Course title itself is the visual logo.",
+  "assetPolicy": "24 cleaned transparent character PNGs; no filename strips or neighboring-character fragments.",
+  "v9Changes": [
+    "course cards use only four real course names",
+    "course cards have designed typography and cleaned character thumbnails",
+    "five visual title styles using exact course names only",
+    "ZUMBA CAMP renders ZUMBA prominent and CAMP smaller while preserving exact name",
+    "separate capsule logo removed",
+    "one Q character per generated image",
+    "character/title/sticker picker drawers",
+    "tighter subject-first crop while retaining manual pan/zoom"
+  ],
+  "testConvergence": {
+    "layoutStressPatterns": [
+      "7_center",
+      "12_dense",
+      "9_wide",
+      "left_cluster",
+      "right_cluster",
+      "top_row",
+      "low_crouch"
+    ],
+    "rulesAdded": [
+      "top/bottom headline candidate positions",
+      "crowd-sensitive headline scale",
+      "automatic long-title fit",
+      "optional sticker suppressed on face collision",
+      "stronger safe-margin penalties"
+    ]
+  },
+  "stressTestV92": {
+    "added": [
+      "bottom-title + bottom-character layouts",
+      "emergency people-first minimal safe mode"
+    ],
+    "principle": "When no decorative layout is safe, hide Q character/stickers before covering real people."
+  },
+  "hotfix": "target3-hd",
+  "forceVisualHotfix": {
+    "title": "mandatory",
+    "character": "mandatory",
+    "sticker": "optional",
+    "versionBadge": true
+  },
+  "singleCharacterPerCover": true,
+  "compositionModes": [
+    "linked",
+    "corner"
+  ],
+  "defaultCompositionMode": "finished",
+  "v9_3": [
+    "single Q character per cover",
+    "title + character linked composition mode",
+    "fixed preview aspect ratio matching 2525x1894 export",
+    "visible runtime version badge",
+    "manual pan/zoom preserved"
+  ],
+  "layoutFix": [
+    "removed bottom-center character/title composition",
+    "headline restricted to upper band by default",
+    "single Q character restricted to lower-left/lower-right",
+    "group-photo crop tightened with modest automatic zoom"
+  ],
+  "defaultDesignRules": {
+    "characterCount": 2,
+    "defaultSticker": false,
+    "headline": "only the four real course names",
+    "composition": "4 curated editorial layouts; title and character treated as one visual family",
+    "crowdProtection": "character/title scale down automatically as crowd density rises",
+    "manualOverride": "photo and overlay layers remain manually adjustable"
+  },
+  "mobileSave": {
+    "primary": "Web Share API with image file",
+    "fallback1": "browser download via Blob URL",
+    "fallback2": "full-resolution image modal for long-press save",
+    "targets": [
+      "iPhone Safari",
+      "iPhone installed PWA",
+      "Android Chrome",
+      "desktop Chrome"
+    ]
+  },
+  "pwaUpdate": {
+    "autoUpdateOnOpen": true,
+    "networkFirstForCode": true,
+    "clearOldCaches": true,
+    "versionJsonCheck": true,
+    "reloadAfterActivation": true
+  },
+  "v13": {
+    "output": "2525x1894",
+    "courseLayout": "2x2 compact",
+    "originalPhotoAdjustment": true,
+    "pinchZoom": true,
+    "titleLogoStyles": 12,
+    "frameStyles": 12,
+    "stickerPools": "expanded",
+    "primarySaveAction": "保存到相册",
+    "androidWebAndPWA": true,
+    "charactersUserSupplied": true
+  },
+  "beautyPresets": [
+    "原图",
+    "自然",
+    "明亮",
+    "活力",
+    "清透",
+    "暖阳",
+    "冷白",
+    "柔粉",
+    "奶油",
+    "复古",
+    "高对比",
+    "低饱和",
+    "鲜艳"
+  ],
+  "stickerLibrary": {
+    "generalCategories": [
+      "通用",
+      "Dance",
+      "Fitness",
+      "可爱",
+      "图形"
+    ],
+    "holidayCategories": [
+      "圣诞",
+      "万圣节",
+      "情人节",
+      "中秋",
+      "春节"
+    ],
+    "holidayOnlyWhenActive": true
+  },
+  "packageVariant": "github-web-upload-compact",
+  "inlineStickerCount": 50,
+  "topComboDefaults": {
+    "targetScale": 1.5,
+    "placement": "top",
+    "sideGap": "0.5-character-width",
+    "neverCoverPeople": true,
+    "autoScaleDownWhenCrowded": true,
+    "manualResizeStillAvailable": true
+  },
+  "architecture": "V14-stable-core + V15-nonblocking-features",
+  "firstFrame": {
+    "blocksOnDetection": false,
+    "blocksOnP1": false,
+    "blocksOnStorage": false
+  },
+  "defaultBeautyPreset": "texture",
+  "export": {
+    "width": 2525,
+    "height": 1894,
+    "format": "PNG",
+    "lossless": true
+  },
+  "p1Combos": {
+    "enabled": true,
+    "count": 20,
+    "priority": "after-first-frame"
+  },
+  "comboUX": {
+    "singleEntry": "组合",
+    "modes": [
+      "成品组合",
+      "自定义组合"
+    ],
+    "defaultMode": "成品组合",
+    "finishedControls": [
+      "select finished combo",
+      "overall scale"
+    ],
+    "customControls": [
+      "Q character",
+      "course wordmark",
+      "independent size",
+      "independent position"
+    ]
+  },
+  "touchUX": {
+    "minButtonHeight": 56,
+    "shuffleMinHeight": 60,
+    "touchAction": "manipulation",
+    "doubleTapRiskReduced": true
+  },
+  "composition": {
+    "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
+    "priority": "comfortable group composition"
+  },
+  "releaseFocus": "CLEAN baseline for redeploy",
+  "colorAndSharpnessChanged": false,
+  "finishedCombo": {
+    "default": true,
+    "controls": [
+      "change style",
+      "overall scale"
+    ],
+    "position": "top-center",
+    "preload": true
+  },
+  "customCombo": {
+    "controls": [
+      "Q character selection",
+      "course wordmark selection",
+      "independent scale",
+      "independent position"
+    ]
+  },
+  "beautyUI": {
+    "mobileNoWrap": true,
+    "horizontalScroll": true
+  },
+  "mobileUI": {
+    "approvedDemo": true,
+    "largeTouchTargets": true,
+    "mainTools": [
+      "组合",
+      "相框",
+      "贴纸",
+      "调整照片",
+      "更多"
+    ],
+    "beautyBar": "single-row-horizontal-scroll"
+  },
+  "qualityMode": {
+    "priority": "clarity-first",
+    "aspectRatio": "4:3",
+    "fixedOutputSize": false,
+    "sourceResolutionFirst": true,
+    "previewSeparatedFromExport": true,
+    "exportFormat": "PNG",
+    "lossyCompression": false,
+    "noFakeUpscale": true,
+    "maxNative43CropByDefault": true,
+    "faceDetectionDoesNotShrinkCrop": true,
+    "defaultPhotoZoom": 1,
+    "colorParametersChanged": true,
+    "approvedColor": "vivid-background-natural-skin",
+    "composition": "subject-lower-5-percent",
+    "naturalPresetNoBlurGlow": true
+  },
+  "courseSwitch": {
+    "immediateSelectedState": true,
+    "asyncComboLoad": true,
+    "raceProtection": true,
+    "prewarmFirstCombo": true,
+    "subtitlesHidden": true
+  },
+  "bugfixes": {
+    "fixedDefaultComboExact01": true,
+    "noDefaultRandomComposition": true,
+    "largerSubjectFraming": true,
+    "onePersonSideMargins": true,
+    "exportNeverDownsizesFromSourceMax43": true,
+    "courseSwitchStatusCompletes": true,
+    "clarityPipelinePreserved": true,
+    "colorParametersChanged": true
+  },
+  "preservedFeatures": [
+    "原图级4:3 PNG无损高清导出",
+    "默认搭配与自定义搭配",
+    "固定成品组合",
+    "相框",
+    "贴纸及拖动调整",
+    "照片调整",
+    "课程切换",
+    "一键换风格仅作用自定义搭配",
+    "草稿恢复",
+    "PWA安装到桌面"
+  ],
+  "characterPolicy": "Character files are recognized from the app charFiles list; V1.0.8 synced to actual folders. Adding files later requires updating the corresponding count/list unless using a future manifest generator.",
+  "speedFix": [
+    "local face detection first",
+    "no external MediaPipe wait",
+    "next combo loads one asset only",
+    "background preload next combo"
+  ],
+  "visualBaseline": {
+    "clarity": "render from original image into final high-resolution 4:3 canvas; PNG lossless; no preview-canvas re-export",
+    "color": "vivid colored clothing/background, restrained skin saturation and no whitening haze",
+    "crop": "subjects large; composition shifted lower; keep roughly one-person side breathing room",
+    "logo": "avoid covering people/faces"
+  },
+  "publishFlow": {
+    "uploadOrder": [
+      "UPLOAD_1_of_4",
+      "UPLOAD_2_of_4",
+      "UPLOAD_3_of_4",
+      "UPLOAD_4_of_4",
+      "PUBLISH_LAST"
+    ],
+    "rule": "PUBLISH_LAST must be uploaded only after all four content packages are committed.",
+    "effect": "version.json and service-worker.js activate V1.0.8 and purge older PopShot caches."
+  },
+  "updateLogic": "Only prompt when remote version is strictly newer than current runtime version.",
+  "refreshGuard": "One-shot session guard prevents repeated forced refresh loops.",
+  "target3HD": {
+    "clarity": "source-resolution render; PNG lossless; no blur/glow in Natural",
+    "skin": "about 3% brighter/cleaner; red/orange restrained",
+    "color": "colored clothing/background vividness preserved",
+    "crop": "subject visually lower; less empty floor at bottom"
+  },
+  "target3Pipeline": {
+    "criticalFix1": "old final color function existed but was never called; now exact export pass is actually executed",
+    "criticalFix2": "removed Natural mode second full-photo overlay that diluted color and softened enlarged crops",
+    "clarity": "real unsharp mask on exported photo only, before logo/frame/stickers",
+    "skin": "YCbCr skin protection; +3–5% cleaner/brighter, red/orange restrained",
+    "color": "midtone dehaze + vibrance for non-skin colored regions",
+    "crop": "subject slightly lower, less empty floor",
+    "cache": "all code/asset cache-busters aligned to v1.1.0",
+    "speed": "known course combos preload in background"
+  },
+  "actualExportTuning": {
+    "clarity": "stronger thresholded final-resolution unsharp + microcontrast",
+    "tone": "stronger dehaze and midtone separation",
+    "color": "higher selective vibrance on non-skin regions",
+    "skin": "brighter/cleaner, less red, protected from strong vibrance",
+    "crop": "slightly tighter with less empty floor"
+  },
+  "qualityGuarantee": {
+    "format": "PNG only; no JPEG fallback",
+    "photoSource": "naturalWidth/naturalHeight original image decode",
+    "intermediatePreview": "not used for export",
+    "autoCropZoom": "reduced from 1.28 to 1.18 to preserve source detail",
+    "processingOrder": [
+      "source crop render",
+      "tone/color",
+      "skin protection",
+      "final-resolution detail",
+      "overlays",
+      "PNG encode"
+    ],
+    "android": "APK bridge saves the exact same PNG bytes; no Android-side recompression"
+  },
+  "target3GlobalPipeline": {
+    "appliesTo": "all courses/future assets",
+    "quality": "source-pixel-first PNG",
+    "crop": "V1.2 intelligent multi-person crop",
+    "neutralProtection": true,
+    "skinProtection": true,
+    "globalCoolMagenta": false
+  },
+  "aiHdExperiment": {
+    "enabledByDefault": true,
+    "model": "Real-CUGAN 2x conservative",
+    "tile": 64,
+    "overlap": 12,
+    "backend": "WebGPU then WebGL",
+    "fallback": "normal HD",
+    "modelHost": "upscale.chino.icu"
+  },
+  "resourcePolicy": {
+    "characters": "public/assets/characters",
+    "fixedDefaultCombos": "public/custom-combos",
+    "rule": "These two paths are canonical and must be preserved in future updates unless user supplies replacements."
+  }
+}
