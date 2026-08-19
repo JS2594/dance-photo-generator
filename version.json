@@ -1,6 +1,5 @@
 {
-  "version": "1.4.1-step01",
-  "build": 1787133797,
-  "atomicPublish": true,
-  "notes": "Step01 crop patch version sync only. app.js already deployed; this file only aligns the online version marker."
+  "version": "1.4.2-step02",
+  "build": 1787148220,
+  "notes": "Step02: reference-driven group crop; mode-bound shuffle; restore original fixed-combo PNG bytes for ZUMBA and ButtScaler."
 }

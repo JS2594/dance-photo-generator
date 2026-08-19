@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.4.1-step01';
+const W = 2525, H = 1894, VERSION = '1.4.2-step02';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -315,55 +315,53 @@ function smartCrop(){
   const medW=ws[Math.floor(ws.length/2)]||iw*.04;
   const medH=hs[Math.floor(hs.length/2)]||ih*.05;
 
-  // 相邻主体中心距离 ≈ 一个人站位；左右各留一个站位。
-  const centers=faces.map(b=>b.x+b.w/2).sort((a,b)=>a-b);
-  const gaps=[];
-  for(let i=1;i<centers.length;i++){
-    const g=centers[i]-centers[i-1];
-    if(g>medW*.9 && g<iw*.25)gaps.push(g);
-  }
-  gaps.sort((a,b)=>a-b);
-  const onePerson=gaps.length?gaps[Math.floor(gaps.length/2)]:medW*2.25;
-  const sideMargin=Math.max(medW*2.6,onePerson*1.05);
-
-  // V1.3.5：按目标封面标定——人群横向占成片约 60%–65%，
-  // 即裁剪宽度 ≈ 人群宽度 × 1.6（旧式"每侧一个站位"在人多时余量过大）。
+  // STEP02：严格按参考图做“人物优先”构图。
+  // 目标不是固定百分比，而是由整组人脸跨度估算人群占画面的比例。
   const groupW=x2-x1;
-  let desiredW=Math.max(groupW+sideMargin*2, groupW*1.6);
 
-  // 从人脸向上下估算全身；优先人物填充，同时避免切头/切脚。
-  const top=y1-medH*1.55;
-  const bottom=y2+medH*6.6;
-  let desiredH=Math.max(medH*8.4,bottom-top);
+  // 横向：人群约占成片 72%~78%，两侧保留约半个人的余量。
+  let desiredW=Math.max(groupW*1.30, groupW + medW*3.0);
+
+  // 纵向：由最高/最低人脸向上、向下估算完整身体。
+  // 下方给站立/半蹲姿更充分空间，但不再为地面/天花板保留大块空区。
+  const estTop=Math.max(0,y1-medH*1.15);
+  const estBottom=Math.min(ih,y2+medH*5.15);
+  const desiredH=Math.max(medH*7.6,estBottom-estTop);
 
   let sw=Math.max(desiredW,desiredH*tr);
+  sw=Math.min(maxSw,sw);
+
+  // 即使检测框偏松，也至少比整图推进约 30%，避免再次显示 100%。
+  const maxAllowedSw=maxSw/1.30;
+  sw=Math.min(sw,maxAllowedSw);
   let sh=sw/tr;
-  if(sh<desiredH){sh=desiredH;sw=sh*tr}
 
-  // 不能超过原图最大 4:3；也不要因为旧逻辑强行拉回近乎整图。
-  sw=Math.min(sw,maxSw);sh=sw/tr;
+  // 如果全身估算需要更多高度，适当放宽，但仍不回到整图。
+  if(sh<desiredH){
+    sw=Math.min(maxSw/1.22,desiredH*tr);
+    sh=sw/tr;
+  }
 
-  // 防止误检导致裁得过狠：默认最大推进约 1.75 倍。
-  const minSw=maxSw/2.07;
-  sw=Math.max(sw,minSw);sh=sw/tr;
-
-  // 用户手动缩放继续生效。
+  // 手动缩放仍然可用。
   const userZoom=Number(photoZoom)||1;
   if(userZoom!==1){
     const factor=Math.max(.72,userZoom);
-    sw=Math.min(maxSw,sw/factor);sh=sw/tr;
+    sw=Math.min(maxSw,sw/factor);
+    sh=sw/tr;
   }
 
   const cx=(x1+x2)/2;
-  // V1.4.0 TARGET-3 horizontal calibration:
-  // move source crop window ~4.5% to the right -> the group moves left in the final frame.
-  // Keep zoom and vertical framing unchanged because V1.3.5 subject scale was already acceptable.
-  let sx=cx-sw/2 + sw*.045 - photoDX*iw/W;
-  // V1.3.5：竖直改为"头顶锚定"——最高人头位于成片高度的 37.5% 处
-  // （标定自目标封面）。旧的"人脸中心锚定"在有人蹲下/半蹲时会整体漂移。
-  let sy=y1-sh*.375-photoDY*ih/H;
-  // 兜底：不允许把最低的人脸（如蹲姿）压到画面底部之下。
-  if(sy+sh < y2+medH*1.8) sy=y2+medH*1.8-sh;
+  // 以人群视觉中心为主，极轻微向右取源图 => 最终人群向左一点，贴近参考图。
+  let sx=cx-sw/2 + sw*.015 - photoDX*iw/W;
+
+  // 让最高人脸落在成片约 28%~31% 高度处，减少天花板，同时给脚部留空间。
+  let sy=y1-sh*.295-photoDY*ih/H;
+
+  // 保护脚部估算区：若底部不足，把裁剪窗向下移动。
+  if(sy+sh<estBottom) sy=estBottom-sh;
+  // 同时不让头顶贴边。
+  if(sy>estTop) sy=Math.min(sy,estTop);
+
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -961,7 +959,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.4.0';
+    im.src=src+'?v='+encodeURIComponent(VERSION);
   });
 }
 const DEFAULT_COMBO_FILE={
@@ -1378,16 +1376,33 @@ $('#shuffleBtn').onclick=async()=>{
   btn.disabled=true;btn.textContent='切换中…';
   try{
     push();
-    const ok=await nextCustomCombo();
-    if(!ok){
-      customComboSrc=null;customComboImage=null;pickCombo();resetLayers();autoPlace();
-      comboMode='custom';layers.title.visible=true;layers.character.visible=true;
+    if(comboMode==='finished'){
+      // 默认搭配：只在当前课程的固定成品模板里轮换。
+      const ok=await nextCustomCombo();
+      if(!ok)toast('当前课程没有更多固定模板');
+      comboMode='finished';
+      layers.title.visible=false;
+      layers.character.visible=false;
     }else{
-      comboMode='finished';layers.title.visible=false;layers.character.visible=false;
+      // 自定义搭配：只刷新自定义人物 / 课程字样 / 贴纸 / 相框组合。
+      customComboSrc=null;
+      customComboImage=null;
+      pickCombo();
+      resetLayers();
+      autoPlace();
+      comboMode='custom';
+      layers.title.visible=true;
+      layers.character.visible=true;
     }
-    selected=null;syncComboQuickUI();render();saveDraft();updateCheck();
+    selected=null;
+    syncComboQuickUI();
+    render();
+    saveDraft();
+    updateCheck();
   }finally{
-    shuffleBusy=false;btn.disabled=false;btn.textContent=old||'↻ 换一版';
+    shuffleBusy=false;
+    btn.disabled=false;
+    btn.textContent=old||'↻ 换一版';
   }
 };
 
