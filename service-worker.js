@@ -1,5 +1,5 @@
-const CACHE_NAME='popshot-v1.1.2-real-target3';
-const RELEASE='1.1.2';
+const CACHE_NAME='popshot-v1.1.3-real-target3';
+const RELEASE='1.1.3';
 const CORE=['./','./index.html','./app.js','./styles.css','./manifest.webmanifest','./popshot-config.json','./version.json'];
 
 self.addEventListener('install',event=>{
@@ -8,7 +8,7 @@ self.addEventListener('install',event=>{
     const c=await caches.open(CACHE_NAME);
     for(const u of CORE){
       try{
-        const r=await fetch(u+'?release=1.1.2&t='+Date.now(),{cache:'reload'});
+        const r=await fetch(u+'?release=1.1.3&t='+Date.now(),{cache:'reload'});
         if(r.ok) await c.put(u,r.clone());
       }catch(e){}
     }
