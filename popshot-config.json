@@ -1,5 +1,5 @@
 {
-  "version": "1.1.2",
+  "version": "1.2.1",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -275,7 +275,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "Target3 actual PNG quality first; color layered after source-quality render",
+  "releaseFocus": "V1.2 source-pixel-first export + intelligent crop + Target3 neutral-safe color",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -419,5 +419,13 @@
       "PNG encode"
     ],
     "android": "APK bridge saves the exact same PNG bytes; no Android-side recompression"
+  },
+  "target3GlobalPipeline": {
+    "appliesTo": "all courses/future assets",
+    "quality": "source-pixel-first PNG",
+    "crop": "V1.2 intelligent multi-person crop",
+    "neutralProtection": true,
+    "skinProtection": true,
+    "globalCoolMagenta": false
   }
 }
