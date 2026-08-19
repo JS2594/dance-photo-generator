@@ -1,6 +1,6 @@
 {
-  "version": "1.1.2",
-  "build": 1787079100,
+  "version": "1.2.0",
+  "build": 1787490000,
   "atomicPublish": true,
-  "notes": "Target3 max-quality actual export: less auto crop enlargement, stronger export-only detail/color, skin protection, black/white separation, exact PNG bytes, Android bridge support."
+  "notes": "Target-calibrated release: fixed pico minsize bug (group faces missed -> weak fallback crop), head-anchored composition, crop-native export resolution (no forced upscale), zone-limited skin protection + cool-magenta vivid grade calibrated against reference cover, WYSIWYG natural preview."
 }

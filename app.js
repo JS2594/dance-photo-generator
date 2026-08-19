@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.1.2';
+const POPSHOT_VERSION='1.2.0';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -229,14 +229,16 @@ async function detectWithPico(img){
     const data=g.getImageData(0,0,w,h).data;
     const gray=new Uint8Array(w*h);
     for(let i=0;i<w*h;i++) gray[i]=(2*data[i*4]+7*data[i*4+1]+data[i*4+2])/10;
+    // V1.2.0：合影里单张人脸往往只有短边的 2%–4%。
+    // 旧 minsize=短边×3.5% 会把大部分人脸直接筛掉 → 检测数 <2 → 落入弱兜底构图。
     let dets=pico.run_cascade(
       {pixels:gray,nrows:h,ncols:w,ldim:w},classify,
-      {shiftfactor:.1,
-       minsize:Math.max(18,Math.round(Math.min(w,h)*.035)),
+      {shiftfactor:.08,
+       minsize:Math.max(16,Math.round(Math.min(w,h)*.022)),
        maxsize:Math.round(Math.min(w,h)*.7),
-       scalefactor:1.1});
+       scalefactor:1.08});
     dets=pico.cluster_detections(dets,.2);
-    return dets.filter(d=>d[3]>12)
+    return dets.filter(d=>d[3]>5)
       .map(d=>({x:(d[1]-d[2]/2)/sc, y:(d[0]-d[2]/2)/sc, w:d[2]/sc, h:d[2]/sc}));
   }catch(e){return[]}
 }
@@ -246,25 +248,49 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.1.2：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
-  try{ add(await Promise.race([detectWithPico(img),new Promise(r=>setTimeout(()=>r([]),1800))])); }catch(e){}
+  // V1.2.0：本地 pico 优先，等待窗口 1.8s → 4.2s（低端机上 1.8s 常来不及跑完级联，
+  // 导致检测结果被丢弃、构图退化成"整图微推"）。若 pico 迟到完成，仍旧补录并重新构图。
+  const picoJob=detectWithPico(img);
+  try{ add(await Promise.race([picoJob,new Promise(r=>setTimeout(()=>r(null),4200))])); }catch(e){}
+  picoJob.then(late=>{
+    if(!late||!late.length)return;
+    const before=boxesDetected.length;
+    add(late);
+    if(boxesDetected.length>before && photo===img){
+      pruneDetectedOutliers();
+      $('#detectStatus').textContent=`已识别 ${boxesDetected.length} 位主体`;
+      autoPlace();render();saveDraft();updateCheck();
+    }
+  }).catch(()=>{});
   // 支持原生 FaceDetector 的浏览器做快速补充。
   if(boxesDetected.length<3 && 'FaceDetector' in window){
     try{const f=await new FaceDetector({fastMode:true,maxDetectedFaces:40}).detect(img);add(f.map(x=>({x:x.boundingBox.x,y:x.boundingBox.y,w:x.boundingBox.width,h:x.boundingBox.height})))}catch(e){}
   }
+  pruneDetectedOutliers();
   $('#detectStatus').textContent=boxesDetected.length?`已识别 ${boxesDetected.length} 位主体`:'已使用群像安全构图';
   return boxesDetected;
+}
+
+// 剔除明显误检：同一张合影中，人脸尺寸不会相差太悬殊（远超中位数的多为衣物花纹等误检）。
+function pruneDetectedOutliers(){
+  if(boxesDetected.length<4)return;
+  const ws=boxesDetected.map(b=>b.w).sort((a,b)=>a-b);
+  const medW=ws[Math.floor(ws.length/2)];
+  boxesDetected=boxesDetected.filter(b=>b.w<=medW*2.6 && b.w>=medW*.4);
 }
 function smartCrop(){
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height, tr=4/3;
   let maxSw,maxSh;
   if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
-  // 没有可靠主体识别时，也默认适度推进，不再把整个场地都塞进画面。
+  // 没有可靠主体识别时的兜底：
+  // V1.2.0 ① 推进从 1.18 提到 1.42（旧值几乎等于不裁，主体太小）；
+  //        ② 竖直改为"偏下锚定"——合影/镜面自拍里人几乎总在画面中下部，
+  //           旧逻辑反而往上偏 14.8%，把大片天花板留在画面里。
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.18 : Math.max(.72,Number(photoZoom)||1);
+    const z=(Number(photoZoom)||1)===1 ? 1.42 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.148-photoDY*ih/H;
+    let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)*.66-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -288,10 +314,12 @@ function smartCrop(){
   }
   gaps.sort((a,b)=>a-b);
   const onePerson=gaps.length?gaps[Math.floor(gaps.length/2)]:medW*2.25;
-  const sideMargin=Math.max(medW*1.75,onePerson*.92);
+  const sideMargin=Math.max(medW*2.6,onePerson*1.05);
 
+  // V1.2.0：按目标封面标定——人群横向占成片约 60%–65%，
+  // 即裁剪宽度 ≈ 人群宽度 × 1.6（旧式"每侧一个站位"在人多时余量过大）。
   const groupW=x2-x1;
-  let desiredW=groupW+sideMargin*2;
+  let desiredW=Math.max(groupW+sideMargin*2, groupW*1.6);
 
   // 从人脸向上下估算全身；优先人物填充，同时避免切头/切脚。
   const top=y1-medH*1.55;
@@ -305,8 +333,8 @@ function smartCrop(){
   // 不能超过原图最大 4:3；也不要因为旧逻辑强行拉回近乎整图。
   sw=Math.min(sw,maxSw);sh=sw/tr;
 
-  // 防止误检导致裁得过狠：默认最大推进约 1.65 倍。
-  const minSw=maxSw/1.65;
+  // 防止误检导致裁得过狠：默认最大推进约 1.75 倍。
+  const minSw=maxSw/1.75;
   sw=Math.max(sw,minSw);sh=sw/tr;
 
   // 用户手动缩放继续生效。
@@ -318,8 +346,11 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.1.2：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
-  let sy=(y1+y2)/2-sh*.438-photoDY*ih/H;
+  // V1.2.0：竖直改为"头顶锚定"——最高人头位于成片高度的 37.5% 处
+  // （标定自目标封面）。旧的"人脸中心锚定"在有人蹲下/半蹲时会整体漂移。
+  let sy=y1-sh*.375-photoDY*ih/H;
+  // 兜底：不允许把最低的人脸（如蹲姿）压到画面底部之下。
+  if(sy+sh < y2+medH*1.8) sy=y2+medH*1.8-sh;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -458,42 +489,65 @@ function target3SkinPixel(r,g,b){
   return y>45 && y<245 && cb>74 && cb<136 && cr>130 && cr<179;
 }
 
-function applyTarget3ExactPhotoPass(targetCtx,w,h){
+function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
   // Runs only on the exported photo layer, before logo/frame/stickers.
-  // Goal: target-3 look = dehaze + vivid color + protected brighter skin + true detail sharpening.
+  // Goal: target-3 look = dehaze + vivid cool-magenta color + protected brighter skin + true detail sharpening.
+  // V1.2.0 标定说明（对照用户目标成片实测）：亮度 +18%、饱和 +31%、色调偏冷粉紫（B 通道增益≈1.29）。
   try{
     const img=targetCtx.getImageData(0,0,w,h);
     const d=img.data;
 
-    // 1) Tone + vibrance + skin protection.
-    for(let i=0;i<d.length;i+=4){
+    // 0) 肤色保护只在"检测到人的身体区域"内生效。
+    // 旧版全图 YCbCr 判肤会把橙色墙面/木地板一起当成皮肤而拒绝增艳，
+    // 这是"成片颜色远不如目标图鲜活"的最大来源。未检测到人时退回全图保护（安全优先）。
+    let zoneMask=null;
+    if(personZones && personZones.length){
+      zoneMask=new Uint8Array(w*h);
+      for(const z of personZones){
+        const x0=Math.max(0,Math.round(z.x)), x1=Math.min(w,Math.round(z.x+z.w));
+        const y0=Math.max(0,Math.round(z.y)), y1=Math.min(h,Math.round(z.y+z.h));
+        for(let yy=y0;yy<y1;yy++){ zoneMask.fill(1, yy*w+x0, yy*w+x1); }
+      }
+    }
+
+    // 1) Tone + cool-magenta shift + vibrance + skin protection.
+    const R_TONE=1.06, B_TONE=1.18;           // 非肤色冷粉紫（标定值）
+    const R_TONE_SKIN=1+(R_TONE-1)*.35, B_TONE_SKIN=1+(B_TONE-1)*.35; // 肤色只吃 35%，避免脸发紫、也软化区域边界
+    for(let i=0,p=0;i<d.length;i+=4,p++){
       let r=d[i], g=d[i+1], b=d[i+2];
       let y=.299*r+.587*g+.114*b;
-      const skin=target3SkinPixel(r,g,b);
+      const inZone=zoneMask?zoneMask[p]===1:true;
+      const skin=inZone && target3SkinPixel(r,g,b);
 
       // Remove gray veil: raise midtone + increase useful contrast.
-      let ny=(y-128)*1.155+141; // ~ +8 luminance around mid tones
+      let ny=(y-128)*1.16+142; // 中间调 +~14
       ny=Math.max(0,Math.min(255,ny));
       const gain=y>1?ny/y:1;
       r*=gain; g*=gain; b*=gain;
 
-      let max=Math.max(r,g,b), min=Math.min(r,g,b), chroma=max-min;
-      const gray=.299*r+.587*g+.114*b;
-
       if(skin){
-        // Skin: about +3–5% brighter/cleaner, reduce excess red/orange, no white glow.
+        // Skin: brighter/cleaner + slight cool shift, no white glow.
+        r=r*R_TONE_SKIN; b=b*B_TONE_SKIN;
         const lift=10.0;
-        r = r*.965 + lift;
-        g = g*1.012 + lift;
-        b = b*1.030 + lift;
+        r = r*.975 + lift;
+        g = g*1.005 + lift;
+        b = b*1.055 + lift;
         const sg=.299*r+.587*g+.114*b;
-        const skinSat=.90;
+        const skinSat=.96;
         r=sg+(r-sg)*skinSat;
         g=sg+(g-sg)*skinSat;
         b=sg+(b-sg)*skinSat;
-      }else if(chroma>10){
+        // 肤色也吃 35% 的活力度，进一步淡化保护区边界。
+        const mx=Math.max(r,g,b), mn=Math.min(r,g,b), ch=mx-mn;
+        const gray2=.299*r+.587*g+.114*b;
+        const vibS=1+.35*.62*Math.max(.25,1-Math.min(1,ch/165));
+        r=gray2+(r-gray2)*vibS; g=gray2+(g-gray2)*vibS; b=gray2+(b-gray2)*vibS;
+      }else{
+        r*=R_TONE; b*=B_TONE;
         // Vibrance: stronger on dull colors, restrained on colors already saturated.
-        const vib=1 + Math.max(.11, Math.min(.34, .34*(1-Math.min(1,chroma/175))));
+        const mx=Math.max(r,g,b), mn=Math.min(r,g,b), ch=mx-mn;
+        const gray=.299*r+.587*g+.114*b;
+        const vib=1+.62*Math.max(.25,1-Math.min(1,ch/165));
         r=gray+(r-gray)*vib;
         g=gray+(g-gray)*vib;
         b=gray+(b-gray)*vib;
@@ -515,13 +569,15 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h){
     const blur=document.createElement('canvas');
     blur.width=w; blur.height=h;
     const bg=blur.getContext('2d',{alpha:false,willReadFrequently:true});
-    bg.filter='blur(0.85px)';
+    // V1.2.0：锐化强度随实际放大倍率自适应（放大越多越需要找回边缘）。
+    const up=Math.max(1,Number(upscale)||1);
+    bg.filter=`blur(${(0.85*Math.min(1.4,up)).toFixed(2)}px)`;
     bg.drawImage(tmp,0,0);
     bg.filter='none';
     const bd=bg.getImageData(0,0,w,h).data;
     const sd=src.data;
 
-    const amount=1.02, threshold=3.0, maxHP=18;
+    const amount=Math.min(1.35,1.0+(up-1)*.9), threshold=3.0, maxHP=20;
     for(let i=0;i<sd.length;i+=4){
       for(let c=0;c<3;c++){
         let hp=sd[i+c]-bd[i+c];
@@ -574,14 +630,29 @@ function drawPhoto(){
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.1.2：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
-  const br=Math.max(.65,(1+b*(isNatural?.025:.12)+ex)*gr.br);
-  const con=Math.max(.6,(1+b*(isNatural?.035:.02)+ct)*gr.ct);
-  const sat=Math.max(.2,(1+b*(isNatural?.075:.05)+sa)*gr.sa);
+  // V1.2.0：默认 A（鲜活自然）改为"所见即所得"：
+  //   预览 = CSS filter 近似目标色（亮度+13% / 饱和+30% / 微对比 + 冷粉纱）；
+  //   导出 = 基础滤镜归零，由 Target-3 精确逐像素处理独家负责调色，
+  //          避免旧版"基础滤镜 + 精确处理"双重叠加导致预览与成片不一致。
+  let br,con,sat,hue;
+  if(isNatural){
+    if(POPSHOT_EXPORT_RENDERING){ br=1+manualColor.ex/100;con=1+manualColor.ct/100;sat=1+manualColor.sa/100;hue=0; }
+    else { br=1.13+manualColor.ex/100; con=1.06+manualColor.ct/100; sat=1.30+manualColor.sa/100; hue=0; }
+  }else{
+    br=Math.max(.65,(1+b*.12+ex)*gr.br);
+    con=Math.max(.6,(1+b*.02+ct)*gr.ct);
+    sat=Math.max(.2,(1+b*.05+sa)*gr.sa);
+    hue=gr.hue;
+  }
   ctx.save();
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
+  ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
+  // 自然模式预览：叠一层极轻冷粉紫纱，近似导出时的精确色调偏移（导出不走这段）。
+  if(isNatural && !POPSHOT_EXPORT_RENDERING){
+    ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle='rgba(185,105,255,.07)';ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='screen';ctx.globalAlpha=.045;ctx.fillStyle='rgba(80,130,255,1)';ctx.fillRect(0,0,W,H);ctx.restore();
+  }
   // V1.1.2：自然模式不再二次覆盖一层原图。
   // 旧做法会把前面的亮度/对比/色彩重新冲淡，同时在放大裁剪时进一步造成视觉发软。
   if(!dragging && !isNatural){
@@ -603,7 +674,17 @@ function drawPhoto(){
   if(isNatural && POPSHOT_EXPORT_RENDERING){
     ctx.save();
     ctx.setTransform(1,0,0,1,0,0);
-    applyTarget3ExactPhotoPass(ctx,canvas.width,canvas.height);
+    // 把检测到的人脸框换算成"人物身体区域"（导出画布像素坐标），
+    // 肤色保护只在这些区域内生效，场景（橙墙/灯带/地板）可放心增艳。
+    const kx=canvas.width/c.sw, ky=canvas.height/c.sh;
+    const zones=boxesDetected.map(bx=>({
+      x:(bx.x-bx.w*1.4-c.sx)*kx,
+      y:(bx.y-bx.h*.8 -c.sy)*ky,
+      w:bx.w*3.8*kx,
+      h:bx.h*8.3*ky
+    }));
+    const qi=getExportIntegrityInfo();
+    applyTarget3ExactPhotoPass(ctx,canvas.width,canvas.height,zones,qi?qi.upscale:1);
     ctx.restore();
   }
 }
@@ -1526,18 +1607,20 @@ function getLosslessExportSize(){
   const c=smartCrop();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
 
-  // 最终像素规格取“原图能提供的最大 4:3 分辨率”，不再因为自动构图放大
-  // 就把成片从 1706×1279 主动降到 1444×1083。
-  let w,h;
-  if(iw/ih>=4/3){
-    h=Math.floor(ih);
-    w=Math.floor(h*4/3);
-  }else{
-    w=Math.floor(iw);
-    h=Math.floor(w*3/4);
-  }
+  // V1.2.0：导出分辨率 = 裁剪区域的真实源像素（1:1，不重采样 = 最清晰）。
+  // 旧版无论裁多少都强行放大回"原图最大 4:3"，推进 1.6 倍时相当于把照片放大 1.6 倍，
+  // 这是"清晰度不如自己裁的"的直接原因。像素多 ≠ 清晰，1:1 源像素才清晰。
+  // 仅当裁剪源宽 <1080 时，为满足社交平台展示才温和放大到 1080（上限 1.5×，并配自适应锐化）。
+  let maxW,maxH;
+  if(iw/ih>=4/3){ maxH=Math.floor(ih); maxW=Math.floor(maxH*4/3); }
+  else { maxW=Math.floor(iw); maxH=Math.floor(maxW*3/4); }
+
+  const cropW=Math.max(4,Math.round(c.sw));
+  let w=cropW;
+  if(w<1080) w=Math.min(1080, Math.round(cropW*1.5), maxW);
+  w=Math.min(w,maxW);
   w=Math.max(4,w-(w%4));
-  h=Math.max(3,Math.round(w*3/4));
+  const h=Math.max(3,Math.round(w*3/4));
   return {w,h,crop:c,scale:w/W};
 }
 
