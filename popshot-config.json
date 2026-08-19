@@ -1,5 +1,5 @@
 {
-  "version": "1.1.3",
+  "version": "1.1.2",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -275,7 +275,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "Target3 candidate validated with real PopShot export, not image-generation preview",
+  "releaseFocus": "Target3 actual PNG quality first; color layered after source-quality render",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -395,7 +395,7 @@
     "skin": "YCbCr skin protection; +3–5% cleaner/brighter, red/orange restrained",
     "color": "midtone dehaze + vibrance for non-skin colored regions",
     "crop": "subject slightly lower, less empty floor",
-    "cache": "all code/asset cache-busters aligned to v1.1.3",
+    "cache": "all code/asset cache-busters aligned to v1.1.0",
     "speed": "known course combos preload in background"
   },
   "actualExportTuning": {
@@ -419,12 +419,5 @@
       "PNG encode"
     ],
     "android": "APK bridge saves the exact same PNG bytes; no Android-side recompression"
-  },
-  "candidateValidation": {
-    "method": "real PopShot tool run -> upload same source -> Lelepop + Natural -> real PNG export -> compare against target3",
-    "export": "2048x1536 PNG lossless",
-    "clarity": "latest internal real export edge strength ~97% of target3",
-    "composition": "latest internal geometry within ~1% scale of target3",
-    "status": "candidate for user-side verification"
   }
 }

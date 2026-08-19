@@ -1,6 +1,6 @@
 {
-  "version": "1.1.3",
-  "build": 1787097759,
+  "version": "1.1.2",
+  "build": 1787079100,
   "atomicPublish": true,
-  "notes": "Target3 real-export candidate: 2048x1536 lossless PNG, restored target composition, calibrated color/tone, protected skin, final-resolution detail enhancement."
+  "notes": "Target3 max-quality actual export: less auto crop enlargement, stronger export-only detail/color, skin protection, black/white separation, exact PNG bytes, Android bridge support."
 }

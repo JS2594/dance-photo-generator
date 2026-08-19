@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.1.3';
+const POPSHOT_VERSION='1.1.2';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.1.3';
+const W = 2525, H = 1894, VERSION = '1.1.2';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -69,7 +69,7 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'鲜活自然',ex:.035,ct:.105,sa:.145,temp:-1,hi:-.020,sh:.015,tint:null},
+  natural:{label:'鲜活自然',ex:.045,ct:.145,sa:.220,temp:-2,hi:-.025,sh:.030,tint:null},
   texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
@@ -193,7 +193,7 @@ function load(path){
     const inlineSvg=INLINE_STICKER_SVGS[path];
     im.src=inlineSvg
       ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
-      : (path.includes('?')?path:path+'?v=1.1.3');
+      : (path.includes('?')?path:path+'?v=1.1.2');
   });
   return loaded[path];
 }
@@ -246,7 +246,7 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.1.3：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
+  // V1.1.2：优先本地 pico，不再等待外网 MediaPipe 4 秒超时。
   try{ add(await Promise.race([detectWithPico(img),new Promise(r=>setTimeout(()=>r([]),1800))])); }catch(e){}
   // 支持原生 FaceDetector 的浏览器做快速补充。
   if(boxesDetected.length<3 && 'FaceDetector' in window){
@@ -262,7 +262,7 @@ function smartCrop(){
 
   // 没有可靠主体识别时，也默认适度推进，不再把整个场地都塞进画面。
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.80 : Math.max(.72,Number(photoZoom)||1);
+    const z=(Number(photoZoom)||1)===1 ? 1.18 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
     let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)/2-sh*.148-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
@@ -305,9 +305,9 @@ function smartCrop(){
   // 不能超过原图最大 4:3；也不要因为旧逻辑强行拉回近乎整图。
   sw=Math.min(sw,maxSw);sh=sw/tr;
 
-  // Target-3：群像主体填充提高，减少场地空白；仍保留最大推进安全阈值。
+  // 防止误检导致裁得过狠：默认最大推进约 1.65 倍。
   const minSw=maxSw/1.65;
-  sw=Math.max(sw*.79,minSw);sh=sw/tr;
+  sw=Math.max(sw,minSw);sh=sw/tr;
 
   // 用户手动缩放继续生效。
   const userZoom=Number(photoZoom)||1;
@@ -317,9 +317,9 @@ function smartCrop(){
   }
 
   const cx=(x1+x2)/2;
-  let sx=cx-sw/2 + iw*.011 - photoDX*iw/W;
-  // V1.1.3：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
-  let sy=(y1+y2)/2-sh*.472-photoDY*ih/H;
+  let sx=cx-sw/2-photoDX*iw/W;
+  // V1.1.2：主体在成片中整体下移约 5%，减少‘人物贴顶’感，同时保留脚部。
+  let sy=(y1+y2)/2-sh*.438-photoDY*ih/H;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
@@ -459,85 +459,130 @@ function target3SkinPixel(r,g,b){
 }
 
 function applyTarget3ExactPhotoPass(targetCtx,w,h){
-  // V1.1.3 Target-3 calibrated from the real user target, not a generated reference.
+  // Runs only on the exported photo layer, before logo/frame/stickers.
+  // Goal: target-3 look = dehaze + vivid color + protected brighter skin + true detail sharpening.
   try{
-    const img=targetCtx.getImageData(0,0,w,h), d=img.data;
-    const interp=(x,xs,ys)=>{
-      if(x<=xs[0])return ys[0]+(x-xs[0])*(ys[1]-ys[0])/(xs[1]-xs[0]);
-      for(let j=1;j<xs.length;j++)if(x<=xs[j])return ys[j-1]+(x-xs[j-1])*(ys[j]-ys[j-1])/(xs[j]-xs[j-1]);
-      const n=xs.length; return ys[n-1]+(x-xs[n-1])*(ys[n-1]-ys[n-2])/(xs[n-1]-xs[n-2]);
-    };
-    const lIn=[37,87,149,182,222], lOut=[30,89,155,183,228];
-    const sIn=[16,42,76,114,158], sOut=[7,31,81,132,176];
+    const img=targetCtx.getImageData(0,0,w,h);
+    const d=img.data;
 
+    // 1) Tone + vibrance + skin protection.
     for(let i=0;i<d.length;i+=4){
-      let r=d[i],g=d[i+1],b=d[i+2];
-      // robust RGB calibration measured from the actual target image
-      let nr=1.1431*r-0.1621*g+0.1269*b-2.34;
-      let ng=-0.1068*r+1.3885*g-0.2454*b+10.04;
-      let nb=-0.1001*r-0.0272*g+1.1358*b+36.67;
-      r=Math.max(0,Math.min(255,nr));g=Math.max(0,Math.min(255,ng));b=Math.max(0,Math.min(255,nb));
-
-      // HSV conversion
-      let rr=r/255,gg=g/255,bb=b/255,max=Math.max(rr,gg,bb),min=Math.min(rr,gg,bb),delta=max-min;
-      let h=0;
-      if(delta){if(max===rr)h=((gg-bb)/delta)%6;else if(max===gg)h=(bb-rr)/delta+2;else h=(rr-gg)/delta+4;h*=60;if(h<0)h+=360;}
-      let sat=max===0?0:delta/max;
-      let val=max;
-
-      // target saturation curve: protect low-sat skin/whites, boost colorful clothing/background
-      let s255=sat*255;
-      let mappedS=Math.max(0,Math.min(255,interp(s255,sIn,sOut)));
+      let r=d[i], g=d[i+1], b=d[i+2];
+      let y=.299*r+.587*g+.114*b;
       const skin=target3SkinPixel(r,g,b);
-      if(skin) mappedS*=0.78;
-      sat=Math.max(0,Math.min(1,mappedS/255));
 
-      // target luminance curve measured from real Target-3
-      let lum=.2126*r+.7152*g+.0722*b;
-      let mappedL=Math.max(0,Math.min(255,interp(lum,lIn,lOut)));
-      if(skin)mappedL=Math.min(246,mappedL+4.0); // white-translucent, not red
-      let gain=lum>1?mappedL/lum:1;
-      val=Math.max(0,Math.min(1,val*gain));
+      // Remove gray veil: raise midtone + increase useful contrast.
+      let ny=(y-128)*1.155+141; // ~ +8 luminance around mid tones
+      ny=Math.max(0,Math.min(255,ny));
+      const gain=y>1?ny/y:1;
+      r*=gain; g*=gain; b*=gain;
 
-      // HSV back to RGB
-      const C=val*sat, X=C*(1-Math.abs((h/60)%2-1)), m=val-C;
-      let R=0,G=0,B=0;
-      if(h<60){R=C;G=X}else if(h<120){R=X;G=C}else if(h<180){G=C;B=X}else if(h<240){G=X;B=C}else if(h<300){R=X;B=C}else{R=C;B=X}
-      d[i]=Math.max(0,Math.min(255,(R+m)*255));
-      d[i+1]=Math.max(0,Math.min(255,(G+m)*255));
-      d[i+2]=Math.max(0,Math.min(255,(B+m)*255));
+      let max=Math.max(r,g,b), min=Math.min(r,g,b), chroma=max-min;
+      const gray=.299*r+.587*g+.114*b;
+
+      if(skin){
+        // Skin: about +3–5% brighter/cleaner, reduce excess red/orange, no white glow.
+        const lift=10.0;
+        r = r*.965 + lift;
+        g = g*1.012 + lift;
+        b = b*1.030 + lift;
+        const sg=.299*r+.587*g+.114*b;
+        const skinSat=.90;
+        r=sg+(r-sg)*skinSat;
+        g=sg+(g-sg)*skinSat;
+        b=sg+(b-sg)*skinSat;
+      }else if(chroma>10){
+        // Vibrance: stronger on dull colors, restrained on colors already saturated.
+        const vib=1 + Math.max(.11, Math.min(.34, .34*(1-Math.min(1,chroma/175))));
+        r=gray+(r-gray)*vib;
+        g=gray+(g-gray)*vib;
+        b=gray+(b-gray)*vib;
+      }
+
+      d[i]=Math.max(0,Math.min(255,r));
+      d[i+1]=Math.max(0,Math.min(255,g));
+      d[i+2]=Math.max(0,Math.min(255,b));
     }
     targetCtx.putImageData(img,0,0);
 
-    // Strong final-size detail restoration. This is sharpening, not blur/noise reduction.
+    // 2) True unsharp mask. Do not soften/noise-reduce.
     const src=targetCtx.getImageData(0,0,w,h);
-    const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;
-    const tg=tmp.getContext('2d',{alpha:false,willReadFrequently:true});tg.putImageData(src,0,0);
-    const blur=document.createElement('canvas');blur.width=w;blur.height=h;
+    const tmp=document.createElement('canvas');
+    tmp.width=w; tmp.height=h;
+    const tg=tmp.getContext('2d',{alpha:false,willReadFrequently:true});
+    tg.putImageData(src,0,0);
+
+    const blur=document.createElement('canvas');
+    blur.width=w; blur.height=h;
     const bg=blur.getContext('2d',{alpha:false,willReadFrequently:true});
-    bg.filter='blur(0.9px)';bg.drawImage(tmp,0,0);bg.filter='none';
-    const bd=bg.getImageData(0,0,w,h).data, sd=src.data;
-    const amount=2.80,threshold=2.1,maxHP=25;
-    for(let i=0;i<sd.length;i+=4){for(let c=0;c<3;c++){let hp=sd[i+c]-bd[i+c];if(Math.abs(hp)<threshold)hp=0;hp=Math.max(-maxHP,Math.min(maxHP,hp));sd[i+c]=Math.max(0,Math.min(255,sd[i+c]+hp*amount));}}
+    bg.filter='blur(0.85px)';
+    bg.drawImage(tmp,0,0);
+    bg.filter='none';
+    const bd=bg.getImageData(0,0,w,h).data;
+    const sd=src.data;
+
+    const amount=1.02, threshold=3.0, maxHP=18;
+    for(let i=0;i<sd.length;i+=4){
+      for(let c=0;c<3;c++){
+        let hp=sd[i+c]-bd[i+c];
+        if(Math.abs(hp)<threshold) hp=0;
+        hp=Math.max(-maxHP,Math.min(maxHP,hp));
+        sd[i+c]=Math.max(0,Math.min(255,sd[i+c]+hp*amount));
+      }
+    }
     targetCtx.putImageData(src,0,0);
-  }catch(e){console.warn('Target3 calibrated pass skipped',e)}
+
+    // 3) Export-only micro-contrast: restore local separation lost by crop scaling.
+    const fin=targetCtx.getImageData(0,0,w,h);
+    const fd=fin.data;
+    const microBlur=document.createElement('canvas');
+    microBlur.width=w; microBlur.height=h;
+    const mg=microBlur.getContext('2d',{alpha:false,willReadFrequently:true});
+    mg.filter='blur(2.2px)';
+    mg.drawImage(targetCtx.canvas,0,0);
+    mg.filter='none';
+    const md=mg.getImageData(0,0,w,h).data;
+    for(let i=0;i<fd.length;i+=4){
+      for(let c=0;c<3;c++){
+        let hp=fd[i+c]-md[i+c];
+        hp=Math.max(-11,Math.min(11,hp));
+        fd[i+c]=Math.max(0,Math.min(255,fd[i+c]+hp*.22));
+      }
+    }
+    targetCtx.putImageData(fin,0,0);
+
+    // 4) Final black/white separation: deeper blacks and cleaner whites, no haze overlay.
+    const bw=targetCtx.getImageData(0,0,w,h);
+    const px=bw.data;
+    for(let i=0;i<px.length;i+=4){
+      for(let c=0;c<3;c++){
+        let v=px[i+c]/255;
+        // gentle S curve
+        v = v<.5 ? 0.5*Math.pow(v*2,1.06) : 1-0.5*Math.pow((1-v)*2,1.06);
+        px[i+c]=Math.max(0,Math.min(255,Math.round(v*255)));
+      }
+    }
+    targetCtx.putImageData(bw,0,0);
+  }catch(e){
+    console.warn('Target3 exact pass skipped',e);
+  }
 }
+
 function drawPhoto(){
   const c=smartCrop(), b=beauty/100, gr=styles[visualStyle].g;
   const bp=BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural;
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.1.3：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
+  // V1.1.2：默认 A 不再靠“提白”制造通透，改为微对比+有色区域增艳。
   const br=Math.max(.65,(1+b*(isNatural?.025:.12)+ex)*gr.br);
   const con=Math.max(.6,(1+b*(isNatural?.035:.02)+ct)*gr.ct);
   const sat=Math.max(.2,(1+b*(isNatural?.075:.05)+sa)*gr.sa);
   ctx.save();
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  if(isNatural && POPSHOT_EXPORT_RENDERING) ctx.filter='none';
-  else ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
+  ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${gr.hue}deg)`;
   ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
-  // V1.1.3：自然模式不再二次覆盖一层原图。
+  // V1.1.2：自然模式不再二次覆盖一层原图。
   // 旧做法会把前面的亮度/对比/色彩重新冲淡，同时在放大裁剪时进一步造成视觉发软。
   if(!dragging && !isNatural){
     ctx.save();ctx.globalAlpha=.14;ctx.filter='contrast(1.055) saturate(1.025)';
@@ -833,7 +878,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.1.3';
+    im.src=src+'?v=1.1.2';
   });
 }
 const DEFAULT_COMBO_FILE={
@@ -1491,9 +1536,6 @@ function getLosslessExportSize(){
     w=Math.floor(iw);
     h=Math.floor(w*3/4);
   }
-  // Target-3 quality floor: never export below 2048×1536. This is a high-quality upscale from the original crop, not preview scaling.
-  w=Math.max(2048,w);
-  h=Math.round(w*3/4);
   w=Math.max(4,w-(w%4));
   h=Math.max(3,Math.round(w*3/4));
   return {w,h,crop:c,scale:w/W};
@@ -1927,10 +1969,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.1.3',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.1.3',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.1.3',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.1.3'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.1.2',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.1.2',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.1.2',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.1.2'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
