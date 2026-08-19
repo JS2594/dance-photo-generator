@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.2.1';
+const POPSHOT_VERSION='1.3.0';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.2.1';
+const W = 2525, H = 1894, VERSION = '1.3.0';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -193,7 +193,7 @@ function load(path){
     const inlineSvg=INLINE_STICKER_SVGS[path];
     im.src=inlineSvg
       ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
-      : (path.includes('?')?path:path+'?v=1.2.1');
+      : (path.includes('?')?path:path+'?v=1.3.0');
   });
   return loaded[path];
 }
@@ -229,7 +229,7 @@ async function detectWithPico(img){
     const data=g.getImageData(0,0,w,h).data;
     const gray=new Uint8Array(w*h);
     for(let i=0;i<w*h;i++) gray[i]=(2*data[i*4]+7*data[i*4+1]+data[i*4+2])/10;
-    // V1.2.1：合影里单张人脸往往只有短边的 2%–4%。
+    // V1.3.0：合影里单张人脸往往只有短边的 2%–4%。
     // 旧 minsize=短边×3.5% 会把大部分人脸直接筛掉 → 检测数 <2 → 落入弱兜底构图。
     let dets=pico.run_cascade(
       {pixels:gray,nrows:h,ncols:w,ldim:w},classify,
@@ -248,7 +248,7 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.2.1：本地 pico 优先，等待窗口 1.8s → 4.2s（低端机上 1.8s 常来不及跑完级联，
+  // V1.3.0：本地 pico 优先，等待窗口 1.8s → 4.2s（低端机上 1.8s 常来不及跑完级联，
   // 导致检测结果被丢弃、构图退化成"整图微推"）。若 pico 迟到完成，仍旧补录并重新构图。
   const picoJob=detectWithPico(img);
   try{ add(await Promise.race([picoJob,new Promise(r=>setTimeout(()=>r(null),4200))])); }catch(e){}
@@ -284,11 +284,11 @@ function smartCrop(){
   if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
   // 没有可靠主体识别时的兜底：
-  // V1.2.1 ① 推进从 1.18 提到 1.42（旧值几乎等于不裁，主体太小）；
+  // V1.3.0 ① 推进从 1.18 提到 1.42（旧值几乎等于不裁，主体太小）；
   //        ② 竖直改为"偏下锚定"——合影/镜面自拍里人几乎总在画面中下部，
   //           旧逻辑反而往上偏 14.8%，把大片天花板留在画面里。
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.42 : Math.max(.72,Number(photoZoom)||1);
+    const z=(Number(photoZoom)||1)===1 ? 1.60 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
     let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)*.66-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
@@ -316,7 +316,7 @@ function smartCrop(){
   const onePerson=gaps.length?gaps[Math.floor(gaps.length/2)]:medW*2.25;
   const sideMargin=Math.max(medW*2.6,onePerson*1.05);
 
-  // V1.2.1：按目标封面标定——人群横向占成片约 60%–65%，
+  // V1.3.0：按目标封面标定——人群横向占成片约 60%–65%，
   // 即裁剪宽度 ≈ 人群宽度 × 1.6（旧式"每侧一个站位"在人多时余量过大）。
   const groupW=x2-x1;
   let desiredW=Math.max(groupW+sideMargin*2, groupW*1.6);
@@ -346,7 +346,7 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.2.1：竖直改为"头顶锚定"——最高人头位于成片高度的 37.5% 处
+  // V1.3.0：竖直改为"头顶锚定"——最高人头位于成片高度的 37.5% 处
   // （标定自目标封面）。旧的"人脸中心锚定"在有人蹲下/半蹲时会整体漂移。
   let sy=y1-sh*.375-photoDY*ih/H;
   // 兜底：不允许把最低的人脸（如蹲姿）压到画面底部之下。
@@ -538,13 +538,65 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
   }catch(e){console.warn('Target3 Neutral HD pass skipped',e)}
 }
 
+
+// ── V1.3.0 AI-HD experiment ─────────────────────────────────────────────
+let AIHD_ENABLED=true,AIHD_MODEL=null,AIHD_LOADING=null,AIHD_EXPORT_SOURCE=null,AIHD_LAST_ERROR='';
+const AIHD_MODEL_URL='https://upscale.chino.icu/realcugan/2x-conservative-64/model.json';
+function loadScriptOnce(src,id){return new Promise((ok,no)=>{if(document.getElementById(id))return ok();const x=document.createElement('script');x.id=id;x.src=src;x.async=true;x.onload=ok;x.onerror=()=>no(new Error('load '+src));document.head.appendChild(x)})}
+async function ensureAIHD(){
+ if(AIHD_MODEL)return AIHD_MODEL;if(AIHD_LOADING)return AIHD_LOADING;
+ AIHD_LOADING=(async()=>{
+  await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js','popshot-tfjs');
+  try{await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgpu@4.22.0/dist/tf-backend-webgpu.min.js','popshot-webgpu')}catch(e){}
+  try{if(navigator.gpu){await tf.setBackend('webgpu')}else await tf.setBackend('webgl')}catch(e){await tf.setBackend('webgl')}
+  await tf.ready();AIHD_MODEL=await tf.loadGraphModel(AIHD_MODEL_URL);return AIHD_MODEL;
+ })().catch(e=>{AIHD_LAST_ERROR=String(e);AIHD_LOADING=null;throw e});
+ return AIHD_LOADING;
+}
+async function aiHdUpscaleCanvas(inputCanvas){
+ const model=await ensureAIHD(),tile=64,scale=2,overlap=12;
+ // Phone-safe working crop. This is made FROM THE ORIGINAL CROP, never the preview.
+ const maxSide=1152;let work=inputCanvas;
+ if(Math.max(work.width,work.height)>maxSide){
+  const k=maxSide/Math.max(work.width,work.height),c=document.createElement('canvas');
+  c.width=Math.round(work.width*k);c.height=Math.round(work.height*k);
+  const g=c.getContext('2d',{alpha:false});g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(work,0,0,c.width,c.height);work=c;
+ }
+ const w=work.width,h=work.height,out=document.createElement('canvas');out.width=w*2;out.height=h*2;
+ const og=out.getContext('2d',{alpha:false}),step=tile-overlap;
+ for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){
+  const tw=Math.min(tile,w-x),th=Math.min(tile,h-y),tc=document.createElement('canvas');tc.width=tile;tc.height=tile;
+  const tg=tc.getContext('2d',{alpha:false});tg.drawImage(work,x,y,tw,th,0,0,tw,th);
+  if(tw<tile)tg.drawImage(tc,tw-1,0,1,th,tw,0,tile-tw,th);
+  if(th<tile)tg.drawImage(tc,0,th-1,tile,1,0,th,tile,tile-th);
+  const inp=tf.browser.fromPixels(tc).toFloat().div(255).expandDims(0);
+  let pred=model.predict(inp);if(Array.isArray(pred))pred=pred[0];
+  const clipped=tf.tidy(()=>pred.squeeze().clipByValue(0,1)),pix=await tf.browser.toPixels(clipped);
+  inp.dispose();pred.dispose();clipped.dispose();
+  const pc=document.createElement('canvas');pc.width=128;pc.height=128;
+  pc.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(pix),128,128),0,0);
+  const L=x?overlap:0,T=y?overlap:0,R=(x+tw<w)?overlap:0,B=(y+th<h)?overlap:0;
+  const sw=tw*2-L-R,sh=th*2-T-B;
+  if(sw>0&&sh>0)og.drawImage(pc,L,T,sw,sh,x*2+L,y*2+T,sw,sh);
+  await new Promise(r=>setTimeout(r,0));
+ }
+ return out;
+}
+async function makeAIHDPhotoCanvas(){
+ const c=smartCrop(),base=document.createElement('canvas');
+ base.width=Math.max(4,Math.round(c.sw));base.height=Math.max(3,Math.round(c.sh));
+ const g=base.getContext('2d',{alpha:false});g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+ g.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,base.width,base.height);
+ return await aiHdUpscaleCanvas(base);
+}
+
 function drawPhoto(){
   const c=smartCrop(), b=beauty/100, gr=styles[visualStyle].g;
   const bp=BEAUTY_PRESETS[beautyPreset]||BEAUTY_PRESETS.natural;
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.2.1：默认 A（鲜活自然）改为"所见即所得"：
+  // V1.3.0：默认 A（鲜活自然）改为"所见即所得"：
   //   预览 = CSS filter 近似目标色（亮度+13% / 饱和+30% / 微对比 + 冷粉纱）；
   //   导出 = 基础滤镜归零，由 Target-3 精确逐像素处理独家负责调色，
   //          避免旧版"基础滤镜 + 精确处理"双重叠加导致预览与成片不一致。
@@ -561,7 +613,7 @@ function drawPhoto(){
   ctx.save();
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.filter=`brightness(${br.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) hue-rotate(${hue}deg)`;
-  ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H);ctx.restore();
+  if(POPSHOT_EXPORT_RENDERING&&AIHD_EXPORT_SOURCE){ctx.drawImage(AIHD_EXPORT_SOURCE,0,0,AIHD_EXPORT_SOURCE.width,AIHD_EXPORT_SOURCE.height,0,0,W,H)}else{ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H)}ctx.restore();
   // 自然模式预览：叠一层极轻冷粉紫纱，近似导出时的精确色调偏移（导出不走这段）。
   if(isNatural && !POPSHOT_EXPORT_RENDERING){
     ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle='rgba(185,105,255,.07)';ctx.fillRect(0,0,W,H);
@@ -873,7 +925,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.2.1';
+    im.src=src+'?v=1.3.0';
   });
 }
 const DEFAULT_COMBO_FILE={
@@ -1521,7 +1573,7 @@ function getLosslessExportSize(){
   const c=smartCrop();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
 
-  // V1.2.1：导出分辨率 = 裁剪区域的真实源像素（1:1，不重采样 = 最清晰）。
+  // V1.3.0：导出分辨率 = 裁剪区域的真实源像素（1:1，不重采样 = 最清晰）。
   // 旧版无论裁多少都强行放大回"原图最大 4:3"，推进 1.6 倍时相当于把照片放大 1.6 倍，
   // 这是"清晰度不如自己裁的"的直接原因。像素多 ≠ 清晰，1:1 源像素才清晰。
   // 仅当裁剪源宽 <1080 时，为满足社交平台展示才温和放大到 1080（上限 1.5×，并配自适应锐化）。
@@ -1559,26 +1611,22 @@ function updateCheck(){
 
 
 async function renderLosslessExport(){
-  const q=getLosslessExportSize();
-  const exportCanvas=document.createElement('canvas');
-  exportCanvas.width=q.w; exportCanvas.height=q.h;
-  const exportCtx=exportCanvas.getContext('2d',{alpha:false,willReadFrequently:false});
-  exportCtx.imageSmoothingEnabled=true;
-  exportCtx.imageSmoothingQuality='high';
-
-  // 画面中的所有位置仍使用稳定的 2525×1894 逻辑坐标；
-  // 这里只把逻辑坐标映射到原图有效像素级输出，绝不拿手机预览图二次放大。
-  const previewCanvas=canvas, previewCtx=ctx;
-  canvas=exportCanvas; ctx=exportCtx;
-  POPSHOT_EXPORT_RENDERING=true;
-  ctx.setTransform(q.w/W,0,0,q.h/H,0,0);
-  try{
-    await render();
-  }finally{
-    POPSHOT_EXPORT_RENDERING=false;
-    canvas=previewCanvas; ctx=previewCtx;
+  let ai=null;
+  if(AIHD_ENABLED&&photo){
+    try{showSaveToast('AI超清处理中 · 首次需下载约2.6MB模型…');ai=await makeAIHDPhotoCanvas()}
+    catch(e){AIHD_LAST_ERROR=String(e);console.warn('AI-HD fallback',e);showSaveToast('AI超清不可用，已自动回退普通高清')}
   }
-  return {canvas:exportCanvas,w:q.w,h:q.h};
+  const normal=getLosslessExportSize();
+  // AI output itself becomes the final photo pixel source. Cap only for phone stability.
+  const q=ai?{w:Math.min(ai.width,2304),h:Math.round(Math.min(ai.width,2304)*3/4)}:normal;
+  const exportCanvas=document.createElement('canvas');exportCanvas.width=q.w;exportCanvas.height=q.h;
+  const exportCtx=exportCanvas.getContext('2d',{alpha:false,willReadFrequently:false});
+  exportCtx.imageSmoothingEnabled=true;exportCtx.imageSmoothingQuality='high';
+  const previewCanvas=canvas,previewCtx=ctx;
+  canvas=exportCanvas;ctx=exportCtx;POPSHOT_EXPORT_RENDERING=true;AIHD_EXPORT_SOURCE=ai;
+  ctx.setTransform(q.w/W,0,0,q.h/H,0,0);
+  try{await render()}finally{POPSHOT_EXPORT_RENDERING=false;AIHD_EXPORT_SOURCE=null;canvas=previewCanvas;ctx=previewCtx}
+  return {canvas:exportCanvas,w:q.w,h:q.h,ai:!!ai};
 }
 
 $('#exportBtn').onclick=async()=>{
@@ -1592,7 +1640,7 @@ $('#exportBtn').onclick=async()=>{
     const blob=await new Promise((res,rej)=>hi.canvas.toBlob(b=>b?res(b):rej(new Error('export')),'image/png'));
     const mb=(blob.size/1024/1024).toFixed(2);
     const filename=`PopShot-${course}-${hi.w}x${hi.h}-${Date.now()}.png`;
-    console.info(`[PopShot] lossless PNG ${hi.w}x${hi.h}, ${mb} MB`);
+    console.info(`[PopShot] ${hi.ai?'AI-HD':'HD'} PNG ${hi.w}x${hi.h}, ${mb} MB`);
     const file=new File([blob],filename,{type:'image/png'});
     
     if(window.Android&&typeof window.Android.savePngBase64==='function'){
@@ -1966,10 +2014,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.2.1',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.2.1',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.2.1',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.2.1'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.3.0',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.3.0',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.3.0',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.3.0'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
@@ -2034,3 +2082,5 @@ async function checkForPopShotUpdate(){
   }catch(e){console.warn('update check',e)}
   return false;
 }
+
+document.addEventListener('DOMContentLoaded',()=>{const t=document.getElementById('aiHdToggle');if(!t)return;const v=localStorage.getItem('popshot-aihd');if(v!==null)AIHD_ENABLED=v==='1';t.checked=AIHD_ENABLED;t.addEventListener('change',()=>{AIHD_ENABLED=t.checked;localStorage.setItem('popshot-aihd',t.checked?'1':'0')})});
