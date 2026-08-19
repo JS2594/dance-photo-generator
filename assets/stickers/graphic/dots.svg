@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-<defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#7657ff"/><stop offset="1" stop-color="#ee4aa4"/></linearGradient></defs>
-<circle cx="64" cy="64" r="48" fill="white" stroke="url(#g)" stroke-width="6"/>
-<text x="64" y="82" text-anchor="middle" font-family="Arial,sans-serif" font-size="54" font-weight="700" fill="url(#g)">☺</text>
-</svg>
