@@ -1,5 +1,5 @@
 {
-  "version": "1.3.2",
+  "version": "1.3.3",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -275,7 +275,7 @@
     "targetSideBreathingRoom": "approximately one full-person standing width on both sides when source permits",
     "priority": "comfortable group composition"
   },
-  "releaseFocus": "CLEAN baseline for redeploy",
+  "releaseFocus": "fixed combos + no AI pre-downscale + larger subject framing",
   "colorAndSharpnessChanged": false,
   "finishedCombo": {
     "default": true,
@@ -439,7 +439,12 @@
   },
   "resourcePolicy": {
     "characters": "public/assets/characters",
-    "fixedDefaultCombos": "public/custom-combos",
-    "rule": "These two paths are canonical and must be preserved in future updates unless user supplies replacements."
+    "fixedDefaultCombos": "public/custom-combos/custom-combos.json"
+  },
+  "aiHdFix": {
+    "preDownscale": false,
+    "tile": 64,
+    "overlap": 8,
+    "maxFinalWidth": 2560
   }
 }

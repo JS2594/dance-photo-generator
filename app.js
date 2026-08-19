@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.3.2';
+const POPSHOT_VERSION='1.3.3';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.3.2';
+const W = 2525, H = 1894, VERSION = '1.3.3';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -193,7 +193,7 @@ function load(path){
     const inlineSvg=INLINE_STICKER_SVGS[path];
     im.src=inlineSvg
       ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(inlineSvg)
-      : (path.includes('?')?path:path+'?v=1.3.2');
+      : (path.includes('?')?path:path+'?v=1.3.3');
   });
   return loaded[path];
 }
@@ -229,7 +229,7 @@ async function detectWithPico(img){
     const data=g.getImageData(0,0,w,h).data;
     const gray=new Uint8Array(w*h);
     for(let i=0;i<w*h;i++) gray[i]=(2*data[i*4]+7*data[i*4+1]+data[i*4+2])/10;
-    // V1.3.2：合影里单张人脸往往只有短边的 2%–4%。
+    // V1.3.3：合影里单张人脸往往只有短边的 2%–4%。
     // 旧 minsize=短边×3.5% 会把大部分人脸直接筛掉 → 检测数 <2 → 落入弱兜底构图。
     let dets=pico.run_cascade(
       {pixels:gray,nrows:h,ncols:w,ldim:w},classify,
@@ -248,7 +248,7 @@ async function detectPeople(img){
   $('#detectStatus').textContent='正在识别合照主体…';
   const iou=(a,b)=>{const o=overlap(a,b);return o/(a.w*a.h+b.w*b.h-o||1)};
   const add=bs=>{for(const b of (bs||[])){if(b.w>4&&b.h>4&&!boxesDetected.some(e=>iou(e,b)>.35))boxesDetected.push(b)}};
-  // V1.3.2：本地 pico 优先，等待窗口 1.8s → 4.2s（低端机上 1.8s 常来不及跑完级联，
+  // V1.3.3：本地 pico 优先，等待窗口 1.8s → 4.2s（低端机上 1.8s 常来不及跑完级联，
   // 导致检测结果被丢弃、构图退化成"整图微推"）。若 pico 迟到完成，仍旧补录并重新构图。
   const picoJob=detectWithPico(img);
   try{ add(await Promise.race([picoJob,new Promise(r=>setTimeout(()=>r(null),4200))])); }catch(e){}
@@ -284,11 +284,11 @@ function smartCrop(){
   if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
   // 没有可靠主体识别时的兜底：
-  // V1.3.2 ① 推进从 1.18 提到 1.42（旧值几乎等于不裁，主体太小）；
+  // V1.3.3 ① 推进从 1.18 提到 1.42（旧值几乎等于不裁，主体太小）；
   //        ② 竖直改为"偏下锚定"——合影/镜面自拍里人几乎总在画面中下部，
   //           旧逻辑反而往上偏 14.8%，把大片天花板留在画面里。
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.60 : Math.max(.72,Number(photoZoom)||1);
+    const z=(Number(photoZoom)||1)===1 ? 1.76 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
     let sx=(iw-sw)/2-photoDX*iw/W, sy=(ih-sh)*.66-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
@@ -316,7 +316,7 @@ function smartCrop(){
   const onePerson=gaps.length?gaps[Math.floor(gaps.length/2)]:medW*2.25;
   const sideMargin=Math.max(medW*2.6,onePerson*1.05);
 
-  // V1.3.2：按目标封面标定——人群横向占成片约 60%–65%，
+  // V1.3.3：按目标封面标定——人群横向占成片约 60%–65%，
   // 即裁剪宽度 ≈ 人群宽度 × 1.6（旧式"每侧一个站位"在人多时余量过大）。
   const groupW=x2-x1;
   let desiredW=Math.max(groupW+sideMargin*2, groupW*1.6);
@@ -346,7 +346,7 @@ function smartCrop(){
 
   const cx=(x1+x2)/2;
   let sx=cx-sw/2-photoDX*iw/W;
-  // V1.3.2：竖直改为"头顶锚定"——最高人头位于成片高度的 37.5% 处
+  // V1.3.3：竖直改为"头顶锚定"——最高人头位于成片高度的 37.5% 处
   // （标定自目标封面）。旧的"人脸中心锚定"在有人蹲下/半蹲时会整体漂移。
   let sy=y1-sh*.375-photoDY*ih/H;
   // 兜底：不允许把最低的人脸（如蹲姿）压到画面底部之下。
@@ -526,7 +526,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
     const up=Math.max(1,Number(upscale)||1);
     bg.filter=`blur(${(0.72*Math.min(1.35,up)).toFixed(2)}px)`;bg.drawImage(tmp,0,0);bg.filter='none';
     const bd=bg.getImageData(0,0,w,h).data,sd=src.data;
-    const amount=Math.min(1.55,1.18+(up-1)*.70),threshold=2.2,maxHP=18;
+    const amount=Math.min(1.70,1.28+(up-1)*.70),threshold=2.0,maxHP=18;
     for(let i=0;i<sd.length;i+=4)for(let c=0;c<3;c++){let hp=sd[i+c]-bd[i+c];if(Math.abs(hp)<threshold)hp=0;hp=Math.max(-maxHP,Math.min(maxHP,hp));sd[i+c]=Math.max(0,Math.min(255,sd[i+c]+hp*amount));}
     targetCtx.putImageData(src,0,0);
     const fin=targetCtx.getImageData(0,0,w,h),fd=fin.data;
@@ -539,7 +539,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
 }
 
 
-// ── V1.3.2 AI-HD experiment ─────────────────────────────────────────────
+// ── V1.3.3 AI-HD experiment ─────────────────────────────────────────────
 let AIHD_ENABLED=true,AIHD_MODEL=null,AIHD_LOADING=null,AIHD_EXPORT_SOURCE=null,AIHD_LAST_ERROR='';
 const AIHD_MODEL_URL='https://upscale.chino.icu/realcugan/2x-conservative-64/model.json';
 function loadScriptOnce(src,id){return new Promise((ok,no)=>{if(document.getElementById(id))return ok();const x=document.createElement('script');x.id=id;x.src=src;x.async=true;x.onload=ok;x.onerror=()=>no(new Error('load '+src));document.head.appendChild(x)})}
@@ -554,14 +554,9 @@ async function ensureAIHD(){
  return AIHD_LOADING;
 }
 async function aiHdUpscaleCanvas(inputCanvas){
- const model=await ensureAIHD(),tile=64,scale=2,overlap=12;
- // Phone-safe working crop. This is made FROM THE ORIGINAL CROP, never the preview.
- const maxSide=1152;let work=inputCanvas;
- if(Math.max(work.width,work.height)>maxSide){
-  const k=maxSide/Math.max(work.width,work.height),c=document.createElement('canvas');
-  c.width=Math.round(work.width*k);c.height=Math.round(work.height*k);
-  const g=c.getContext('2d',{alpha:false});g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(work,0,0,c.width,c.height);work=c;
- }
+ const model=await ensureAIHD(),tile=64,scale=2,overlap=8;
+ // V1.3.3: no pre-downscale. AI consumes the original Target3 crop in tiles.
+ let work=inputCanvas;
  const w=work.width,h=work.height,out=document.createElement('canvas');out.width=w*2;out.height=h*2;
  const og=out.getContext('2d',{alpha:false}),step=tile-overlap;
  for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){
@@ -596,7 +591,7 @@ function drawPhoto(){
   const ex=bp.ex+manualColor.ex/100, ct=bp.ct+manualColor.ct/100, sa=bp.sa+manualColor.sa/100;
   const temp=bp.temp+manualColor.temp/4, hi=bp.hi+manualColor.hi/400, sh=bp.sh+manualColor.sh/400;
   const isNatural=beautyPreset==='natural';
-  // V1.3.2：默认 A（鲜活自然）改为"所见即所得"：
+  // V1.3.3：默认 A（鲜活自然）改为"所见即所得"：
   //   预览 = CSS filter 近似目标色（亮度+13% / 饱和+30% / 微对比 + 冷粉纱）；
   //   导出 = 基础滤镜归零，由 Target-3 精确逐像素处理独家负责调色，
   //          避免旧版"基础滤镜 + 精确处理"双重叠加导致预览与成片不一致。
@@ -915,7 +910,25 @@ function selectBox(b,n){
 
 
 // V15.8 P1 user combos — NEVER block the first photo frame.
-const CUSTOM_COMBO_ACTIVE={"zumba":["zumba_01.png","zumba_02.png","zumba_03.png","zumba_04.png"],"lelepop":["lelepop_01.png","lelepop_02.png","lelepop_03.png","lelepop_04.png","lelepop_05.png"],"buttscaler":["buttscaler_01.png","buttscaler_02.png","buttscaler_03.jpg"],"zumba-camp":["zumba-camp_01.png","zumba-camp_02.png","zumba-camp_03.png","zumba-camp_04.png","zumba-camp_05.png"]};
+let CUSTOM_COMBO_ACTIVE={lelepop:[],buttscaler:[],zumba:[],camp:[]};
+let CUSTOM_COMBO_CONFIG_LOADED=false;
+async function loadCustomComboConfig(){
+  if(CUSTOM_COMBO_CONFIG_LOADED)return CUSTOM_COMBO_ACTIVE;
+  try{
+    const r=await fetch(`public/custom-combos/custom-combos.json?v=${VERSION}`,{cache:'no-store'});
+    if(!r.ok)throw new Error('custom-combos.json '+r.status);
+    const data=await r.json();
+    const arr=v=>Array.isArray(v)?v.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()):[];
+    CUSTOM_COMBO_ACTIVE={
+      lelepop:arr(data.lelepop||data.Lelepop||data.LELEPOP),
+      buttscaler:arr(data.buttscaler||data.ButtScaler||data.BUTTSCALER),
+      zumba:arr(data.zumba||data.ZUMBA),
+      camp:arr(data.camp||data.zumba_camp||data.ZUMBA_CAMP||data['ZUMBA CAMP'])
+    };
+    CUSTOM_COMBO_CONFIG_LOADED=true;
+  }catch(e){console.error('固定搭配清单加载失败',e)}
+  return CUSTOM_COMBO_ACTIVE;
+}
 const comboImageCache=new Map();
 let customComboSrc=null,customComboImage=null,customComboScale=1;
 function comboPath(c,name){return `./public/custom-combos/${c}/${name}`;}
@@ -925,7 +938,7 @@ function loadComboImage(src){
     const im=new Image();
     im.onload=()=>{comboImageCache.set(src,im);resolve(im)};
     im.onerror=()=>resolve(null);
-    im.src=src+'?v=1.3.2';
+    im.src=src+'?v=1.3.3';
   });
 }
 const DEFAULT_COMBO_FILE={
@@ -1573,7 +1586,7 @@ function getLosslessExportSize(){
   const c=smartCrop();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
 
-  // V1.3.2：导出分辨率 = 裁剪区域的真实源像素（1:1，不重采样 = 最清晰）。
+  // V1.3.3：导出分辨率 = 裁剪区域的真实源像素（1:1，不重采样 = 最清晰）。
   // 旧版无论裁多少都强行放大回"原图最大 4:3"，推进 1.6 倍时相当于把照片放大 1.6 倍，
   // 这是"清晰度不如自己裁的"的直接原因。像素多 ≠ 清晰，1:1 源像素才清晰。
   // 仅当裁剪源宽 <1080 时，为满足社交平台展示才温和放大到 1080（上限 1.5×，并配自适应锐化）。
@@ -1618,7 +1631,7 @@ async function renderLosslessExport(){
   }
   const normal=getLosslessExportSize();
   // AI output itself becomes the final photo pixel source. Cap only for phone stability.
-  const q=ai?{w:Math.min(ai.width,2304),h:Math.round(Math.min(ai.width,2304)*3/4)}:normal;
+  const q=ai?{w:Math.min(ai.width,2560),h:Math.round(Math.min(ai.width,2560)*3/4)}:normal;
   const exportCanvas=document.createElement('canvas');exportCanvas.width=q.w;exportCanvas.height=q.h;
   const exportCtx=exportCanvas.getContext('2d',{alpha:false,willReadFrequently:false});
   exportCtx.imageSmoothingEnabled=true;exportCtx.imageSmoothingQuality='high';
@@ -2014,10 +2027,10 @@ else setTimeout(preloadStrictDefaultCombos,700);
 
 function repairCourseImages(){
   const fallbacks={
-    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.3.2',
-    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.3.2',
-    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.3.2',
-    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.3.2'
+    'lelepop':'./public/assets/characters/lelepop/lelepop_01.png?v=1.3.3',
+    'buttscaler':'./public/assets/characters/buttscaler/buttscaler_01.png?v=1.3.3',
+    'zumba':'./public/assets/characters/zumba/zumba_01.png?v=1.3.3',
+    'zumba-camp':'./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.3.3'
   };
   document.querySelectorAll('.course-card img').forEach(img=>{
     img.loading='eager'; img.decoding='async';
@@ -2084,3 +2097,5 @@ async function checkForPopShotUpdate(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{const t=document.getElementById('aiHdToggle');if(!t)return;const v=localStorage.getItem('popshot-aihd');if(v!==null)AIHD_ENABLED=v==='1';t.checked=AIHD_ENABLED;t.addEventListener('change',()=>{AIHD_ENABLED=t.checked;localStorage.setItem('popshot-aihd',t.checked?'1':'0')})});
+
+document.addEventListener('DOMContentLoaded',()=>{loadCustomComboConfig().then(()=>{try{preloadCourseCombos(course)}catch(e){}}).catch(()=>{})});
