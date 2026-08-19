@@ -1,6 +1,0 @@
-{
-  "version": "1.3.5",
-  "build": 1787115091,
-  "atomicPublish": true,
-  "notes": "A-restore test: restore 4 course-card characters + canonical fixed/default combos; lock original-pixel-first pipeline with no pre-downscale."
-}
