@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#7c52ff">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./styles.css?v=1.0.8">
+<title>PopShot</title>
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <div><div class="signature">for Lisa, and only Lisa ♡</div><div class="brand">PopShot<span>✦</span><em id="versionBadge">V17.1</em></div></div>
+  <div class="top-actions"><button class="icon-btn" id="updateBtn">🔔<i></i></button><button class="icon-btn" id="settingsBtn">⚙️</button></div>
+</header>
+
+<main>
+<section class="hero-card">
+<label class="dropzone">
+  <input type="file" id="photoInput" accept="image/*">
+  <div class="upload-deco">＋</div>
+  <div class="upload-copy"><strong>上传课后合照</strong><span>JPG / PNG / HEIC · 原图始终保留</span><em>点击选择照片</em></div>
+</label>
+
+<div class="section-title">选择课程</div>
+<div class="courses" id="courseGrid">
+  <button data-course="lelepop" class="course-card">
+    <img src="./public/assets/characters/lelepop/lelepop_01.png?v=1.0.3"><span class="course-copy"><strong>Lelepop</strong></span>
+  </button>
+  <button data-course="buttscaler" class="course-card">
+    <img src="./public/assets/characters/buttscaler/buttscaler_01.png?v=1.0.3"><span class="course-copy"><strong>ButtScaler</strong></span>
+  </button>
+  <button data-course="zumba" class="course-card">
+    <img src="./public/assets/characters/zumba/zumba_01.png?v=1.0.3"><span class="course-copy"><strong>ZUMBA</strong></span>
+  </button>
+  <button data-course="zumba-camp" class="course-card">
+    <img src="./public/assets/characters/zumba-camp/zumba_camp_01.png?v=1.0.3"><span class="course-copy"><strong>ZUMBA CAMP</strong></span>
+  </button>
+</div>
+<div class="course-hint">课程不同，默认搭配、贴纸、相框会自动匹配 ✨</div>
+
+<div class="beauty-block">
+  <div class="beauty-head"><b>基础美化</b><small id="beautyText">质感</small></div>
+  <div class="beauty-scroll">
+    <button data-preset="original">原图</button><button data-preset="texture">质感</button><button data-preset="natural">自然</button>
+    <button data-preset="bright">明亮</button><button data-preset="vivid">活力</button><button data-preset="clear">清透</button>
+  </div>
+</div>
+<button class="cta" id="generateBtn">✦ 一键生成</button>
+</section>
+
+<section class="result-card">
+  <div class="result-head"><div><b>生成结果</b><small id="detectStatus">原图分辨率优先 · 4:3 无损PNG</small></div><button class="ghost" id="shuffleBtn">↻ 换一版</button></div>
+  <div class="canvas-stage"><canvas id="canvas" width="2525" height="1894"></canvas><div class="canvas-placeholder" id="placeholder">上传照片后，这里会显示成片</div></div>
+
+  <div class="combo-quick" aria-label="搭配方式">
+    <button id="finishedQuickBtn" class="combo-quick-btn on"><b>默认搭配</b><small>推荐 · 一键成片</small></button>
+    <button id="customQuickBtn" class="combo-quick-btn"><b>自定义搭配</b><small>人物 + 课程字样</small></button>
+  </div>
+  <div class="tools main-tools four-tools">
+    <button id="changeFrameBtn" class="tool-main"><span>▣</span><b>相框</b></button>
+    <button id="changeStickerBtn" class="tool-main"><span>✦</span><b>贴纸</b></button>
+    <button id="adjustPhotoBtn" class="tool-main"><span>↗</span><b>调整照片</b></button>
+    <button id="moreBtn" class="tool-main"><span>•••</span><b>更多</b></button>
+  </div>
+  <div class="result-tip">默认使用 <b>默认搭配</b>；需要自由调整人物和课程字样时切换「自定义搭配」</div>
+
+  <div class="advanced-panel" id="advancedPanel">
+    <div class="advanced-title">更多功能</div>
+    <div class="advanced-actions"><button id="beautyBtn">☼ 美化调色</button><button id="layoutBtn">⌗ 布局</button></div>
+    <div class="style-row"><b>一键换风格</b><div class="style-pills"><button data-style="energetic">活力</button><button data-style="cool">酷飒</button><button data-style="cute">可爱</button><button data-style="clean">清爽</button><button data-style="y2k">Y2K</button><button data-style="fair">白皙</button><button data-style="cream">奶油</button><button data-style="film">胶片</button></div></div>
+    <div class="composition-mode" id="compositionMode"><span>自定义组合布局</span><button data-compose="linked" class="on">顶部组合</button><button data-compose="corner">顶部分开</button></div>
+    <div class="manual-edit">
+      <div class="manual-hint">自定义组合模式：点选人物 / 标题 / 贴纸后可拖动、缩放和调整层级</div>
+      <div class="scale-row" id="scaleRow" style="display:none"><span id="scaleName">大小</span><input type="range" id="scaleRange" min="30" max="320" value="100"><b id="scaleVal">100%</b></div>
+      <div class="manual-actions"><button id="backBtn">↓ 后移</button><button id="frontBtn">↑ 前移</button><button id="deleteBtn">隐藏</button><button id="resetLayerBtn">↺ 重置</button></div>
+    </div>
+    <section class="smart-tools">
+      <div class="smart-row"><label>画面丰富度</label><div class="segmented"><button data-density="simple">简洁</button><button data-density="normal">默认</button><button data-density="rich">丰富</button></div></div>
+      <div class="edit-shortcuts"><button id="undoBtn">↶ 撤销</button><button id="redoBtn">↷ 重做</button><button id="lockBtn">🔓 锁定</button><button id="favBtn">♡ 收藏</button><button id="resetAllBtn">↺ 重置</button></div>
+      <div class="candidate-strip"><button data-candidate="0">A · 清爽</button><button data-candidate="1">B · 平衡</button><button data-candidate="2">C · 海报感</button></div>
+    </section>
+  </div>
+
+  <div class="export-check" id="exportCheck">等待照片 · 将在导出前检查尺寸与素材模式</div>
+  <div id="aiHdBox" style="margin:10px 0;padding:10px 12px;border-radius:12px;background:#f5f3ff;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:12px"><span><b>AI超清（实验）</b><br><small>Real-CUGAN 2× · 首次下载模型；失败自动回退普通高清</small></span><label style="white-space:nowrap"><input id="aiHdToggle" type="checkbox" checked> 开启</label></div><button class="save-btn" id="exportBtn">↓ 保存到相册</button>
+</section>
+
+<section class="drawer" id="drawer"><div class="drawer-head"><b id="drawerTitle">快捷调整</b><button id="drawerClose">×</button></div><div id="drawerBody"></div></section>
+</main>
+</div>
+
+<div class="resume-modal hidden" id="resumeModal"><div class="resume-card"><div class="resume-icon">✦</div><h3>发现上次未完成的作品</h3><p>是否继续上次的编辑？</p><div class="resume-actions"><button id="discardResume">重新开始</button><button id="continueResume" class="resume-continue">继续编辑</button></div></div></div>
+<div class="toast hidden" id="updateTip"><span id="updateTipMsg">✨ 素材库有更新</span><button id="forceRefreshBtn" class="hidden">更新并刷新</button><button id="closeUpdateTip">稍后更新</button></div>
+
+<!-- Compatibility hooks retained for the stable rendering engine -->
+<div class="hidden">
+<button id="changeCharacterBtn"></button><button id="customComboBtn2"></button><button id="finishedComboBtn"></button><button id="customComboBtn"></button>
+<button id="comboHubBtn"></button>
+</div>
+<script src="./app.js?v=1.0.8"></script>
+</body></html>
