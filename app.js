@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.4.0';
+const W = 2525, H = 1894, VERSION = '1.4.1-step01';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -298,9 +298,9 @@ function smartCrop(){
   //        ② 竖直改为"偏下锚定"——合影/镜面自拍里人几乎总在画面中下部，
   //           旧逻辑反而往上偏 14.8%，把大片天花板留在画面里。
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.76 : Math.max(.72,Number(photoZoom)||1);
+    const z=(Number(photoZoom)||1)===1 ? 2.08 : Math.max(.72,Number(photoZoom)||1);
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2 + sw*.045 - photoDX*iw/W, sy=(ih-sh)*.66-photoDY*ih/H;
+    let sx=(iw-sw)/2 + sw*.045 - photoDX*iw/W, sy=(ih-sh)*.62-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -344,7 +344,7 @@ function smartCrop(){
   sw=Math.min(sw,maxSw);sh=sw/tr;
 
   // 防止误检导致裁得过狠：默认最大推进约 1.75 倍。
-  const minSw=maxSw/1.75;
+  const minSw=maxSw/2.07;
   sw=Math.max(sw,minSw);sh=sw/tr;
 
   // 用户手动缩放继续生效。
