@@ -293,57 +293,58 @@ function smartCrop(){
   let maxSw,maxSh;
   if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
-  // 没有可靠主体识别时的兜底：
-  // V1.3.5 ① 推进从 1.18 提到 1.42（旧值几乎等于不裁，主体太小）；
-  //        ② 竖直改为"偏下锚定"——合影/镜面自拍里人几乎总在画面中下部，
-  //           旧逻辑反而往上偏 14.8%，把大片天花板留在画面里。
+  // V1.4.4 SAFE-CENTER: detection is a guard rail, never the horizontal steering wheel.
+  // Default framing stays near the original optical center so a false/right-heavy face box
+  // cannot push the crop window sideways and cut a person at the edge.
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.47 : Math.max(.85,Math.min(1.85,Number(photoZoom)||1));
+    const z=(Number(photoZoom)||1)===1 ? 1.30 : Math.max(.85,Math.min(1.70,Number(photoZoom)||1));
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2 + sw*.045 - photoDX*iw/W, sy=(ih-sh)*.62-photoDY*ih/H;
+    let sx=(iw-sw)/2 - photoDX*iw/W;
+    let sy=(ih-sh)*.58-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
 
   const faces=boxesDetected.slice();
+  const hs=faces.map(b=>b.h).sort((a,b)=>a-b);
+  const medH=hs[Math.floor(hs.length/2)]||ih*.08;
   const x1=Math.min(...faces.map(b=>b.x));
   const x2=Math.max(...faces.map(b=>b.x+b.w));
   const y1=Math.min(...faces.map(b=>b.y));
   const y2=Math.max(...faces.map(b=>b.y+b.h));
 
-  // V14-style framing:
-  // Detector only decides WHERE the people are.
-  // A stable 4:3 crop decides HOW LARGE the people appear.
-  // This avoids the newer detector box expanding the crop back toward 100%.
+  // Horizontal safety first. Reserve generous side room because face boxes do not include
+  // shoulders/arms and edge people are the exact failure we are fixing.
+  const safeL=Math.max(0,x1-medH*1.55);
+  const safeR=Math.min(iw,x2+medH*1.55);
+  const needW=Math.max(1,safeR-safeL);
+  const preferredZoom=1.30;
+  const manualZoom=Number(photoZoom)||1;
+  const requestedZoom=manualZoom===1?preferredZoom:Math.max(.85,Math.min(1.70,manualZoom));
+  const safetyZoom=Math.max(1,maxSw/Math.min(maxSw,needW));
+  const zoom=Math.max(1.0,Math.min(requestedZoom,safetyZoom));
+  let sw=maxSw/zoom, sh=sw/tr;
+
+  // Optical-center anchor: only a small bounded correction toward the detected group.
+  // Max correction is 3% of source width, so detection can never create a visibly skewed crop.
+  const opticalCx=iw*.5;
   const groupCx=(x1+x2)/2;
-  const groupCy=(y1+y2)/2;
+  const correction=Math.max(-iw*.03,Math.min(iw*.03,(groupCx-opticalCx)*.18));
+  let sx=opticalCx+correction-sw/2-photoDX*iw/W;
 
-  // Reference target: roughly 1.47x vs full 4:3 view.
-  // This is intentionally stable and visually closer to the historical good version.
-  const baseZoom=1.47;
-  const manualZoom=(Number(photoZoom)||1);
-  const zoom=Math.max(1.18, Math.min(1.85, baseZoom*(manualZoom===1?1:manualZoom)));
+  // Vertical detection remains useful: reduce ceiling while protecting heads and likely feet.
+  // Face top gets ~18% of crop height above it; this matches the older poster-like composition.
+  let sy=y1-sh*.18-photoDY*ih/H;
+  const minHeadPad=Math.max(8,medH*.55);
+  sy=Math.min(sy,y1-minHeadPad);
 
-  let sw=maxSw/zoom;
-  let sh=sw/tr;
-
-  // Center by the PEOPLE, then bias slightly:
-  // source window a touch right => people appear a touch left in final frame.
-  let sx=groupCx-sw/2 + sw*.012 - photoDX*iw/W;
-
-  // Vertical framing: place group center slightly below geometric center
-  // so feet remain safe while ceiling/floor empty space is reduced.
-  let sy=groupCy-sh*.535 - photoDY*ih/H;
-
-  // Head safety: do not cut above detected top.
-  const headPad=Math.max(8,(y2-y1)*.08);
-  if(sy>y1-headPad) sy=y1-headPad;
-
+  // Final horizontal guard: if detected safe area would be clipped, shift the window just enough.
+  if(sx>safeL) sx=safeL;
+  if(sx+sw<safeR) sx=safeR-sw;
   sx=Math.max(0,Math.min(iw-sw,sx));
   sy=Math.max(0,Math.min(ih-sh,sy));
   return {sx,sy,sw,sh};
 }
-
 // ── 花体标题引擎：每个字母独立旋转/起伏/配色，参考手绘海报风 ──
 const LETTER_ROT=[-5,4,-3,5,-4,3,-6,4];       // 每个字母的固定旋转角（度）
 const LETTER_DY=[0,-.06,.045,-.045,.055,-.05,.035,-.03]; // 每个字母的基线起伏（字号比例）
