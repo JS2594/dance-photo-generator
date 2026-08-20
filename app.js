@@ -79,7 +79,7 @@ const styles = {
 
 const BEAUTY_PRESETS={
   original:{label:'原图',ex:0,ct:0,sa:0,temp:0,hi:0,sh:0,tint:null},
-  natural:{label:'鲜活自然',ex:.045,ct:.145,sa:.220,temp:-2,hi:-.025,sh:.030,tint:null},
+  natural:{label:'鲜活自然',ex:.030,ct:.175,sa:.255,temp:-1,hi:-.030,sh:-.010,tint:null},
   texture:{label:'质感',ex:-.02,ct:.24,sa:.28,temp:1,hi:-.08,sh:.02,tint:null},
   bright:{label:'明亮',ex:.13,ct:-.01,sa:.02,temp:0,hi:.07,sh:.09,tint:'rgba(255,255,255,.025)'},
   vivid:{label:'活力',ex:.07,ct:.08,sa:.18,temp:2,hi:.03,sh:.01,tint:'rgba(255,90,150,.025)'},
@@ -325,7 +325,7 @@ function smartCrop(){
   // headroom and approximately a full-body zone so feet are not sacrificed just to hit the target scale.
   const safeL=Math.max(0,x1-medH*1.55);
   const safeR=Math.min(iw,x2+medH*1.55);
-  const safeT=Math.max(0,y1-medH*.60);
+  const safeT=Math.max(0,y1-medH*.42);
   const safeB=Math.min(ih,Math.max(y2+medH*5.35, ih*.78));
   const needW=Math.max(1,safeR-safeL), needH=Math.max(1,safeB-safeT);
   const maxZoomByW=maxSw/needW;
@@ -339,12 +339,12 @@ function smartCrop(){
 
   // Centre on the detected group, with a tiny optical bias toward image centre to avoid jitter between photos.
   const groupCx=(safeL+safeR)/2;
-  const opticalCx=iw*.5;
-  const cx=groupCx*.74+opticalCx*.26;
+  const opticalCx=iw*.465;
+  const cx=groupCx*.70+opticalCx*.30;
   let sx=cx-sw/2-photoDX*iw/W;
 
   // Keep a stable amount of headroom while preferring the full-body safe zone when space allows.
-  let sy=y1-sh*.135-photoDY*ih/H;
+  let sy=y1-sh*.105-photoDY*ih/H;
   if(sy>safeT) sy=safeT;
   if(sy+sh<safeB) sy=safeB-sh;
 
@@ -503,15 +503,15 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
     for(let i=0,p=0;i<d.length;i+=4,p++){
       let r=d[i],g=d[i+1],b=d[i+2],y=.299*r+.587*g+.114*b;
       const skin=(zoneMask?zoneMask[p]===1:true)&&target3SkinPixel(r,g,b);
-      let ny=Math.max(0,Math.min(255,(y-128)*1.125+137)),gain=y>1?ny/y:1;
+      let ny=Math.max(0,Math.min(255,(y-128)*1.160+134)),gain=y>1?ny/y:1;
       r*=gain;g*=gain;b*=gain;
       const mx=Math.max(r,g,b),mn=Math.min(r,g,b),ch=mx-mn,gray=.299*r+.587*g+.114*b,cr=mx>1?ch/mx:0;
       if(skin){
-        r=r*.965+9;g=g*1.005+9;b=b*1.020+9;
+        r=r*.975+5;g=g*1.002+5;b=b*1.012+5;
         const sg=.299*r+.587*g+.114*b,ss=.90;
         r=sg+(r-sg)*ss;g=sg+(g-sg)*ss;b=sg+(b-sg)*ss;
       }else if(cr>.13&&ch>10){
-        const vib=1+Math.max(.08,Math.min(.36,.36*(1-Math.min(1,ch/175))));
+        const vib=1+Math.max(.12,Math.min(.42,.42*(1-Math.min(1,ch/185))));
         r=gray+(r-gray)*vib;g=gray+(g-gray)*vib;b=gray+(b-gray)*vib;
       }
       d[i]=Math.max(0,Math.min(255,r));d[i+1]=Math.max(0,Math.min(255,g));d[i+2]=Math.max(0,Math.min(255,b));
@@ -525,7 +525,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
     const up=Math.max(1,Number(upscale)||1);
     bg.filter=`blur(${(0.72*Math.min(1.35,up)).toFixed(2)}px)`;bg.drawImage(tmp,0,0);bg.filter='none';
     const bd=bg.getImageData(0,0,w,h).data,sd=src.data;
-    const amount=Math.min(1.78,1.34+(up-1)*.72),threshold=1.8,maxHP=19;
+    const amount=Math.min(1.88,1.44+(up-1)*.72),threshold=1.7,maxHP=20;
     for(let i=0;i<sd.length;i+=4)for(let c=0;c<3;c++){let hp=sd[i+c]-bd[i+c];if(Math.abs(hp)<threshold)hp=0;hp=Math.max(-maxHP,Math.min(maxHP,hp));sd[i+c]=Math.max(0,Math.min(255,sd[i+c]+hp*amount));}
     targetCtx.putImageData(src,0,0);
     const fin=targetCtx.getImageData(0,0,w,h),fd=fin.data;
@@ -597,7 +597,7 @@ function drawPhoto(){
   let br,con,sat,hue;
   if(isNatural){
     if(POPSHOT_EXPORT_RENDERING){ br=1+manualColor.ex/100;con=1+manualColor.ct/100;sat=1+manualColor.sa/100;hue=0; }
-    else { br=1.085+manualColor.ex/100; con=1.115+manualColor.ct/100; sat=1.32+manualColor.sa/100; hue=0; }
+    else { br=1.060+manualColor.ex/100; con=1.165+manualColor.ct/100; sat=1.36+manualColor.sa/100; hue=0; }
   }else{
     br=Math.max(.65,(1+b*.12+ex)*gr.br);
     con=Math.max(.6,(1+b*.02+ct)*gr.ct);

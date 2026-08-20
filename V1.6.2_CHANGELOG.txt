@@ -1,0 +1,9 @@
+PopShot V1.6.2 — Reference Lock
+
+- Reference image is the fixed visual gold standard.
+- Preserve original custom-combo PNG assets exactly; no redraw/re-cut/recolor.
+- Keep far-group framing around the approved ~164% scale while allowing adaptive scaling for other photos.
+- Shift adaptive optical center slightly left to correct right-heavy group framing.
+- Reduce excess ceiling/headroom without sacrificing feet or edge subjects.
+- Natural preset: deeper contrast, stronger scene vibrance, less white haze, stronger export sharpening, skin-tone protection.
+- GitHub web-upload package remains under 100 files and contains no standalone SVG sticker files.
