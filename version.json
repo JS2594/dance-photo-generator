@@ -1,5 +1,5 @@
 {
-  "version": "1.4.4",
-  "build": 1787195409,
-  "notes": "Hotfix: runtime version sync + app.js cache-bust + service-worker cache namespace bump."
+  "version": "1.5.0",
+  "build": 1787212380,
+  "notes": "Target-2 calibration: 1.62x portrait-first framing, tighter headroom, cleaner natural color, native-size PNG export."
 }

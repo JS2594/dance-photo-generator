@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "output": {
     "width": 2525,
     "height": 1894,
@@ -38,7 +38,7 @@
   "holidayPolicy": "holiday-only-on-date-window",
   "layoutPolicy": {
     "photoFirst": true,
-    "crop": "conservative subject-aware cover",
+    "crop": "portrait-first group-aware 1.62x target calibration",
     "preserveGroup": true,
     "characterAndLogo": "top-only compact linked module by default; top-separated mode optional",
     "decorationDensity": "low",

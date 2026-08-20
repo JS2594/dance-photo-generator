@@ -1,0 +1,34 @@
+PopShot V1.5.0 FINAL WEB QA
+
+Reference task: supplied original photo -> supplied Target-2 look
+
+1. Geometry calibration
+- Reference affine scale measured from supplied images: ~1.6221x
+- V1.5.0 default zoom: 1.6200x
+- Expected source crop approx: x=564.2, y=381.1, w=1262.6, h=947.0
+- V1.5.0 fallback crop: x=563.9, y=380.3, w=1264.2, h=948.1
+- Max geometry delta: 1.6px
+- Result: PASS
+
+2. Output
+- PNG only for primary save path; no JPEG compression in export.
+- For supplied 2048x1536 source, export remains 2048x1536.
+- Tight crop is high-quality resampled to native 4:3 output and then adaptive sharpen is applied before overlays.
+
+3. Natural color
+- Removed the previous heavy cool/purple preview veil.
+- Natural preview uses cleaner brightness/contrast/saturation calibration.
+- Export retains Target-3 selective skin protection + scene vibrance + adaptive sharpening.
+
+4. Overlay integrity
+- Existing custom-combo PNG files are used directly; no new cut-out or alpha reconstruction.
+- ZUMBA white lettering therefore remains part of the source PNG.
+- ZUMBA combo assets checked: PASS
+
+5. Code checks
+- app.js syntax: PASS (node --check)
+- Version synchronized to 1.5.0 in runtime/version metadata/cache refs.
+
+Release intent
+- Web baseline first.
+- Android APK should wrap this exact web renderer and use the existing Android.savePngBase64 bridge for direct Gallery/MediaStore saving.

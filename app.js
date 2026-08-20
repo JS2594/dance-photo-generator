@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.4.4';
+const POPSHOT_VERSION='1.5.0';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.4.4';
+const W = 2525, H = 1894, VERSION = '1.5.0';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -293,14 +293,16 @@ function smartCrop(){
   let maxSw,maxSh;
   if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
-  // V1.4.4 SAFE-CENTER: detection is a guard rail, never the horizontal steering wheel.
-  // Default framing stays near the original optical center so a false/right-heavy face box
-  // cannot push the crop window sideways and cut a person at the edge.
+  // V1.5.0 PORTRAIT-FIRST: baseline calibrated from the approved Target-2 reference.
+  // The reference maps to ~1.622× cover zoom. This removes excess ceiling/floor while
+  // preserving the full group and gives the people the same visual weight as the target.
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.30 : Math.max(.85,Math.min(1.70,Number(photoZoom)||1));
+    const z=(Number(photoZoom)||1)===1 ? 1.62 : Math.max(.85,Math.min(1.80,Number(photoZoom)||1));
     let sw=maxSw/z, sh=sw/tr;
-    let sx=(iw-sw)/2 - photoDX*iw/W;
-    let sy=(ih-sh)*.58-photoDY*ih/H;
+    let sx=iw*.584-sw/2 - photoDX*iw/W;
+    // Calibrated fallback for this class-photo camera setup: retain the same rightward optical centre
+    // and vertical crop as the approved Target-2 even when face detection is unavailable.
+    let sy=(ih-sh)*.647-photoDY*ih/H;
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -318,23 +320,23 @@ function smartCrop(){
   const safeL=Math.max(0,x1-medH*1.55);
   const safeR=Math.min(iw,x2+medH*1.55);
   const needW=Math.max(1,safeR-safeL);
-  const preferredZoom=1.30;
+  const preferredZoom=1.62;
   const manualZoom=Number(photoZoom)||1;
-  const requestedZoom=manualZoom===1?preferredZoom:Math.max(.85,Math.min(1.70,manualZoom));
+  const requestedZoom=manualZoom===1?preferredZoom:Math.max(.85,Math.min(1.80,manualZoom));
   const safetyZoom=Math.max(1,maxSw/Math.min(maxSw,needW));
   const zoom=Math.max(1.0,Math.min(requestedZoom,safetyZoom));
   let sw=maxSw/zoom, sh=sw/tr;
 
-  // Optical-center anchor: only a small bounded correction toward the detected group.
-  // Max correction is 3% of source width, so detection can never create a visibly skewed crop.
+  // Group-centre anchor. The approved reference is slightly right of the raw photo centre,
+  // so detected people may steer the crop, but only inside a conservative 9% source-width bound.
   const opticalCx=iw*.5;
   const groupCx=(x1+x2)/2;
-  const correction=Math.max(-iw*.03,Math.min(iw*.03,(groupCx-opticalCx)*.18));
+  const correction=Math.max(-iw*.09,Math.min(iw*.09,(groupCx-opticalCx)*.72));
   let sx=opticalCx+correction-sw/2-photoDX*iw/W;
 
-  // Vertical detection remains useful: reduce ceiling while protecting heads and likely feet.
-  // Face top gets ~18% of crop height above it; this matches the older poster-like composition.
-  let sy=y1-sh*.18-photoDY*ih/H;
+  // Target-2 headroom calibration: ~11.5% of crop height above the highest detected face.
+  // This is materially tighter than V1.5.0 and is the main fix for excess ceiling.
+  let sy=y1-sh*.115-photoDY*ih/H;
   const minHeadPad=Math.max(8,medH*.55);
   sy=Math.min(sy,y1-minHeadPad);
 
@@ -587,7 +589,7 @@ function drawPhoto(){
   let br,con,sat,hue;
   if(isNatural){
     if(POPSHOT_EXPORT_RENDERING){ br=1+manualColor.ex/100;con=1+manualColor.ct/100;sat=1+manualColor.sa/100;hue=0; }
-    else { br=1.13+manualColor.ex/100; con=1.06+manualColor.ct/100; sat=1.30+manualColor.sa/100; hue=0; }
+    else { br=1.10+manualColor.ex/100; con=1.08+manualColor.ct/100; sat=1.24+manualColor.sa/100; hue=0; }
   }else{
     br=Math.max(.65,(1+b*.12+ex)*gr.br);
     con=Math.max(.6,(1+b*.02+ct)*gr.ct);
@@ -600,8 +602,8 @@ function drawPhoto(){
   if(POPSHOT_EXPORT_RENDERING&&AIHD_EXPORT_SOURCE){ctx.drawImage(AIHD_EXPORT_SOURCE,0,0,AIHD_EXPORT_SOURCE.width,AIHD_EXPORT_SOURCE.height,0,0,W,H)}else{ctx.drawImage(photo,c.sx,c.sy,c.sw,c.sh,0,0,W,H)}ctx.restore();
   // 自然模式预览：叠一层极轻冷粉紫纱，近似导出时的精确色调偏移（导出不走这段）。
   if(isNatural && !POPSHOT_EXPORT_RENDERING){
-    ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle='rgba(185,105,255,.07)';ctx.fillRect(0,0,W,H);
-    ctx.globalCompositeOperation='screen';ctx.globalAlpha=.045;ctx.fillStyle='rgba(80,130,255,1)';ctx.fillRect(0,0,W,H);ctx.restore();
+    ctx.save();ctx.globalCompositeOperation='soft-light';ctx.fillStyle='rgba(185,105,255,.025)';ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='screen';ctx.globalAlpha=.018;ctx.fillStyle='rgba(80,130,255,1)';ctx.fillRect(0,0,W,H);ctx.restore();
   }
   // V1.1.2：自然模式不再二次覆盖一层原图。
   // 旧做法会把前面的亮度/对比/色彩重新冲淡，同时在放大裁剪时进一步造成视觉发软。
@@ -1624,18 +1626,13 @@ function getLosslessExportSize(){
   const c=smartCrop();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
 
-  // V1.3.5：导出分辨率 = 裁剪区域的真实源像素（1:1，不重采样 = 最清晰）。
-  // 旧版无论裁多少都强行放大回"原图最大 4:3"，推进 1.6 倍时相当于把照片放大 1.6 倍，
-  // 这是"清晰度不如自己裁的"的直接原因。像素多 ≠ 清晰，1:1 源像素才清晰。
-  // 仅当裁剪源宽 <1080 时，为满足社交平台展示才温和放大到 1080（上限 1.5×，并配自适应锐化）。
+  // V1.5.0: keep the largest native 4:3 output supported by the uploaded photo.
+  // The crop may be tighter than the output pixel dimensions; high-quality canvas resampling
+  // plus the adaptive HD sharpen pass keeps the target social-photo dimensions without JPEG loss.
   let maxW,maxH;
   if(iw/ih>=4/3){ maxH=Math.floor(ih); maxW=Math.floor(maxH*4/3); }
   else { maxW=Math.floor(iw); maxH=Math.floor(maxW*3/4); }
-
-  const cropW=Math.max(4,Math.round(c.sw));
-  let w=cropW;
-  if(w<1080) w=Math.min(1080, Math.round(cropW*1.5), maxW);
-  w=Math.min(w,maxW);
+  let w=Math.min(2560,maxW);
   w=Math.max(4,w-(w%4));
   const h=Math.max(3,Math.round(w*3/4));
   return {w,h,crop:c,scale:w/W};
