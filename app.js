@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.5.0';
+const POPSHOT_VERSION='1.6.0';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.5.0';
+const W = 2525, H = 1894, VERSION = '1.6.0';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -293,16 +293,15 @@ function smartCrop(){
   let maxSw,maxSh;
   if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
-  // V1.5.0 PORTRAIT-FIRST: baseline calibrated from the approved Target-2 reference.
-  // The reference maps to ~1.622× cover zoom. This removes excess ceiling/floor while
-  // preserving the full group and gives the people the same visual weight as the target.
+  // V1.6.0 ADAPTIVE GROUP FRAMING
+  // Goal: different source distances should converge to a similar PEOPLE scale in the final 4:3 image.
+  // Face height is used as the distance proxy; the whole detected group is then protected with body/side margins.
   if(boxesDetected.length<2){
-    const z=(Number(photoZoom)||1)===1 ? 1.62 : Math.max(.85,Math.min(1.80,Number(photoZoom)||1));
+    // No reliable group detection: use a conservative visual baseline instead of an aggressive fixed crop.
+    const z=(Number(photoZoom)||1)===1 ? 1.48 : Math.max(.85,Math.min(2.20,Number(photoZoom)||1));
     let sw=maxSw/z, sh=sw/tr;
-    let sx=iw*.584-sw/2 - photoDX*iw/W;
-    // Calibrated fallback for this class-photo camera setup: retain the same rightward optical centre
-    // and vertical crop as the approved Target-2 even when face detection is unavailable.
-    let sy=(ih-sh)*.647-photoDY*ih/H;
+    let sx=iw*.52-sw/2-photoDX*iw/W;
+    let sy=Math.max(0,(ih-sh)*.58-photoDY*ih/H);
     sx=Math.max(0,Math.min(iw-sw,sx)); sy=Math.max(0,Math.min(ih-sh,sy));
     return {sx,sy,sw,sh};
   }
@@ -315,32 +314,41 @@ function smartCrop(){
   const y1=Math.min(...faces.map(b=>b.y));
   const y2=Math.max(...faces.map(b=>b.y+b.h));
 
-  // Horizontal safety first. Reserve generous side room because face boxes do not include
-  // shoulders/arms and edge people are the exact failure we are fixing.
-  const safeL=Math.max(0,x1-medH*1.55);
-  const safeR=Math.min(iw,x2+medH*1.55);
-  const needW=Math.max(1,safeR-safeL);
-  const preferredZoom=1.62;
+  // Target median face height ≈7.4% of the finished frame height. This is the distance-normalizer:
+  // far-away groups zoom in more; already-close groups zoom in less.
+  const targetFaceRatio=.074;
+  let desiredSh=medH/targetFaceRatio;
+  let desiredSw=desiredSh*tr;
+  let dynamicZoom=maxSw/desiredSw;
+
+  // Protect the complete group. Face boxes need generous shoulder/arm room; vertical estimates reserve
+  // headroom and approximately a full-body zone so feet are not sacrificed just to hit the target scale.
+  const safeL=Math.max(0,x1-medH*1.85);
+  const safeR=Math.min(iw,x2+medH*1.85);
+  const safeT=Math.max(0,y1-medH*.75);
+  const safeB=Math.min(ih,Math.max(y2+medH*5.9, ih*.84));
+  const needW=Math.max(1,safeR-safeL), needH=Math.max(1,safeB-safeT);
+  const maxZoomByW=maxSw/needW;
+  const maxZoomByH=maxSh/needH;
+  const safeMaxZoom=Math.max(1,Math.min(maxZoomByW,maxZoomByH));
+
   const manualZoom=Number(photoZoom)||1;
-  const requestedZoom=manualZoom===1?preferredZoom:Math.max(.85,Math.min(1.80,manualZoom));
-  const safetyZoom=Math.max(1,maxSw/Math.min(maxSw,needW));
-  const zoom=Math.max(1.0,Math.min(requestedZoom,safetyZoom));
+  let zoom=manualZoom===1 ? dynamicZoom : dynamicZoom*manualZoom;
+  zoom=Math.max(1.0,Math.min(2.20,zoom,safeMaxZoom));
   let sw=maxSw/zoom, sh=sw/tr;
 
-  // Group-centre anchor. The approved reference is slightly right of the raw photo centre,
-  // so detected people may steer the crop, but only inside a conservative 9% source-width bound.
+  // Centre on the detected group, with a tiny optical bias toward image centre to avoid jitter between photos.
+  const groupCx=(safeL+safeR)/2;
   const opticalCx=iw*.5;
-  const groupCx=(x1+x2)/2;
-  const correction=Math.max(-iw*.09,Math.min(iw*.09,(groupCx-opticalCx)*.72));
-  let sx=opticalCx+correction-sw/2-photoDX*iw/W;
+  const cx=groupCx*.82+opticalCx*.18;
+  let sx=cx-sw/2-photoDX*iw/W;
 
-  // Target-2 headroom calibration: ~11.5% of crop height above the highest detected face.
-  // This is materially tighter than V1.5.0 and is the main fix for excess ceiling.
-  let sy=y1-sh*.115-photoDY*ih/H;
-  const minHeadPad=Math.max(8,medH*.55);
-  sy=Math.min(sy,y1-minHeadPad);
+  // Keep a stable amount of headroom while preferring the full-body safe zone when space allows.
+  let sy=y1-sh*.105-photoDY*ih/H;
+  if(sy>safeT) sy=safeT;
+  if(sy+sh<safeB) sy=safeB-sh;
 
-  // Final horizontal guard: if detected safe area would be clipped, shift the window just enough.
+  // Final safety shifts: never knowingly crop the protected group area.
   if(sx>safeL) sx=safeL;
   if(sx+sw<safeR) sx=safeR-sw;
   sx=Math.max(0,Math.min(iw-sw,sx));
@@ -1626,7 +1634,7 @@ function getLosslessExportSize(){
   const c=smartCrop();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
 
-  // V1.5.0: keep the largest native 4:3 output supported by the uploaded photo.
+  // V1.6.0: keep the largest native 4:3 output supported by the uploaded photo.
   // The crop may be tighter than the output pixel dimensions; high-quality canvas resampling
   // plus the adaptive HD sharpen pass keeps the target social-photo dimensions without JPEG loss.
   let maxW,maxH;
