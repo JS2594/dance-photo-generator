@@ -1,0 +1,7 @@
+PopShot V1.6.3 Reference Lock Hotfix
+
+1. Fixed default-combo disappearance: canonical user PNGs are embedded byte-for-byte and loaded first.
+2. Never silently substitutes a rebuilt/custom logo when default combo fails.
+3. Fixed 125% crop regression: mirrored/reflected face detections no longer force a zoom-out.
+4. Distant group-photo framing anchored near the approved ~164% reference while remaining adaptive.
+5. Reduced empty ceiling and improved group centering, without altering the original combo PNG artwork.
