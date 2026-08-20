@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.6.1';
+const POPSHOT_VERSION='1.6.2';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.6.1';
+const W = 2525, H = 1894, VERSION = '1.6.2';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
