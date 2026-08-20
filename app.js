@@ -1,4 +1,4 @@
-const POPSHOT_VERSION='1.6.0';
+const POPSHOT_VERSION='1.6.1';
 
 function comparePopShotVersion(a,b){
   const pa=String(a||'0').replace(/^v/i,'').split('.').map(n=>parseInt(n,10)||0);
@@ -31,7 +31,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 let canvas = $('#canvas');
 let ctx = canvas.getContext('2d');
 const input = $('#photoInput');
-const W = 2525, H = 1894, VERSION = '1.6.0';
+const W = 2525, H = 1894, VERSION = '1.6.1';
 let currentPhotoObjectURL=null, photoLoadSeq=0;
 
 const charFiles = {
@@ -293,12 +293,12 @@ function smartCrop(){
   let maxSw,maxSh;
   if(iw/ih>tr){maxSh=ih;maxSw=ih*tr}else{maxSw=iw;maxSh=iw/tr}
 
-  // V1.6.0 ADAPTIVE GROUP FRAMING
+  // V1.6.1 GOLDEN GROUP FRAMING — preserve original combo PNG assets
   // Goal: different source distances should converge to a similar PEOPLE scale in the final 4:3 image.
   // Face height is used as the distance proxy; the whole detected group is then protected with body/side margins.
   if(boxesDetected.length<2){
     // No reliable group detection: use a conservative visual baseline instead of an aggressive fixed crop.
-    const z=(Number(photoZoom)||1)===1 ? 1.48 : Math.max(.85,Math.min(2.20,Number(photoZoom)||1));
+    const z=(Number(photoZoom)||1)===1 ? 1.64 : Math.max(.85,Math.min(2.20,Number(photoZoom)||1));
     let sw=maxSw/z, sh=sw/tr;
     let sx=iw*.52-sw/2-photoDX*iw/W;
     let sy=Math.max(0,(ih-sh)*.58-photoDY*ih/H);
@@ -316,17 +316,17 @@ function smartCrop(){
 
   // Target median face height ≈7.4% of the finished frame height. This is the distance-normalizer:
   // far-away groups zoom in more; already-close groups zoom in less.
-  const targetFaceRatio=.074;
+  const targetFaceRatio=.082;
   let desiredSh=medH/targetFaceRatio;
   let desiredSw=desiredSh*tr;
   let dynamicZoom=maxSw/desiredSw;
 
   // Protect the complete group. Face boxes need generous shoulder/arm room; vertical estimates reserve
   // headroom and approximately a full-body zone so feet are not sacrificed just to hit the target scale.
-  const safeL=Math.max(0,x1-medH*1.85);
-  const safeR=Math.min(iw,x2+medH*1.85);
-  const safeT=Math.max(0,y1-medH*.75);
-  const safeB=Math.min(ih,Math.max(y2+medH*5.9, ih*.84));
+  const safeL=Math.max(0,x1-medH*1.55);
+  const safeR=Math.min(iw,x2+medH*1.55);
+  const safeT=Math.max(0,y1-medH*.60);
+  const safeB=Math.min(ih,Math.max(y2+medH*5.35, ih*.78));
   const needW=Math.max(1,safeR-safeL), needH=Math.max(1,safeB-safeT);
   const maxZoomByW=maxSw/needW;
   const maxZoomByH=maxSh/needH;
@@ -340,11 +340,11 @@ function smartCrop(){
   // Centre on the detected group, with a tiny optical bias toward image centre to avoid jitter between photos.
   const groupCx=(safeL+safeR)/2;
   const opticalCx=iw*.5;
-  const cx=groupCx*.82+opticalCx*.18;
+  const cx=groupCx*.74+opticalCx*.26;
   let sx=cx-sw/2-photoDX*iw/W;
 
   // Keep a stable amount of headroom while preferring the full-body safe zone when space allows.
-  let sy=y1-sh*.105-photoDY*ih/H;
+  let sy=y1-sh*.135-photoDY*ih/H;
   if(sy>safeT) sy=safeT;
   if(sy+sh<safeB) sy=safeB-sh;
 
@@ -503,7 +503,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
     for(let i=0,p=0;i<d.length;i+=4,p++){
       let r=d[i],g=d[i+1],b=d[i+2],y=.299*r+.587*g+.114*b;
       const skin=(zoneMask?zoneMask[p]===1:true)&&target3SkinPixel(r,g,b);
-      let ny=Math.max(0,Math.min(255,(y-128)*1.105+136)),gain=y>1?ny/y:1;
+      let ny=Math.max(0,Math.min(255,(y-128)*1.125+137)),gain=y>1?ny/y:1;
       r*=gain;g*=gain;b*=gain;
       const mx=Math.max(r,g,b),mn=Math.min(r,g,b),ch=mx-mn,gray=.299*r+.587*g+.114*b,cr=mx>1?ch/mx:0;
       if(skin){
@@ -511,7 +511,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
         const sg=.299*r+.587*g+.114*b,ss=.90;
         r=sg+(r-sg)*ss;g=sg+(g-sg)*ss;b=sg+(b-sg)*ss;
       }else if(cr>.13&&ch>10){
-        const vib=1+Math.max(.08,Math.min(.30,.30*(1-Math.min(1,ch/170))));
+        const vib=1+Math.max(.08,Math.min(.36,.36*(1-Math.min(1,ch/175))));
         r=gray+(r-gray)*vib;g=gray+(g-gray)*vib;b=gray+(b-gray)*vib;
       }
       d[i]=Math.max(0,Math.min(255,r));d[i+1]=Math.max(0,Math.min(255,g));d[i+2]=Math.max(0,Math.min(255,b));
@@ -525,7 +525,7 @@ function applyTarget3ExactPhotoPass(targetCtx,w,h,personZones,upscale){
     const up=Math.max(1,Number(upscale)||1);
     bg.filter=`blur(${(0.72*Math.min(1.35,up)).toFixed(2)}px)`;bg.drawImage(tmp,0,0);bg.filter='none';
     const bd=bg.getImageData(0,0,w,h).data,sd=src.data;
-    const amount=Math.min(1.70,1.28+(up-1)*.70),threshold=2.0,maxHP=18;
+    const amount=Math.min(1.78,1.34+(up-1)*.72),threshold=1.8,maxHP=19;
     for(let i=0;i<sd.length;i+=4)for(let c=0;c<3;c++){let hp=sd[i+c]-bd[i+c];if(Math.abs(hp)<threshold)hp=0;hp=Math.max(-maxHP,Math.min(maxHP,hp));sd[i+c]=Math.max(0,Math.min(255,sd[i+c]+hp*amount));}
     targetCtx.putImageData(src,0,0);
     const fin=targetCtx.getImageData(0,0,w,h),fd=fin.data;
@@ -597,7 +597,7 @@ function drawPhoto(){
   let br,con,sat,hue;
   if(isNatural){
     if(POPSHOT_EXPORT_RENDERING){ br=1+manualColor.ex/100;con=1+manualColor.ct/100;sat=1+manualColor.sa/100;hue=0; }
-    else { br=1.10+manualColor.ex/100; con=1.08+manualColor.ct/100; sat=1.24+manualColor.sa/100; hue=0; }
+    else { br=1.085+manualColor.ex/100; con=1.115+manualColor.ct/100; sat=1.32+manualColor.sa/100; hue=0; }
   }else{
     br=Math.max(.65,(1+b*.12+ex)*gr.br);
     con=Math.max(.6,(1+b*.02+ct)*gr.ct);
@@ -1634,7 +1634,7 @@ function getLosslessExportSize(){
   const c=smartCrop();
   const iw=photo.naturalWidth||photo.width, ih=photo.naturalHeight||photo.height;
 
-  // V1.6.0: keep the largest native 4:3 output supported by the uploaded photo.
+  // V1.6.1: keep the largest native 4:3 output supported by the uploaded photo.
   // The crop may be tighter than the output pixel dimensions; high-quality canvas resampling
   // plus the adaptive HD sharpen pass keeps the target social-photo dimensions without JPEG loss.
   let maxW,maxH;

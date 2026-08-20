@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
-  "build": 1787212380,
-  "notes": "Target-2 calibration: 1.62x portrait-first framing, tighter headroom, cleaner natural color, native-size PNG export."
+  "version": "1.6.1",
+  "build": 1787241600,
+  "notes": "Golden framing: stronger adaptive people scale, centered group, tighter headroom, vivid natural color; original default combo PNG assets locked unchanged."
 }

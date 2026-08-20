@@ -1,0 +1,10 @@
+PopShot V1.6.1 — Golden Group Framing
+
+1. Default combo PNG assets are NOT modified.
+2. Far-group fallback target raised from 148% to 164%.
+3. Detected-group target face ratio raised to 8.2% for more consistent people scale.
+4. Side/body safety margins tightened while preserving edge people.
+5. Optical centering strengthened to reduce right-shift.
+6. Headroom tightened.
+7. Natural preview and export color strengthened; overlays are applied after photo color processing and remain untouched.
+8. Lossless PNG/native 4:3 export retained.
