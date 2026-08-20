@@ -1,1 +1,5 @@
-{"version":"v1.4.4-step02-safe-center","build":"2026-08-20"}
+{
+  "version": "1.4.4",
+  "build": 1787195409,
+  "notes": "Hotfix: runtime version sync + app.js cache-bust + service-worker cache namespace bump."
+}
